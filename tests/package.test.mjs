@@ -42,6 +42,9 @@ test('packed consumers resolve all entrypoints in ESM, CJS, NodeNext and Bundler
     assert.ok(pack.files.some(file => file.path === 'docs/partner-quickstart.md'));
     writeFileSync(resolve(dir, 'n8nResourceBridge.mjs'), readFileSync(resolve(dir, 'node_modules/@insidedm/sdk/examples/n8nResourceBridge.mjs')));
     const esm = `import { InsideDM, InsideDMPlatform, InsideDMError } from '@insidedm/sdk';
+import {createRequire} from 'node:module';
+const requiredSdk=createRequire(import.meta.url)('@insidedm/sdk');
+if(requiredSdk.InsideDM!==InsideDM||requiredSdk.InsideDMPlatform!==InsideDMPlatform||requiredSdk.InsideDMError!==InsideDMError)throw Error('mixed module identities');
 import { createN8nResourceBridge } from './n8nResourceBridge.mjs';
 import { constructWebhookEvent } from '@insidedm/sdk/webhooks';
 import { createTestClient, createWebhookFixture } from '@insidedm/sdk/testing';

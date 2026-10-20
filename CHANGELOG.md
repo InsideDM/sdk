@@ -1,5 +1,7 @@
 # Changelog
 
+- ESM and CommonJS entrypoints share one runtime implementation and identical client/error constructors. Native declarations, the Node 22 floor and the original package size budget are preserved.
+
 - `usage.getLimits()` reads native current-plan limits on the same billing GET under explicit software usage-and-limits authority. Preserves unlimited slots, soft monthly conversation allowance and exact INR paise included AI allowance; no remaining quota, feature flags or sold-version inference.
 
 - Business `usage.get({ from, to })`: observed AI calls and whole token totals over explicit bounded windows, through the shared billing owner. Requires a separate merchant-approved `usage.read` grant; preserves source, dispatch-time attribution and provisional semantics. Application `usage.get` remains own-client API request telemetry. No financial totals or Meta billing are inferred.

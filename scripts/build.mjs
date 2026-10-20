@@ -56,10 +56,50 @@ if (!process.exitCode) {
   }
   const pkg = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
   if (!check) {
+    await writeEsmEntrypointWrappers(pkg);
     await prunePrivateDeclarations(pkg);
     await prunePrivateRuntimeModules(pkg);
   }
   process.stdout.write(`${pkg.name}: ${check ? 'typechecked' : 'built'} ESM and CJS.\n`);
+}
+
+// One runtime graph keeps client/error constructors identical across import
+// and require, and avoids shipping two copies of every transport/validator.
+// Retain independent native declarations for NodeNext and CommonJS consumers.
+async function writeEsmEntrypointWrappers(pkg){
+  const entries=new Set();
+  const collect=value=>{
+    if(typeof value==='string'&&value.startsWith('./dist/esm/')&&value.endsWith('.js'))entries.add(value);
+    else if(value&&typeof value==='object')Object.values(value).forEach(collect);
+  };
+  collect(pkg.module);collect(pkg.exports);
+  if(!entries.size)throw new Error('Public ESM entrypoints are missing.');
+  for(const entry of entries){
+    const emitted=path.resolve(root,entry),relative=path.relative(path.join(root,'dist','esm'),emitted);
+    if(relative.startsWith('..')||path.isAbsolute(relative))throw new Error('ESM entrypoint escapes distribution.');
+    // Use emitted JS: TypeScript's symbol table can expose values reached only
+    // through `export type *`, which must never become runtime exports.
+    const source=ts.createSourceFile(entry,await readFile(emitted,'utf8'),ts.ScriptTarget.Latest,true,ts.ScriptKind.JS),exports=new Set();
+    for(const statement of source.statements){
+      if(ts.isExportDeclaration(statement)){
+        if(!statement.exportClause||!ts.isNamedExports(statement.exportClause))throw new Error(`Unsupported export-star in ${entry}.`);
+        for(const item of statement.exportClause.elements)exports.add(item.name.text);
+      }else if(ts.isExportAssignment(statement))throw new Error(`Unsupported default export in ${entry}.`);
+      else if(statement.modifiers?.some(modifier=>modifier.kind===ts.SyntaxKind.ExportKeyword)){
+        if(ts.isVariableStatement(statement))for(const declaration of statement.declarationList.declarations){
+          if(!ts.isIdentifier(declaration.name))throw new Error(`Unsupported export binding in ${entry}.`);exports.add(declaration.name.text);
+        }else if((ts.isFunctionDeclaration(statement)||ts.isClassDeclaration(statement))&&statement.name)exports.add(statement.name.text);
+        else throw new Error(`Unsupported runtime export in ${entry}.`);
+      }
+    }
+    const names=[...exports].sort();
+    if(!names.length||names.some(name=>name==='default'||!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name)))throw new Error(`Unsupported runtime export in ${entry}.`);
+    const cjs=path.join(root,'dist','cjs',relative);await readFile(cjs,'utf8');
+    const specifier=path.relative(path.dirname(emitted),cjs).split(path.sep).join('/');
+    const body=`import runtime from ${JSON.stringify(specifier.startsWith('.')?specifier:'./'+specifier)};\n`+
+      names.map(name=>`export const ${name} = runtime.${name};\n`).join('');
+    await writeFile(emitted,body);
+  }
 }
 
 // Runtime factories need emitted JavaScript, but their declarations only belong
