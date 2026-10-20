@@ -1,0 +1,43 @@
+{
+  "name": "@insidedm/sdk",
+  "version": "0.1.0-alpha.0",
+  "description": "Typed server-side client for the InsideDM API.",
+  "type": "module",
+  "license": "UNLICENSED",
+  "engines": { "node": ">=22" },
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "import": { "types": "./dist/esm/index.d.ts", "default": "./dist/esm/index.js" },
+      "require": { "types": "./dist/cjs/index.d.ts", "default": "./dist/cjs/index.js" }
+    },
+    "./webhooks": {
+      "import": { "types": "./dist/esm/webhooks.d.ts", "default": "./dist/esm/webhooks.js" },
+      "require": { "types": "./dist/cjs/webhooks.d.ts", "default": "./dist/cjs/webhooks.js" }
+    },
+    "./testing": {
+      "import": { "types": "./dist/esm/testing.d.ts", "default": "./dist/esm/testing.js" },
+      "require": { "types": "./dist/cjs/testing.d.ts", "default": "./dist/cjs/testing.js" }
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "files": ["dist", "openapi/public-v1.yaml", "docs/client-provisioning.md", "docs/hosted-onboarding.md", "docs/partner-webhooks.md", "docs/partner-quickstart.md", "docs/n8n.md", "examples/n8nResourceBridge.mjs", "README.md", "CHANGELOG.md", "PUBLICATION.md", "LICENSE*"],
+  "publishConfig": { "access": "public", "provenance": true },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "node scripts/build.mjs --check",
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "prepack": "npm run build && node scripts/auditPackage.mjs",
+    "check:release": "node scripts/checkRelease.mjs",
+    "prepublishOnly": "npm run test && npm run check:release",
+    "export:kit": "node scripts/exportKit.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "20.19.41",
+    "typescript": "5.9.3",
+    "yaml": "2.9.0"
+  }
+}
