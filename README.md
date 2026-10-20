@@ -181,8 +181,9 @@ const { data: history } = await platform.blueprints.listVersions('agency-leads')
 ```
 
 The source catalog declares typed parameters, defaults, limits and dependency
-slots. Current adapters support lead-capture prompts and webhook follow-up
-timing. Versions and their digests are immutable. The default retry key is stable
+slots. Current adapters support lead-capture prompts, webhook follow-up timing
+and [bounded external-job polling](docs/n8n.md#run-a-longer-external-job).
+Versions and their digests are immutable. The default retry key is stable
 for the blueprint key/version, so restarting your backend can recover creation.
 Change the version to save different content; creating the same version under a
 different explicit retry key conflicts. History contains at most 100 versions.

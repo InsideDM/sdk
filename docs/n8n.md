@@ -29,7 +29,57 @@ Use the same stable event ID as the `Idempotency-Key`. Configure a published **f
 3. Configure **Using Respond to Webhook** and return a small JSON object on every successful path, for example `{"eligible":true,"reference":"quote-123"}`. Map only declared response fields into the flow.
 4. Keep the work within the action's timeout: default 10 seconds, maximum 30 seconds. Requests are limited to 64 KiB and responses to 256 KiB. Redirects and private/reserved addresses are refused.
 
-Enable POST/PATCH retries only after implementing durable receiver deduplication and result recovery. A normal n8n Webhook does not provide that contract. The production engine retains one idempotency key per flow-node visit across retries and changes it on a later visit. Header Auth authenticates access; it does not deduplicate effects. Work exceeding the synchronous deadline needs the still-unimplemented governed async callback/continuation capability. An immediate acknowledgement cannot later supply synchronous response mappings.
+Enable POST/PATCH retries only after implementing durable receiver deduplication and result recovery. A normal n8n Webhook does not provide that contract. The production engine retains one idempotency key per flow-node visit across retries and changes it on a later visit. Header Auth authenticates access; it does not deduplicate effects. For longer work, use the start-and-poll template below. An immediate acknowledgement cannot later supply synchronous response mappings.
+
+## Run a longer external job
+
+The `governed-async-job` template starts one external job, parks the InsideDM run,
+then checks a separate status endpoint. Use it for slow enrichment, document
+generation or an n8n workflow backed by your durable job store.
+
+Configure two client-owned HTTPS POST endpoints through the existing endpoint
+setup. The start endpoint accepts the event's `payload` object and quickly returns
+`{"job":{"id":"job-123"}}`. The status endpoint receives exactly that `job`
+object and returns `{"status":"pending","result":null}` until done, then
+`{"status":"succeeded","result":{"reference":"report-123"}}`. Return
+`failed` for a failed job. Allow response pointers `/job` on start and `/status`,
+`/result` on status. Every status response must include both fields. Authentication
+stays in endpoint configuration; job references must not be bearer credentials.
+
+Use the reviewed IDs/revisions from `flows.templates.catalog()`:
+
+```ts
+const { data: draft } = await insideDM.flows.templates.import('governed-async-job', {
+  version: '1',
+  bindings: {
+    'job-start-endpoint': { endpointId: startId, expectedRevision: startRevision },
+    'job-status-endpoint': { endpointId: statusId, expectedRevision: statusRevision },
+  },
+}, { idempotencyKey: 'external-job/setup/v1' });
+```
+
+Review and publish the draft in the existing builder, then start it with
+`events.publish({ id: stableEventId, binding: draft.recipeId,
+subject: { contactId }, properties: { payload: { orderId } } })`.
+The subject must already exist. The organization's WhatsApp account is resolved
+by the backend. This template sends no message itself.
+
+Partners can select this same template through `platform.blueprints.listTemplates()`
+and save a portable source with `pollIntervalSeconds` (5–300), `maxPollAttempts`
+(2–11) and `webhookTimeoutMs` (100–10000). Defaults are 180 seconds, 10 checks and
+10 seconds. Declare permitted client overrides before deploying the saved source.
+The default waits total 30 minutes; request and scheduling time add to this,
+so it is not an exact wall-clock deadline.
+
+HTTP retries are disabled in this template. A timeout, invalid response, unknown
+status or exhausted check limit ends the flow through a failure outcome. A later
+check has a new effect identity. Your receiver owns durable job creation,
+deduplication, access checks, retention and recovery of an uncertain start; a
+plain Webhook-to-Respond workflow is insufficient. Stopping an InsideDM run does
+not cancel or roll back the external job. Results remain in declared flow
+variables for native builder/subflow use; the SDK run read reports progress only.
+Arbitrary callback-based resume and n8n administration/editor embedding remain
+separate capabilities. Live n8n deployment acceptance is still outstanding.
 
 ## Receive resource events
 

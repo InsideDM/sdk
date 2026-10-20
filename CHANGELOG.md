@@ -1,5 +1,9 @@
 # Changelog
 
+- A governed long-running job template and portable polling parameters, using
+  native HTTP actions, durable delays and bounded jumps. Includes start/status
+  contracts and n8n ownership guidance; no callback endpoint or new SDK method.
+
 - Managed draft publication requests and status through the existing native
   release endpoints. Shared compilation, simulation, governance and human
   publication remain authoritative; requester attribution uses the integration's
