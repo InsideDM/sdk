@@ -1,5 +1,8 @@
 # Changelog
 
+- Runnable managed-rollout worker with durable checkpoints, restart recovery
+  and native human review tracking, using existing SDK methods.
+
 - A governed long-running job template and portable polling parameters, using
   native HTTP actions, durable delays and bounded jumps. Includes start/status
   contracts and n8n ownership guidance; no callback endpoint or new SDK method.

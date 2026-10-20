@@ -24,7 +24,7 @@
     "./package.json": "./package.json"
   },
   "sideEffects": false,
-  "files": ["dist", "openapi/public-v1.yaml", "docs/client-provisioning.md", "docs/hosted-onboarding.md", "docs/partner-webhooks.md", "docs/partner-quickstart.md", "docs/n8n.md", "examples/n8nResourceBridge.mjs", "examples/n8n/*.json", "examples/n8n/README.md", "README.md", "CHANGELOG.md", "PUBLICATION.md", "LICENSE*"],
+  "files": ["dist", "openapi/public-v1.yaml", "docs/client-provisioning.md", "docs/hosted-onboarding.md", "docs/partner-webhooks.md", "docs/partner-quickstart.md", "docs/n8n.md", "examples/n8nResourceBridge.mjs", "examples/managedRolloutWorker.mjs", "examples/n8n/*.json", "examples/n8n/README.md", "README.md", "CHANGELOG.md", "PUBLICATION.md", "LICENSE*"],
   "publishConfig": { "access": "public", "provenance": true },
   "scripts": {
     "build": "node scripts/build.mjs",

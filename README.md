@@ -297,11 +297,22 @@ customized drafts need resolution and a fresh explicit preview before inclusion.
 Plans and outcomes include client identifiers and configuration metadata; store
 them privately. Failure diagnostics exclude exception messages and raw responses.
 
-Both methods accept normal request options. Timeouts and retries apply per client;
-an `AbortSignal` also stops new clients from starting. Aborting a request cannot
-undo a committed draft update. This helper runs in your process: your application
-owns scheduling and persistence. Human publication, publication observation and
-already pinned runs keep their existing semantics.
+Both methods accept request options per client. Abort stops new work; it cannot
+undo a committed update. Your application owns scheduling and persistence.
+
+Copy [managedRolloutWorker.mjs](examples/managedRolloutWorker.mjs) for durable recovery:
+
+```js
+import { createManagedRolloutWorker } from './managedRolloutWorker.mjs';
+const worker = createManagedRolloutWorker({ platform, directory: '/persistent/private/rollouts' });
+const id = await worker.save(plan);
+console.log(await worker.tick(id)); // Schedule again later; retain this ID.
+```
+
+Use private persistent POSIX storage with hard links and fsync. Restart with the
+same ID. Write/recovery attempts stop after 24 hours; reconcile uncertain writes
+before a new plan. Known review IDs remain readable. `awaiting_review` needs human
+action. Your scheduler owns backoff, retry limits, retention and monitoring.
 
 ## Available operations
 
