@@ -40,6 +40,249 @@ tags:
   - name: Usage
   - name: Flows
 paths:
+  /api/v1/platform/blueprints/templates:
+    get:
+      operationId: listBlueprintTemplates
+      tags: [Platform]
+      summary: Discover portable template sources and typed customization parameters
+      description: Requires platform.blueprints.manage. Global source metadata contains no client resources or credentials. Authoring does not grant merchant access or publish flows.
+      responses:
+        '200':
+          description: Bounded supported source catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [data]
+                properties:
+                  data: { type: array, maxItems: 50, items: { $ref: '#/components/schemas/PublicBlueprintTemplate' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/v1/platform/blueprints/versions:
+    post:
+      operationId: createBlueprintVersion
+      tags: [Platform]
+      summary: Create an immutable application-owned portable blueprint version
+      description: |
+        Requires platform.blueprints.manage. Composes an exact reviewed template
+        digest, typed parameters and explicit client override permissions. No
+        arbitrary graph, client binding or publication flags are accepted. Repeat
+        the original key/input to recover creation; changed intent conflicts.
+        An existing version under a different key conflicts; read that version.
+        Maximum fifty keys and one hundred versions per key/application. No
+        merchant installation, client draft or runtime execution is created.
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateBlueprintVersionInput' }
+      responses:
+        '201':
+          description: Immutable portable source and its digest
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/PublicBlueprintVersion' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/v1/platform/blueprints/{blueprintKey}/versions:
+    get:
+      operationId: listBlueprintVersions
+      tags: [Platform]
+      summary: List this application's immutable versions for a blueprint key
+      description: Requires platform.blueprints.manage. At most one hundred versions, in descending version order. Empty means no version under this application's key.
+      parameters:
+        - name: blueprintKey
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+      responses:
+        '200':
+          description: Bounded version history
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [data]
+                properties:
+                  data: { type: array, maxItems: 100, items: { $ref: '#/components/schemas/PublicBlueprintVersion' } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/v1/platform/blueprints/{blueprintKey}/versions/{version}:
+    get:
+      operationId: getBlueprintVersion
+      tags: [Platform]
+      summary: Read one exact application-owned portable version
+      description: Requires platform.blueprints.manage. A version is immutable; retrieving it does not grant authority to deploy into a client business.
+      parameters:
+        - name: blueprintKey
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+        - name: version
+          in: path
+          required: true
+          schema: { type: string, pattern: '^[1-9]\d{0,9}$' }
+      responses:
+        '200':
+          description: Exact version and digest
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/PublicBlueprintVersion' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/v1/flows/{businessId}/recipes/{recipeId}/graph/deployment-preview:
+    post:
+      operationId: previewBlueprintUpdate
+      tags: [Flows]
+      summary: Preview a managed blueprint update while preserving client overrides
+      description: |
+        Requires flows.deploy. Changes no authoring or publication state. Returns
+        an explicit source/default/slot diff and optimistic managed/draft pins.
+        Manual graph edits, unavailable sources, incompatible overrides and stale
+        resource bindings require action. Layout is preserved. A preview is an
+        observation, never execution authority or permission to skip fresh checks.
+      parameters:
+        - { $ref: '#/components/parameters/BusinessId' }
+        - name: recipeId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PreviewBlueprintUpdateInput' }
+      responses:
+        '200':
+          description: Current update diff, preserved overrides and readiness
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/BlueprintUpdatePreview' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/v1/flows/{businessId}/recipes/{recipeId}/graph:
+    put:
+      operationId: applyBlueprintUpdate
+      tags: [Flows]
+      summary: Apply a reviewed blueprint update to its current client draft
+      description: |
+        Requires flows.deploy. Uses the existing editor graph PUT with a closed
+        blueprint_update command; machine callers cannot supply a raw graph.
+        Rechecks current source, bindings, original producer and both optimistic
+        revisions. Preserves allowed client overrides and layout, blocks manual
+        graph overwrite, and atomically appends immutable deployment history.
+        Never publishes, changes an active publication or alters pinned runs.
+        Matching retries return their original historical receipt after later
+        edits; they do not reapply a graph. An earlier source can prepare a draft
+        rollback, with normal human publication still required.
+      parameters:
+        - { $ref: '#/components/parameters/BusinessId' }
+        - name: recipeId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApplyBlueprintUpdateInput' }
+      responses:
+        '200':
+          description: Historical draft-update or unchanged receipt
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/BlueprintUpdateReceipt' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+    get:
+      operationId: getFlowDeployment
+      tags: [Flows]
+      summary: Read immutable import origin and current draft drift
+      description: |
+        Requires flows.deploy. Uses the existing flow editor GET with a fixed
+        metadata projection, without returning a graph. Machine callers can read
+        only their stable producer's imported flows. Human editors retain client
+        ownership. Source version, digest and reviewed references are immutable
+        even after editable metadata or retry history changes. Draft comparison
+        reflects actual authoring content, not caller-supplied fingerprints.
+        This read does not validate, merge, publish or execute an update.
+      parameters:
+        - { $ref: '#/components/parameters/BusinessId' }
+        - name: recipeId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: view
+          in: query
+          required: true
+          schema: { type: string, const: deployment }
+      responses:
+        '200':
+          description: Original import provenance and current draft comparison
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/FlowTemplateDeployment' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/Unavailable' }
   /api/v1/dashboard/{businessId}/automation-runtime/catalog:
     get:
       operationId: getFlowTemplateCatalog
@@ -92,6 +335,12 @@ paths:
         Idempotency-Key and input to recover its original creation receipt, even
         after draft customization. Changed intent conflicts. The draft receipt is
         historical and does not assert the flow's current publication state.
+        A blueprint reference selects an immutable partner source instead of an
+        internal pack: packId then names the blueprint key, version names its
+        version, and its application/digest are explicit. A current client
+        installation must approve flows.deploy. Delegated callers may deploy only
+        their own application's sources. Overrides must be declared by that
+        source. The same owner validates client bindings and creates the draft.
       parameters:
         - { $ref: '#/components/parameters/BusinessId' }
         - name: packId
@@ -3335,7 +3584,7 @@ components:
         scopes:
           type: array
           minItems: 1
-          maxItems: 15
+          maxItems: 17
           items: { $ref: '#/components/schemas/PublicScope' }
         authorityVersion: { type: string, pattern: '^[1-9][0-9]{0,9}$' }
         revision: { type: string, pattern: '^[1-9][0-9]{0,9}$' }
@@ -3361,13 +3610,13 @@ components:
             name: { type: string, minLength: 1, maxLength: 512 }
         scopes:
           type: array
-          maxItems: 10
+          maxItems: 11
           items:
-            enum: [platform.businesses.read, platform.businesses.create, platform.businesses.link, platform.installations.manage, platform.onboarding.create, platform.sessions.create, platform.delegations.create, platform.subscriptions.manage, platform.usage.read, platform.branding.manage]
+            enum: [platform.businesses.read, platform.businesses.create, platform.businesses.link, platform.installations.manage, platform.onboarding.create, platform.sessions.create, platform.delegations.create, platform.blueprints.manage, platform.subscriptions.manage, platform.usage.read, platform.branding.manage]
         maximumBusinessScopes:
           type: array
           minItems: 1
-          maxItems: 15
+          maxItems: 17
           items: { $ref: '#/components/schemas/PublicScope' }
         returnUrls:
           type: array
@@ -3382,7 +3631,7 @@ components:
         scopes:
           type: array
           minItems: 1
-          maxItems: 15
+          maxItems: 17
           uniqueItems: true
           items: { $ref: '#/components/schemas/PublicScope' }
         returnUrl: { type: string, minLength: 1, maxLength: 2048, format: uri }
@@ -3406,7 +3655,7 @@ components:
         scopes:
           type: array
           minItems: 1
-          maxItems: 15
+          maxItems: 17
           items: { $ref: '#/components/schemas/PublicScope' }
         expiresAt: { type: string, format: date-time }
         result: { $ref: '#/components/schemas/InstallationRequestResult' }
@@ -3421,7 +3670,7 @@ components:
         scopes:
           type: array
           minItems: 1
-          maxItems: 15
+          maxItems: 17
           items: { $ref: '#/components/schemas/PublicScope' }
         expiresAt: { type: string, format: date-time }
         result: { $ref: '#/components/schemas/InstallationRequestResult' }
@@ -3438,7 +3687,7 @@ components:
         scopes:
           type: array
           minItems: 1
-          maxItems: 15
+          maxItems: 17
           uniqueItems: true
           items: { $ref: '#/components/schemas/PublicScope' }
     BusinessDelegation:
@@ -3454,7 +3703,7 @@ components:
         scopes:
           type: array
           minItems: 1
-          maxItems: 15
+          maxItems: 17
           uniqueItems: true
           items: { $ref: '#/components/schemas/PublicScope' }
         expiresAt: { type: string, format: date-time }
@@ -3612,6 +3861,260 @@ components:
     FlowTemplateIdentifier:
       type: string
       pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$'
+    BlueprintUpdateTarget:
+      type: object
+      additionalProperties: false
+      required: [applicationId, key, version, digest]
+      properties:
+        applicationId: { type: string, format: uuid }
+        key: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+        version: { type: integer, minimum: 1, maximum: 2147483647 }
+        digest: { $ref: '#/components/schemas/FlowTemplateDigest' }
+    FlowTemplateBindings:
+      type: object
+      maxProperties: 20
+      propertyNames: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+      additionalProperties: { $ref: '#/components/schemas/FlowTemplateBinding' }
+    PreviewBlueprintUpdateInput:
+      type: object
+      additionalProperties: false
+      required: [target]
+      properties:
+        target: { $ref: '#/components/schemas/BlueprintUpdateTarget' }
+        bindings: { $ref: '#/components/schemas/FlowTemplateBindings' }
+    ApplyBlueprintUpdateInput:
+      type: object
+      additionalProperties: false
+      required: [kind, target, expectedDeploymentRevision, expectedDraftRevision]
+      properties:
+        kind: { type: string, const: blueprint_update }
+        target: { $ref: '#/components/schemas/BlueprintUpdateTarget' }
+        bindings: { $ref: '#/components/schemas/FlowTemplateBindings' }
+        expectedDeploymentRevision: { type: integer, minimum: 1, maximum: 2147483647 }
+        expectedDraftRevision: { type: integer, minimum: 1, maximum: 2147483647 }
+    BlueprintUpdateChanges:
+      type: object
+      additionalProperties: false
+      required: [nameChanged, templateChanged, parameters, addedDependencySlots, removedDependencySlots, preservedOverrideKeys]
+      properties:
+        nameChanged: { type: boolean }
+        templateChanged: { type: boolean }
+        parameters:
+          type: array
+          maxItems: 40
+          items:
+            type: object
+            additionalProperties: false
+            required: [key, previous, next, clientOverridePreserved]
+            properties:
+              key: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+              previous: { type: [string, integer, 'null'], maxLength: 1000, minimum: 0, maximum: 2147483647 }
+              next: { type: [string, integer, 'null'], maxLength: 1000, minimum: 0, maximum: 2147483647 }
+              clientOverridePreserved: { type: boolean }
+        addedDependencySlots: { type: array, maxItems: 20, items: { $ref: '#/components/schemas/FlowTemplateIdentifier' } }
+        removedDependencySlots: { type: array, maxItems: 20, items: { $ref: '#/components/schemas/FlowTemplateIdentifier' } }
+        preservedOverrideKeys: { type: array, maxItems: 20, items: { $ref: '#/components/schemas/FlowTemplateIdentifier' } }
+    BlueprintUpdatePreview:
+      type: object
+      additionalProperties: false
+      required: [businessId, recipeId, deploymentRevision, draftRevision, from, target, state, reasons, bindings, changes]
+      properties:
+        businessId: { type: string, format: uuid }
+        recipeId: { type: string, format: uuid }
+        deploymentRevision: { type: integer, minimum: 1, maximum: 2147483647 }
+        draftRevision: { type: [integer, 'null'], minimum: 1, maximum: 2147483647 }
+        from: { $ref: '#/components/schemas/BlueprintUpdateTarget' }
+        target: { $ref: '#/components/schemas/BlueprintUpdateTarget' }
+        state: { type: string, enum: [ready, unchanged, action_required] }
+        reasons:
+          type: array
+          maxItems: 11
+          items: { type: string, enum: [draft_changed, draft_missing, draft_unavailable, source_unavailable, source_changed, override_incompatible, binding_slots_changed, binding_required, binding_unavailable, binding_revision_conflict, target_invalid] }
+        bindings: { $ref: '#/components/schemas/FlowTemplateBindings' }
+        changes:
+          oneOf:
+            - { $ref: '#/components/schemas/BlueprintUpdateChanges' }
+            - { type: 'null' }
+    BlueprintUpdateReceipt:
+      type: object
+      additionalProperties: false
+      required: [businessId, recipeId, deploymentRevision, draftRevision, status, target]
+      properties:
+        businessId: { type: string, format: uuid }
+        recipeId: { type: string, format: uuid }
+        deploymentRevision: { type: integer, minimum: 1, maximum: 2147483647 }
+        draftRevision: { type: integer, minimum: 1, maximum: 2147483647 }
+        status: { type: string, enum: [draft_updated, unchanged] }
+        target: { $ref: '#/components/schemas/BlueprintUpdateTarget' }
+    BlueprintTemplateReference:
+      type: object
+      additionalProperties: false
+      required: [id, version, digest]
+      properties:
+        id: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+        version: { type: integer, minimum: 1, maximum: 2147483647 }
+        digest: { $ref: '#/components/schemas/FlowTemplateDigest' }
+    BlueprintParameters:
+      type: object
+      maxProperties: 20
+      propertyNames: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+      additionalProperties:
+        oneOf:
+          - { type: string, minLength: 1, maxLength: 1000 }
+          - { type: integer, minimum: 0, maximum: 2147483647 }
+    BlueprintOverrideKeys:
+      type: array
+      maxItems: 20
+      items: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+    CreateBlueprintVersionInput:
+      type: object
+      additionalProperties: false
+      required: [key, version, name, description, template]
+      properties:
+        key: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+        version: { type: integer, minimum: 1, maximum: 2147483647 }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        description: { type: string, minLength: 1, maxLength: 500 }
+        template: { $ref: '#/components/schemas/BlueprintTemplateReference' }
+        parameters: { $ref: '#/components/schemas/BlueprintParameters' }
+        clientOverrides: { $ref: '#/components/schemas/BlueprintOverrideKeys' }
+    BlueprintDependencies:
+      type: array
+      maxItems: 20
+      items:
+        type: object
+        additionalProperties: false
+        required: [id, kind, method]
+        properties:
+          id: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+          kind: { type: string, const: webhook_endpoint }
+          method: { type: string, const: POST }
+    BlueprintVariables:
+      type: array
+      maxItems: 100
+      items:
+        type: object
+        additionalProperties: false
+        required: [id, key, type, scope, required, mutable]
+        properties:
+          id: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+          key: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+          type: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+          scope: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+          required: { type: boolean }
+          mutable: { type: boolean }
+    BlueprintCapabilities:
+      type: object
+      additionalProperties: false
+      required: [channels, actions]
+      properties:
+        channels: { type: array, maxItems: 3, items: { type: string, enum: [instagram, whatsapp, unified] } }
+        actions: { type: array, maxItems: 32, items: { $ref: '#/components/schemas/FlowTemplateIdentifier' } }
+    BlueprintDefinition:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, key, version, name, description, template, parameters, clientOverrides, dependencies, variables, capabilities]
+      properties:
+        schemaVersion: { type: string, const: inside-flow-blueprint/v1 }
+        key: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+        version: { type: integer, minimum: 1, maximum: 2147483647 }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        description: { type: string, minLength: 1, maxLength: 500 }
+        template: { $ref: '#/components/schemas/BlueprintTemplateReference' }
+        parameters: { $ref: '#/components/schemas/BlueprintParameters' }
+        clientOverrides: { $ref: '#/components/schemas/BlueprintOverrideKeys' }
+        dependencies: { $ref: '#/components/schemas/BlueprintDependencies' }
+        variables: { $ref: '#/components/schemas/BlueprintVariables' }
+        capabilities: { $ref: '#/components/schemas/BlueprintCapabilities' }
+    PublicBlueprintVersion:
+      type: object
+      additionalProperties: false
+      required: [applicationId, definition, digest, createdAt]
+      properties:
+        applicationId: { type: string, format: uuid }
+        definition: { $ref: '#/components/schemas/BlueprintDefinition' }
+        digest: { $ref: '#/components/schemas/FlowTemplateDigest' }
+        createdAt: { type: string, format: date-time }
+    BlueprintParameterDefinition:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [id, type, defaultValue, maxLength]
+          properties:
+            id: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+            type: { type: string, const: string }
+            defaultValue: { type: string, minLength: 1, maxLength: 1000 }
+            maxLength: { type: integer, minimum: 1, maximum: 1000 }
+        - type: object
+          additionalProperties: false
+          required: [id, type, defaultValue, minimum, maximum]
+          properties:
+            id: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+            type: { type: string, const: integer }
+            defaultValue: { type: integer, minimum: 1, maximum: 2147483647 }
+            minimum: { type: integer, minimum: 1, maximum: 2147483647 }
+            maximum: { type: integer, minimum: 1, maximum: 2147483647 }
+    PublicBlueprintTemplate:
+      type: object
+      additionalProperties: false
+      required: [template, name, description, parameterDefinitions, dependencies, variables, capabilities]
+      properties:
+        template: { $ref: '#/components/schemas/BlueprintTemplateReference' }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        description: { type: string, minLength: 1, maxLength: 500 }
+        parameterDefinitions: { type: array, maxItems: 20, items: { $ref: '#/components/schemas/BlueprintParameterDefinition' } }
+        dependencies: { $ref: '#/components/schemas/BlueprintDependencies' }
+        variables: { $ref: '#/components/schemas/BlueprintVariables' }
+        capabilities: { $ref: '#/components/schemas/BlueprintCapabilities' }
+    FlowTemplateDeployment:
+      type: object
+      additionalProperties: false
+      required: [businessId, recipeId, revision, source, bindings, overrides, createdAt, draft]
+      properties:
+        businessId: { type: string, format: uuid }
+        recipeId: { type: string, format: uuid }
+        source:
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required: [kind, packId, version, digest]
+              properties:
+                kind: { type: string, const: internal_template }
+                packId: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+                version: { $ref: '#/components/schemas/FlowTemplateVersion' }
+                digest: { $ref: '#/components/schemas/FlowTemplateDigest' }
+            - type: object
+              additionalProperties: false
+              required: [kind, applicationId, key, version, digest, template]
+              properties:
+                kind: { type: string, const: partner_blueprint }
+                applicationId: { type: string, format: uuid }
+                key: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+                version: { $ref: '#/components/schemas/FlowTemplateVersion' }
+                digest: { $ref: '#/components/schemas/FlowTemplateDigest' }
+                template:
+                  type: object
+                  additionalProperties: false
+                  required: [packId, version, digest]
+                  properties:
+                    packId: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+                    version: { $ref: '#/components/schemas/FlowTemplateVersion' }
+                    digest: { $ref: '#/components/schemas/FlowTemplateDigest' }
+        revision: { type: integer, minimum: 1, maximum: 2147483647 }
+        bindings:
+          type: object
+          maxProperties: 20
+          propertyNames: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+          additionalProperties: { $ref: '#/components/schemas/FlowTemplateBinding' }
+        overrides: { $ref: '#/components/schemas/BlueprintParameters' }
+        createdAt: { type: string, format: date-time }
+        draft:
+          type: object
+          additionalProperties: false
+          required: [state, revision]
+          properties:
+            state: { type: string, enum: [unchanged, modified, missing, unavailable] }
+            revision: { type: [integer, 'null'], minimum: 1, maximum: 2147483647 }
     FlowTemplateVersion:
       type: string
       pattern: '^[1-9]\d{0,9}$'
@@ -3627,6 +4130,10 @@ components:
         endpointId: { type: string, format: uuid }
         expectedRevision: { type: integer, minimum: 0, maximum: 2147483647 }
     FlowTemplateImportBody:
+      oneOf:
+        - { $ref: '#/components/schemas/InternalTemplateImportBody' }
+        - { $ref: '#/components/schemas/BlueprintImportBody' }
+    InternalTemplateImportBody:
       type: object
       additionalProperties: false
       required: [version]
@@ -3637,6 +4144,25 @@ components:
           maxProperties: 20
           propertyNames: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
           additionalProperties: { $ref: '#/components/schemas/FlowTemplateBinding' }
+    BlueprintImportBody:
+      type: object
+      additionalProperties: false
+      required: [version, blueprint]
+      properties:
+        version: { $ref: '#/components/schemas/FlowTemplateVersion' }
+        blueprint:
+          type: object
+          additionalProperties: false
+          required: [applicationId, digest]
+          properties:
+            applicationId: { type: string, format: uuid }
+            digest: { $ref: '#/components/schemas/FlowTemplateDigest' }
+        bindings:
+          type: object
+          maxProperties: 20
+          propertyNames: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+          additionalProperties: { $ref: '#/components/schemas/FlowTemplateBinding' }
+        overrides: { $ref: '#/components/schemas/BlueprintParameters' }
     FlowTemplateImportReceipt:
       type: object
       additionalProperties: false

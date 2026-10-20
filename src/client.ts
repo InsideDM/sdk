@@ -1,6 +1,8 @@
 import { Transport } from './transport.js';
 import type { PublicOperationId } from './generated/operations.js';
 import { InsideDMConfigurationError, InsideDMProtocolError } from './errors.js';
+import {parseBlueprintVersion} from './generated/partnerBlueprints.js';
+import {parseBlueprintUpdatePreview} from './generated/flowBlueprintUpdates.js';
 import type {
   ClientOptions, RequestOptions, WriteRequestOptions, UpdateContactAttributesInput, UpdatedContactAttributes, PaginationOptions, Result, PageResult, PageParams,
   ContactListParams, ConversationListParams, MessageListParams, OrderListParams,
@@ -15,7 +17,9 @@ import type {
   RecordMarketingOptInInput, MarketingOptInRegistration,
   PublishEventInput, OperationLookupInput, PublicFlowRun,
   SoftwareUsageInput, SoftwareUsageSummary, SoftwareLimits,
-  FlowTemplateCatalogParams, FlowTemplateCatalog, FlowTemplateImportBody, FlowTemplateImportReceipt,
+  FlowTemplateCatalogParams, FlowTemplateCatalog, FlowTemplateImportBody, FlowTemplateImportReceipt,FlowTemplateDeployment,
+  PublicBlueprintVersion,DeployBlueprintOptions,
+  BlueprintUpdatePreview,BlueprintUpdateReceipt,
 } from './types.js';
 
 function pageBound(value: number | undefined): number {
@@ -107,7 +111,43 @@ export class BusinessClient {
         return { data: (body as { data: SoftwareUsageSummary }).data, meta };
       },
     };
-    this.flows = { runs: {
+    this.flows = { blueprints: {
+      /** Create a client-owned draft from a saved partner version and reviewed client bindings. */
+      deploy: async (blueprint:PublicBlueprintVersion,config:DeployBlueprintOptions={},options?:WriteRequestOptions):Promise<Result<FlowTemplateImportReceipt>> => {
+        let source:PublicBlueprintVersion;
+        try{
+          source=parseBlueprintVersion(blueprint);
+          if(!config||typeof config!=='object'||Array.isArray(config)||Object.keys(config).some(key=>!['bindings','overrides'].includes(key)))throw new Error();
+        }catch{throw new InsideDMConfigurationError('Provide a saved blueprint version and its client bindings or permitted parameter overrides.');}
+        const {body,meta}=await transport.ownerOperation('importFlowTemplate',source.definition.key,{version:String(source.definition.version),
+          blueprint:{applicationId:source.applicationId,digest:source.digest},...(config.bindings===undefined?{}:{bindings:config.bindings}),...(config.overrides===undefined?{}:{overrides:config.overrides})},options);
+        return {data:(body as {data:FlowTemplateImportReceipt}).data,meta};
+      },
+    }, deployments: {
+      /** Inspect a source update while preserving client overrides; no draft is changed. */
+      previewUpdate:async(recipeId:string,blueprint:PublicBlueprintVersion,config:Pick<DeployBlueprintOptions,'bindings'>={},options?:RequestOptions):Promise<Result<BlueprintUpdatePreview>>=>{
+        let source:PublicBlueprintVersion;
+        try{source=parseBlueprintVersion(blueprint);if(!config||typeof config!=='object'||Array.isArray(config)||Object.keys(config).some(key=>key!=='bindings'))throw new Error();}
+        catch{throw new InsideDMConfigurationError('Provide a saved target blueprint and optional reviewed client bindings.');}
+        const {body,meta}=await transport.ownerOperation('previewBlueprintUpdate',recipeId,{target:{applicationId:source.applicationId,key:source.definition.key,version:source.definition.version,digest:source.digest},
+          ...(config.bindings===undefined?{}:{bindings:config.bindings})},options);
+        return {data:(body as {data:BlueprintUpdatePreview}).data,meta};
+      },
+      /** Apply the reviewed preview to a draft. The server rechecks every pin and current source. */
+      applyUpdate:async(preview:BlueprintUpdatePreview,options?:WriteRequestOptions):Promise<Result<BlueprintUpdateReceipt>>=>{
+        let captured:BlueprintUpdatePreview;
+        try{captured=parseBlueprintUpdatePreview(preview);if(captured.state==='action_required'||captured.draftRevision===null)throw new Error();}
+        catch{throw new InsideDMConfigurationError('Resolve action-required items and obtain a current update preview before applying it.');}
+        const {body,meta}=await transport.ownerOperation('applyBlueprintUpdate',captured.recipeId,{kind:'blueprint_update',target:captured.target,bindings:captured.bindings,
+          expectedDeploymentRevision:captured.deploymentRevision,expectedDraftRevision:captured.draftRevision},options);
+        return {data:(body as {data:BlueprintUpdateReceipt}).data,meta};
+      },
+      /** Immutable template origin and current draft drift for this integration's imported flow. */
+      get: async (recipeId: string, options?: RequestOptions): Promise<Result<FlowTemplateDeployment>> => {
+        const { body, meta } = await transport.requestForBusiness('getFlowDeployment', {view:'deployment'}, options, {recipeId});
+        return {data:(body as {data:FlowTemplateDeployment}).data,meta};
+      },
+    }, runs: {
       /** Current status of this producer's SDK-started flow; separate from publication and delivery. */
       get: async (runId: string, options?: RequestOptions): Promise<Result<PublicFlowRun>> => {
         const { body, meta } = await transport.requestForBusiness('getFlowRun', { view: 'progress' }, options, { runId });

@@ -1,5 +1,21 @@
 # Changelog
 
+- Managed blueprint update previews and draft-only application over the existing
+  editor owner, preserving allowed client overrides, refusing manual graph
+  overwrite and recording immutable managed revisions with stable recovery.
+
+- `flows.blueprints.deploy(savedVersion, config)` creates a client-owned draft
+  through the existing template-import owner, enforcing installation approval,
+  client resource bindings and declared overrides with immutable provenance.
+
+- Partner blueprint source discovery and immutable version creation/history,
+  with typed customization fields, explicit client override permissions and
+  stable default creation keys. Source authoring never publishes client flows.
+
+- `flows.deployments.get(flowId)` reads immutable template origin and current
+  draft drift through the existing editor GET, with producer isolation and no
+  raw graph or private endpoint settings.
+
 - Flow template catalog and exact-version draft imports through the existing
   builder owners, with explicit `flows.deploy`, client endpoint references,
   bounded cursors, partner delegation and retained import recovery. Imports do

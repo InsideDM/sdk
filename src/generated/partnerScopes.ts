@@ -3,6 +3,7 @@ export const PARTNER_PLATFORM_SCOPES = [
     'platform.businesses.read', 'platform.businesses.create', 'platform.businesses.link',
     'platform.installations.manage', 'platform.onboarding.create', 'platform.sessions.create',
     'platform.delegations.create',
+    'platform.blueprints.manage',
     'platform.subscriptions.manage', 'platform.usage.read', 'platform.branding.manage',
 ] as const;
 export type PartnerPlatformScope = (typeof PARTNER_PLATFORM_SCOPES)[number];

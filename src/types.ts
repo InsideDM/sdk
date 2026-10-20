@@ -30,6 +30,8 @@ export interface WriteRequestOptions extends RequestOptions {
 }
 
 export type WriteRecovery = {operation:'updateContactAttributes';contactId:string;idempotencyKey:string}
+  |{operation:'createBlueprintVersion';blueprintKey:string;version:number;idempotencyKey:string}
+  |{operation:'applyBlueprintUpdate';recipeId:string;idempotencyKey:string}
   |{operation:'importFlowTemplate';packId:string;idempotencyKey:string}
   |{operation:'replayPlatformSubscriptionDelivery';subscriptionId:string;businessId:string;deliveryId:string;idempotencyKey:string}
   |{operation:'recoverPlatformSubscriptionReceiver';subscriptionId:string;businessId:string;idempotencyKey:string}
@@ -47,11 +49,17 @@ export type WriteRecovery = {operation:'updateContactAttributes';contactId:strin
 export type { WithdrawConsentInput, ConsentWithdrawal, ConsentPurpose, ContactConsentState } from './generated/consents.js';
 export type {PublicInstallationRequest,CreatedInstallationRequest} from './generated/installationRequests.js';
 export type {PublicApplicationSelf} from './generated/applicationSelf.js';
+export type {CreateBlueprintVersionInput,PublicBlueprintVersion,PublicBlueprintTemplate,BlueprintDefinition,BlueprintParameters,BlueprintParameterDefinition} from './generated/partnerBlueprints.js';
+export type {BlueprintUpdatePreview,BlueprintUpdateReceipt,BlueprintUpdateTarget,BlueprintUpdateReason} from './generated/flowBlueprintUpdates.js';
+export interface DeployBlueprintOptions{
+  bindings?:Record<string,import('./generated/flowTemplateDeployments.js').FlowTemplateBinding>;
+  overrides?:import('./generated/partnerBlueprints.js').BlueprintParameters;
+}
 export type {PublicInstallation,RevokeInstallationInput,InstallationRevocationReason} from './generated/installations.js';
 export type {PublicPartnerBusiness,PartnerBusinessListParams} from './generated/partnerPortfolio.js';
 export type {PublicPartnerApiUsage} from './generated/partnerUsage.js';
 export type { SoftwareUsageSummary, SoftwareLimits } from './generated/softwareUsage.js';
-export type { FlowTemplateImportBody, FlowTemplateImportReceipt, FlowTemplateCatalog, FlowTemplateSummary, FlowTemplateBinding } from './generated/flowTemplateDeployments.js';
+export type { FlowTemplateImportBody, FlowTemplateImportReceipt, FlowTemplateCatalog, FlowTemplateSummary, FlowTemplateBinding, FlowTemplateDeployment } from './generated/flowTemplateDeployments.js';
 export interface FlowTemplateCatalogParams { limit?: number; cursor?: string }
 export interface SoftwareUsageInput { from: string | Date; to: string | Date }
 export type {CreatePlatformBusinessInput,RenewBusinessClaimLinkInput,PublicBusinessCreation,BusinessCreationLink} from './generated/businessCreations.js';

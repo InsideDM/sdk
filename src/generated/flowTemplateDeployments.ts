@@ -1,5 +1,6 @@
 // Generated from the authoritative InsideDM public contract. Do not edit by hand.
 import { parseBoundedJson } from './boundedJson.js';
+import { parseBlueprintParameters, type BlueprintParameters } from './partnerBlueprints.js';
 export const FLOW_TEMPLATE_OPERATIONS = [{
         id: 'getFlowTemplateCatalog', name: 'flows.templates.catalog', audience: 'conversations', method: 'GET',
         path: '/api/v1/dashboard/{businessId}/automation-runtime/catalog', pathTemplate: '/api/v1/dashboard/:businessId/automation-runtime/catalog',
@@ -8,14 +9,24 @@ export const FLOW_TEMPLATE_OPERATIONS = [{
         id: 'importFlowTemplate', name: 'flows.templates.import', audience: 'conversations', method: 'POST',
         path: '/api/v1/dashboard/{businessId}/automation-runtime/template-packs/{packId}/import', pathTemplate: '/api/v1/dashboard/:businessId/automation-runtime/template-packs/:packId/import',
         principalKinds: ['business_key', 'delegation'], requiredScopes: ['flows.deploy'], humanPermissions: ['flows.edit'], idempotency: 'required', scope: 'workspace',
+    }, {
+        id: 'getFlowDeployment', name: 'flows.deployments.get', audience: 'conversations', method: 'GET',
+        path: '/api/v1/flows/{businessId}/recipes/{recipeId}/graph', pathTemplate: '/api/v1/flows/:businessId/recipes/:recipeId/graph',
+        principalKinds: ['business_key', 'delegation'], requiredScopes: ['flows.deploy'], humanPermissions: ['flows.edit'], idempotency: 'none', scope: 'workspace',
     }] as const;
 export interface FlowTemplateBinding {
     endpointId: string;
     expectedRevision: number;
 }
+export interface FlowBlueprintSourceReference {
+    applicationId: string;
+    digest: string;
+}
 export interface FlowTemplateImportBody {
     version: string;
     bindings?: Record<string, FlowTemplateBinding>;
+    blueprint?: FlowBlueprintSourceReference;
+    overrides?: BlueprintParameters;
 }
 export interface FlowTemplateImportReceipt {
     businessId: string;
@@ -57,6 +68,35 @@ export interface FlowTemplateCatalog {
         nextCursor: string | null;
     };
 }
+export interface FlowTemplateDeployment {
+    businessId: string;
+    recipeId: string;
+    revision: number;
+    source: {
+        kind: 'internal_template';
+        packId: string;
+        version: string;
+        digest: string;
+    } | {
+        kind: 'partner_blueprint';
+        applicationId: string;
+        key: string;
+        version: string;
+        digest: string;
+        template: {
+            packId: string;
+            version: string;
+            digest: string;
+        };
+    };
+    bindings: Record<string, FlowTemplateBinding>;
+    overrides: BlueprintParameters;
+    createdAt: string;
+    draft: {
+        state: 'unchanged' | 'modified' | 'missing' | 'unavailable';
+        revision: number | null;
+    };
+}
 export class FlowTemplateRequestError extends Error {
     constructor() { super('The flow template request or response is invalid.'); this.name = 'FlowTemplateRequestError'; }
 }
@@ -68,20 +108,80 @@ const revision = (v: unknown): v is number => typeof v === 'number' && Number.is
 const label = (v: unknown, max: number): v is string => typeof v === 'string' && v.length > 0 && v.length <= max && !/[\x00-\x1f\x7f]/.test(v);
 const digest = (v: unknown): v is string => typeof v === 'string' && /^sha256:[0-9a-f]{64}$/.test(v);
 function fail(): never { throw new FlowTemplateRequestError(); }
+function overridesOf(v: unknown): BlueprintParameters { try {
+    return parseBlueprintParameters(v);
+}
+catch {
+    return fail();
+} }
 function exact(v: Record<string, unknown>, required: readonly string[], optional: readonly string[] = []) {
     if (required.some(key => !Object.hasOwn(v, key)) || Object.keys(v).some(key => ![...required, ...optional].includes(key)))
         fail();
 }
 export function parseFlowTemplateId(v: unknown): string { return id(v) ? v : fail(); }
+export function parseFlowDeploymentId(v: unknown): string { return uuid(v) ? v : fail(); }
+export function parseFlowDeploymentQuery(route: string): void {
+    const mark = route.indexOf('?');
+    if (mark < 0)
+        fail();
+    const query = new URLSearchParams(route.slice(mark + 1));
+    if ([...query].length !== 1 || query.get('view') !== 'deployment')
+        fail();
+}
+export function parseFlowTemplateDeployment(v: unknown): FlowTemplateDeployment {
+    if (!record(v))
+        fail();
+    exact(v, ['businessId', 'recipeId', 'revision', 'source', 'bindings', 'overrides', 'createdAt', 'draft']);
+    if (!uuid(v.businessId) || !uuid(v.recipeId) || !revision(v.revision) || v.revision === 0 || !record(v.source) || !record(v.draft) || typeof v.createdAt !== 'string'
+        || !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(v.createdAt) || !Number.isFinite(Date.parse(v.createdAt)) || new Date(v.createdAt).toISOString() !== v.createdAt)
+        fail();
+    if (v.source.kind === 'internal_template') {
+        exact(v.source, ['kind', 'packId', 'version', 'digest']);
+        if (!id(v.source.packId))
+            fail();
+    }
+    else if (v.source.kind === 'partner_blueprint') {
+        exact(v.source, ['kind', 'applicationId', 'key', 'version', 'digest', 'template']);
+        if (!uuid(v.source.applicationId) || !id(v.source.key) || !record(v.source.template))
+            fail();
+        exact(v.source.template, ['packId', 'version', 'digest']);
+        if (!id(v.source.template.packId) || !version(v.source.template.version) || !digest(v.source.template.digest))
+            fail();
+    }
+    else
+        fail();
+    if (!version(v.source.version) || !digest(v.source.digest) || !record(v.bindings))
+        fail();
+    const bindings = parseFlowTemplateImport(JSON.stringify({ version: v.source.version, bindings: v.bindings })).bindings!;
+    const overrides = overridesOf(v.overrides);
+    if (v.source.kind === 'internal_template' && Object.keys(overrides).length)
+        fail();
+    exact(v.draft, ['state', 'revision']);
+    if (!['unchanged', 'modified', 'missing', 'unavailable'].includes(String(v.draft.state)) || v.draft.revision !== null && (!revision(v.draft.revision) || v.draft.revision === 0)
+        || v.draft.state === 'missing' && v.draft.revision !== null || ['unchanged', 'modified'].includes(String(v.draft.state)) && v.draft.revision === null)
+        fail();
+    return { ...v, bindings, overrides } as unknown as FlowTemplateDeployment;
+}
 export function parseFlowTemplateImport(raw: string | Uint8Array): FlowTemplateImportBody {
     const v = parseBoundedJson(raw, 16 * 1024);
     if (!record(v))
         fail();
-    exact(v, ['version'], ['bindings']);
+    exact(v, ['version'], ['bindings', 'blueprint', 'overrides']);
     if (!version(v.version))
         fail();
+    let source: Pick<FlowTemplateImportBody, 'blueprint' | 'overrides'> = {};
+    if (v.blueprint !== undefined) {
+        if (!record(v.blueprint))
+            fail();
+        exact(v.blueprint, ['applicationId', 'digest']);
+        if (!uuid(v.blueprint.applicationId) || !digest(v.blueprint.digest))
+            fail();
+        source = { blueprint: { applicationId: v.blueprint.applicationId, digest: v.blueprint.digest }, ...(v.overrides === undefined ? {} : { overrides: overridesOf(v.overrides) }) };
+    }
+    else if (v.overrides !== undefined)
+        fail();
     if (v.bindings === undefined)
-        return { version: v.version };
+        return { version: v.version, ...source };
     if (!record(v.bindings) || Object.keys(v.bindings).length > 20)
         fail();
     const entries: Array<[
@@ -96,7 +196,7 @@ export function parseFlowTemplateImport(raw: string | Uint8Array): FlowTemplateI
             fail();
         entries.push([slot, { endpointId: binding.endpointId, expectedRevision: binding.expectedRevision }]);
     }
-    return { version: v.version, bindings: Object.fromEntries(entries.sort(([a], [b]) => a.localeCompare(b))) };
+    return { version: v.version, ...source, bindings: Object.fromEntries(entries.sort(([a], [b]) => a.localeCompare(b))) };
 }
 export function parseFlowTemplateCatalogQuery(route: string): FlowTemplateCatalogQuery {
     const mark = route.indexOf('?');

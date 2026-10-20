@@ -1,6 +1,7 @@
 import {BusinessClient,collection} from './client.js';
 import {Transport} from './transport.js';
 import {createPlatformSubscriptions} from './platformSubscriptions.js';
+import {createPlatformBlueprints} from './platformBlueprints.js';
 import {InsideDMConfigurationError,InsideDMProtocolError,InsideDMTransportError,InsideDMError,attachWriteRecovery} from './errors.js';
 import {randomUUID} from 'node:crypto';
 import {isIdempotencyKey} from './generated/idempotency.js';
@@ -41,6 +42,7 @@ function stopped(kind:'timeout'|'aborted'):InsideDMTransportError{
 /** One server application credential; each business still needs its own
  * merchant-approved installation. Selection itself performs no network I/O. */
 export class InsideDMPlatform{
+  readonly blueprints;
   readonly subscriptions;
   readonly onboarding;
   readonly usage;
@@ -58,6 +60,10 @@ export class InsideDMPlatform{
     if(!options||!parseApplicationCredential(options.apiKey))throw new InsideDMConfigurationError('Provide a valid server application credential (idmp_).');
     this.#transport=new Transport(options,{kind:'application',token:options.apiKey});
     this.#options={baseUrl:options.baseUrl,timeoutMs:options.timeoutMs,attemptTimeoutMs:options.attemptTimeoutMs,maxRetries:options.maxRetries,fetch:options.fetch};
+    this.blueprints=createPlatformBlueprints(this.#transport,(id,requestId)=>{
+      if(this.#applicationId!==null&&this.#applicationId!==id)throw new InsideDMProtocolError('InsideDM returned a blueprint for a different application.',{code:'invalid_response',requestId});
+      this.#applicationId=id;
+    });
     this.subscriptions=createPlatformSubscriptions(this.#transport,(id,requestId)=>{
       if(this.#applicationId!==null&&this.#applicationId!==id)throw new InsideDMProtocolError('InsideDM returned configuration for a different application.',{code:'invalid_response',requestId});
       this.#applicationId=id;

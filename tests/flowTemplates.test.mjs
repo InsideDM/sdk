@@ -64,3 +64,17 @@ test('a lost import response exposes a private recovery key without logging call
     assert.equal(JSON.stringify(error).includes('private/retry/key'),false);return true;
   });
 });
+test('deployment metadata reads share the existing editor GET and refuse invalid IDs or mutation keys before discovery',async()=>{
+  const requests=[],client=createTestClient({respond(request,response){requests.push(request);return response;}});
+  await assert.rejects(client.flows.deployments.get('not-a-flow'),InsideDMConfigurationError);
+  await assert.rejects(client.flows.deployments.get(TEST_ID,{idempotencyKey:'unused'}),InsideDMConfigurationError);assert.equal(requests.length,0);
+  const result=await client.flows.deployments.get(TEST_ID);assert.deepEqual(result.data.draft,{state:'unchanged',revision:1});
+  assert.equal(requests[1].url,`https://sdk-fixture.invalid/api/v1/flows/${TEST_ID}/recipes/${TEST_ID}/graph?view=deployment`);
+  assert.equal(requests[1].method,'GET');assert.equal(requests[1].headers.get('idempotency-key'),null);
+});
+test('deployment responses bind business and flow while refusing contradictory drift observations',async()=>{
+  for(const patch of [{businessId:otherId},{recipeId:otherId},{draft:{state:'unchanged',revision:null}},{draft:{state:'missing',revision:1}}]){
+    const client=createTestClient({respond:async(request,response)=>new URL(request.url).pathname.endsWith('/graph')?json({...((await response.json()).data),...patch}):response});
+    await assert.rejects(client.flows.deployments.get(TEST_ID),InsideDMProtocolError);
+  }
+});

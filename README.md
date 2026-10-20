@@ -158,6 +158,76 @@ This reports the business's observed AI calls and whole input/output tokens acro
 
 Supply UTC timestamps or `Date` values for an explicit inclusive-start, exclusive-end interval: at most 31 days within the last 365 days, ending no later than the server's current time. Unsupported windows return an error. Calls count retained dispatch/observation receipt pairs, independently of run traces. Missing observations are absent; later observations can revise earlier totals. `source`, `meterVersion`, `timeBasis` and `finality: 'provisional'` explain the result. `asOf` is the read time, not a completeness watermark. Zero means no matching retained observations, with no promise of retroactive coverage. This response contains no prices, invoices, quotas, wallet amounts or Meta charges.
 
+## Save a reusable partner blueprint
+
+Applications approved for `platform.blueprints.manage` can save reusable source
+versions without selecting a client or receiving merchant credentials:
+
+```ts
+const { data: sources } = await platform.blueprints.listTemplates();
+const leadCapture = sources.find(source => source.template.id === 'lead-capture');
+if (!leadCapture) throw new Error('Source unavailable');
+
+const { data: blueprint } = await platform.blueprints.createVersion({
+  key: 'agency-leads', version: 1,
+  name: 'Our lead journey', description: 'Collect an email for the client team',
+  template: leadCapture.template,
+  parameters: { emailPrompt: 'How can our team reach you?' },
+  clientOverrides: ['emailPrompt'],
+});
+
+const { data: exact } = await platform.blueprints.getVersion('agency-leads', 1);
+const { data: history } = await platform.blueprints.listVersions('agency-leads');
+```
+
+The source catalog declares typed parameters, defaults, limits and dependency
+slots. Current adapters support lead-capture prompts and webhook follow-up
+timing. Versions and their digests are immutable. The default retry key is stable
+for the blueprint key/version, so restarting your backend can recover creation.
+Change the version to save different content; creating the same version under a
+different explicit retry key conflicts. History contains at most 100 versions.
+
+Deploy that saved version after the client approves `flows.deploy`:
+
+```ts
+const client = platform.forBusiness(businessId);
+const { data: draft } = await client.flows.blueprints.deploy(blueprint, {
+  overrides: { emailPrompt: 'How should the client team reach you?' },
+}, { idempotencyKey: 'client-123/agency-leads/v1' });
+const { data: deployment } = await client.flows.deployments.get(draft.recipeId);
+```
+
+For a source with endpoint slots, supply reviewed `bindings` from the client's
+`flows.templates.catalog()`. Every declared slot must bind that client's active
+resource/revision. Overrides must be permitted by the saved source. Deployment
+reuses the builder import endpoint and creates a client-owned draft; review and
+publication stay separate. Blueprint definitions grant no execution or merchant
+access, and no copied graph, destination URL or credential is sent. Existing
+matching retries recover creation without overwriting client customization.
+Preview an update to an existing client draft before applying it:
+
+```ts
+const { data: nextVersion } = await platform.blueprints.getVersion('agency-leads', 2);
+const { data: preview } = await client.flows.deployments.previewUpdate(
+  draft.recipeId, nextVersion,
+);
+if (preview.state === 'ready') {
+  await client.flows.deployments.applyUpdate(preview, {
+    idempotencyKey: 'client-123/agency-leads/update-v2',
+  });
+}
+```
+
+Inspect `preview.changes` and `preview.reasons`. Existing client overrides survive
+source-default changes. Manual graph edits, incompatible overrides and missing or
+stale bindings require action. Supply newly reviewed bindings in the preview's
+third argument when needed. Apply rechecks the source, resources and both draft
+and managed revisions; the preview grants no authority by itself. A matching
+retry recovers its original receipt. Updates append immutable history and change
+a draft only. Existing publications and pinned runs continue until the normal
+human review/publication path accepts a change. Selecting an earlier source can
+prepare a draft rollback under those same checks.
+
 ## Available operations
 
 Read current software limits with the same `usage.read` approval:
@@ -352,8 +422,20 @@ lost response; matching retries return the original creation receipt without
 overwriting merchant edits. `status: 'draft'` records the creation outcome, rather
 than the flow's current publication state. Changed intent conflicts. Unsupported
 versions, missing slots, foreign endpoints and stale revisions are refused.
-Partner-owned blueprint authoring, staged updates and embedded editing are not
-part of this template import surface.
+Read the original source and current client edits after import:
+
+```ts
+const { data: deployment } = await insideDM.flows.deployments.get(draft.recipeId);
+console.log(deployment.source.version, deployment.draft.state);
+// unchanged, modified, missing or unavailable
+```
+
+Source metadata remains immutable when editable flow settings change. The read
+compares actual graph content and does not return the graph or private endpoint
+settings. Machines can read only their integration's imports; human business
+editors retain ownership. A drift observation does not authorize an overwrite.
+Partner-owned blueprint authoring, staged updates and embedded editing remain
+separate capabilities.
 
 ## Create or find a phone contact
 

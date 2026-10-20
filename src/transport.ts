@@ -2,6 +2,7 @@ import { parseApiKey } from './generated/apiKey.js';
 import {parseDelegationCredential} from './generated/delegationCredential.js';
 import {parseApplicationCredential} from './generated/applicationCredential.js';
 import {PARTNER_SUBSCRIPTION_OPERATIONS} from './generated/partnerSubscriptions.js';
+import {PARTNER_BLUEPRINT_OPERATIONS} from './generated/partnerBlueprints.js';
 import { isPublicRequestId } from './generated/requestId.js';
 import { isIdempotencyKey } from './generated/idempotency.js';
 import { parseContactAttributeUpdate } from './generated/contactAttributes.js';
@@ -12,6 +13,8 @@ import {parseMessageSendInput} from './generated/messageSend.js';
 import { captureEventPublish } from './generated/eventPublish.js';
 import { parseFlowRunProgress } from './generated/flowRunProgress.js';
 import { parseFlowTemplateCatalogQuery, parseFlowTemplateCatalog, parseFlowTemplateImport, parseFlowTemplateImportReceipt, parseFlowTemplateId } from './generated/flowTemplateDeployments.js';
+import {parseFlowDeploymentQuery,parseFlowTemplateDeployment} from './generated/flowTemplateDeployments.js';
+import {parsePreviewBlueprintUpdate,parseApplyBlueprintUpdate,parseBlueprintUpdatePreview,parseBlueprintUpdateReceipt} from './generated/flowBlueprintUpdates.js';
 import { parseSoftwareUsageView, parseSoftwareUsageSummary, parseSoftwareLimits } from './generated/softwareUsage.js';
 import {parseConsentWithdrawal,parseConsentStateQuery,parseContactConsentState} from './generated/consents.js';
 import { parseMarketingOptIn } from './generated/consents.js';
@@ -180,17 +183,18 @@ export class Transport {
     }
   }
 
-  async ownerOperation(operationId:'importFlowTemplate'|'publishEvent'|'sendMessage'|'previewMessage'|'getOperation'|'lookupOperation'|'cancelOperation'|'withdrawConsent'|'recordMarketingOptIn',
+  async ownerOperation(operationId:'previewBlueprintUpdate'|'applyBlueprintUpdate'|'importFlowTemplate'|'publishEvent'|'sendMessage'|'previewMessage'|'getOperation'|'lookupOperation'|'cancelOperation'|'withdrawConsent'|'recordMarketingOptIn',
     resourceId:string|null,input:unknown,options:WriteRequestOptions={}){
     const config=settings(options,this.#defaults),deadline=performance.now()+config.timeoutMs;
     const operation=PUBLIC_OPERATIONS[operationId];
-    let idempotencyKey=operationId==='importFlowTemplate'||operationId==='sendMessage'||operationId==='cancelOperation'||operationId==='withdrawConsent'||operationId==='recordMarketingOptIn'?options.idempotencyKey??randomUUID():undefined;
+    let idempotencyKey=operationId==='applyBlueprintUpdate'||operationId==='importFlowTemplate'||operationId==='sendMessage'||operationId==='cancelOperation'||operationId==='withdrawConsent'||operationId==='recordMarketingOptIn'?options.idempotencyKey??randomUUID():undefined;
     if(idempotencyKey!==undefined&&!isIdempotencyKey(idempotencyKey))throw new InsideDMConfigurationError('Idempotency keys require 1–128 visible ASCII characters.');
     if(idempotencyKey===undefined&&operationId!=='publishEvent'&&options.idempotencyKey!==undefined)throw new InsideDMConfigurationError('Read and preview requests do not take an idempotency key.');
     let body:string|undefined;
     try{
       if('operationId' in operation.pathParameters)decode(operation.pathParameters.operationId,resourceId,'path',false);
       if(operationId==='importFlowTemplate')parseFlowTemplateId(resourceId);
+      if('recipeId' in operation.pathParameters)decode(operation.pathParameters.recipeId,resourceId,'path',false);
       if(operation.request!==undefined){
         if((operationId==='sendMessage'||operationId==='previewMessage')&&typeof input==='object'&&input!==null&&!Array.isArray(input)){
           const message=input as {intent?:unknown};
@@ -202,6 +206,8 @@ export class Transport {
         if(operationId==='withdrawConsent')body=JSON.stringify(parseConsentWithdrawal(body));
         if(operationId==='recordMarketingOptIn')body=JSON.stringify(parseMarketingOptIn(body));
         if(operationId==='importFlowTemplate')body=JSON.stringify(parseFlowTemplateImport(body));
+        if(operationId==='previewBlueprintUpdate')body=JSON.stringify(parsePreviewBlueprintUpdate(body));
+        if(operationId==='applyBlueprintUpdate')body=JSON.stringify(parseApplyBlueprintUpdate(body));
         if (operationId === 'publishEvent') {
           const { occurredAt, ...event } = captureEventPublish(input);
           if (options.idempotencyKey !== undefined && options.idempotencyKey !== event.id) throw new Error('The event ID is its retry key.');
@@ -218,25 +224,37 @@ export class Transport {
       }
       const remaining=Math.floor(deadline-performance.now());
       if(remaining<1)throw new InsideDMTransportError('timeout',{code:'request_timeout'});
-      const result=await this.request(operationId,{businessId:this.#businessId,...(resourceId?operationId==='importFlowTemplate'?{packId:resourceId}:{operationId:resourceId}:{})},{},
+      const result=await this.request(operationId,{businessId:this.#businessId,...(resourceId?operationId==='importFlowTemplate'?{packId:resourceId}:'recipeId' in operation.pathParameters?{recipeId:resourceId}:{operationId:resourceId}:{})},{},
         {...options,timeoutMs:remaining},body===undefined?undefined:{body,...(idempotencyKey?{idempotencyKey}:{})});
       if(operationId==='importFlowTemplate'){
         try{
           const data=parseFlowTemplateImportReceipt((result.body as {data:unknown}).data);
-          if(data.businessId!==this.#businessId||data.packId!==resourceId||data.version!==parseFlowTemplateImport(body!).version)throw new Error('Wrong template attribution.');
+          const expected=parseFlowTemplateImport(body!);
+          if(data.businessId!==this.#businessId||data.packId!==resourceId||data.version!==expected.version||expected.blueprint&&data.digest!==expected.blueprint.digest)throw new Error('Wrong template attribution.');
           result.body={data};
         }catch{throw new InsideDMProtocolError('InsideDM returned an invalid template creation receipt.',{code:'invalid_response',requestId:result.meta.requestId});}
       }
+      if(operationId==='previewBlueprintUpdate'||operationId==='applyBlueprintUpdate'){
+        try{
+          const mutation=operationId==='applyBlueprintUpdate'?parseApplyBlueprintUpdate(body!):null,expected=mutation??parsePreviewBlueprintUpdate(body!),
+            data=operationId==='applyBlueprintUpdate'?parseBlueprintUpdateReceipt((result.body as {data:unknown}).data):parseBlueprintUpdatePreview((result.body as {data:unknown}).data);
+          if(data.businessId!==this.#businessId||data.recipeId!==resourceId||JSON.stringify(data.target)!==JSON.stringify(expected.target))throw new Error('Wrong update attribution.');
+          if(mutation&&'status' in data){
+            if(data.deploymentRevision!==mutation.expectedDeploymentRevision+(data.status==='draft_updated'?1:0)||![mutation.expectedDraftRevision,...(data.status==='draft_updated'?[mutation.expectedDraftRevision+1]:[])].includes(data.draftRevision))throw new Error('Wrong update revision.');
+          }else if('bindings' in data&&expected.bindings&&JSON.stringify(data.bindings)!==JSON.stringify(expected.bindings))throw new Error('Wrong update bindings.');
+          result.body={data};
+        }catch{throw new InsideDMProtocolError('InsideDM returned an invalid blueprint update result.',{code:'invalid_response',requestId:result.meta.requestId});}
+      }
       return result;
     }catch(error){
-      if(error instanceof InsideDMError&&idempotencyKey)throw attachWriteRecovery(error,operationId==='importFlowTemplate'?{operation:operationId,packId:resourceId!,idempotencyKey}:operationId==='sendMessage'||operationId==='publishEvent'
+      if(error instanceof InsideDMError&&idempotencyKey)throw attachWriteRecovery(error,operationId==='applyBlueprintUpdate'?{operation:operationId,recipeId:resourceId!,idempotencyKey}:operationId==='importFlowTemplate'?{operation:operationId,packId:resourceId!,idempotencyKey}:operationId==='sendMessage'||operationId==='publishEvent'
         ?{operation:operationId,idempotencyKey}:operationId==='withdrawConsent'||operationId==='recordMarketingOptIn'?{operation:operationId,idempotencyKey}:{operation:'cancelOperation',operationId:resourceId!,idempotencyKey});
       throw error;
     }
   }
 
   async request(operationId: PublicOperationId, pathValues: Record<string, string>, query: object, options: RequestOptions = {}, mutation?: { body: string; idempotencyKey?: string }): Promise<{ body: unknown; meta: ResponseMeta }> {
-    const platformOperation=PARTNER_SUBSCRIPTION_OPERATIONS.some(item=>item.id===operationId)||operationId==='createBusinessDelegation'||operationId==='createInstallationRequest'||operationId==='getInstallationRequest'||operationId==='getApplicationSelf'||operationId==='getInstallation'||operationId==='revokeInstallation'||operationId==='listPlatformBusinesses'||operationId==='getPlatformBusiness'||operationId==='getPartnerApiUsage'
+    const platformOperation=PARTNER_BLUEPRINT_OPERATIONS.some(item=>item.id===operationId)||PARTNER_SUBSCRIPTION_OPERATIONS.some(item=>item.id===operationId)||operationId==='createBusinessDelegation'||operationId==='createInstallationRequest'||operationId==='getInstallationRequest'||operationId==='getApplicationSelf'||operationId==='getInstallation'||operationId==='revokeInstallation'||operationId==='listPlatformBusinesses'||operationId==='getPlatformBusiness'||operationId==='getPartnerApiUsage'
       ||operationId==='createPlatformBusiness'||operationId==='getBusinessCreation'||operationId==='renewBusinessClaimLink'||operationId==='createOnboardingSession'||operationId==='getOnboardingSession';
     if((this.#authentication?.kind==='application')!==platformOperation)throw new InsideDMConfigurationError('Use the matching business or platform client for this operation.');
     const operation: Operation = PUBLIC_OPERATIONS[operationId];
@@ -325,10 +343,16 @@ export class Transport {
   }
 
   /** Shared read owners use the workspace derived from the key, never caller-supplied tenant context. */
-  async requestForBusiness(operationId: 'getFlowTemplateCatalog' | 'getSoftwareUsage' | 'listTemplates' | 'getMessagingReadiness' | 'getMessagingConfiguration' | 'getConsentState' | 'getFlowRun', query: object, options: RequestOptions = {}, pathValues: Record<string,string> = {}) {
+  async requestForBusiness(operationId: 'getFlowDeployment' | 'getFlowTemplateCatalog' | 'getSoftwareUsage' | 'listTemplates' | 'getMessagingReadiness' | 'getMessagingConfiguration' | 'getConsentState' | 'getFlowRun', query: object, options: RequestOptions = {}, pathValues: Record<string,string> = {}) {
     const config = settings(options, this.#defaults), deadline = performance.now() + config.timeoutMs;
     if (!isRecord(query)) throw new InsideDMConfigurationError('Query parameters must be an object.');
     const snapshot = { ...query };
+    if(operationId==='getFlowDeployment'){
+      try{
+        if('idempotencyKey' in options)throw new Error('Read mutation key.');
+        parseFlowDeploymentQuery('?'+new URLSearchParams(snapshot as Record<string,string>).toString());
+      }catch{throw new InsideDMConfigurationError('Deployment reads accept a flow ID and request options, without an idempotency key.');}
+    }
     if (operationId === 'getFlowTemplateCatalog') {
       try {
         if (Object.keys(snapshot).some(key => !['limit','cursor'].includes(key)) || 'idempotencyKey' in options) throw new Error('Unsupported catalog input.');
@@ -355,6 +379,13 @@ export class Transport {
     const remaining = Math.floor(deadline - performance.now());
     if (remaining < 1) throw new InsideDMTransportError('timeout', { code: 'request_timeout' });
     const result = await this.request(operationId, { ...pathValues, businessId: this.#businessId }, snapshot, { ...options, timeoutMs: remaining });
+    if(operationId==='getFlowDeployment'){
+      try{
+        const data=parseFlowTemplateDeployment((result.body as {data:unknown}).data);
+        if(data.businessId!==this.#businessId||data.recipeId!==pathValues.recipeId)throw new Error('Wrong deployment.');
+        result.body={data};
+      }catch{throw new InsideDMProtocolError('InsideDM returned invalid flow deployment provenance.',{code:'invalid_response',requestId:result.meta.requestId});}
+    }
     if (operationId === 'getFlowTemplateCatalog') {
       try {
         const data = parseFlowTemplateCatalog((result.body as {data:unknown}).data);

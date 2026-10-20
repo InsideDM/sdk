@@ -101,6 +101,9 @@ async function check() {
   const templateVersion: string | undefined = catalog.data.templates[0]?.version;
   const draft = await sdk.flows.templates.import('lead-capture', { version: '1' }, { idempotencyKey: 'import/client1/v1' });
   const draftOnly: 'draft' = draft.data.status;
+  const deployment = await sdk.flows.deployments.get(draft.data.recipeId);
+  const originalPack: string = deployment.data.source.kind === 'internal_template' ? deployment.data.source.packId : deployment.data.source.template.packId;
+  const drift: 'unchanged' | 'modified' | 'missing' | 'unavailable' = deployment.data.draft.state;
   // @ts-expect-error imports accept a version and references, never a caller graph
   await sdk.flows.templates.import('lead-capture', { version: '1', graph: {} });
   // @ts-expect-error catalog reads do not accept an idempotency key

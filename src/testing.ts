@@ -4,7 +4,7 @@ import { publicProblem, type DeveloperProblemCode } from './generated/problem.js
 import { SCHEMAS } from './generated/schemas.js';
 import { decodeWebhookSecret, formatSignatureHeader, signWebhook } from './generated/webhookSignature.js';
 import type { Schema } from './schema.js';
-import type { ClientOptions } from './types.js';
+import type { ClientOptions,BlueprintUpdateTarget,FlowTemplateBinding } from './types.js';
 
 export const TEST_ID = '00000000-0000-4000-8000-000000000001';
 export const TEST_REQUEST_ID = `req_${Buffer.alloc(16).toString('base64url')}`;
@@ -46,10 +46,19 @@ export function createTestClient(options: TestClientOptions = {}): InsideDM {
     if (url.origin !== 'https://sdk-fixture.invalid') throw new Error('Fixture transport refuses external hosts.');
     const operation = Object.values(PUBLIC_OPERATIONS).find((candidate) => candidate.method === request.method && new RegExp(`^${candidate.path.replace(/\{[^}]+\}/g, '[^/]+')}$`).test(url.pathname));
     if (!operation) throw new Error('Fixture transport received an unknown operation.');
-    const body = operation === PUBLIC_OPERATIONS.getFlowTemplateCatalog
+    const importInput=operation===PUBLIC_OPERATIONS.importFlowTemplate?await request.clone().json() as {version:string;blueprint?:{digest:string}}:null;
+    const updateInput=operation===PUBLIC_OPERATIONS.previewBlueprintUpdate||operation===PUBLIC_OPERATIONS.applyBlueprintUpdate?await request.clone().json() as {target:BlueprintUpdateTarget;bindings?:Record<string,FlowTemplateBinding>;expectedDeploymentRevision?:number;expectedDraftRevision?:number}:null;
+    const body = operation===PUBLIC_OPERATIONS.previewBlueprintUpdate
+      ? {data:{businessId:TEST_ID,recipeId:url.pathname.split('/').at(-3),deploymentRevision:1,draftRevision:1,from:updateInput!.target,target:updateInput!.target,
+        state:'action_required',reasons:['source_unavailable'],bindings:updateInput!.bindings??{},changes:null}}
+      : operation===PUBLIC_OPERATIONS.applyBlueprintUpdate
+      ? {data:{businessId:TEST_ID,recipeId:url.pathname.split('/').at(-2),deploymentRevision:updateInput!.expectedDeploymentRevision,draftRevision:updateInput!.expectedDraftRevision,status:'unchanged',target:updateInput!.target}}
+      : operation === PUBLIC_OPERATIONS.getFlowDeployment
+      ? { data: {businessId:TEST_ID,recipeId:url.pathname.split('/').at(-2),revision:1,source:{kind:'internal_template',packId:'lead-capture',version:'1',digest:'sha256:'+'0'.repeat(64)},bindings:{},overrides:{},createdAt:AT,draft:{state:'unchanged',revision:1}} }
+      : operation === PUBLIC_OPERATIONS.getFlowTemplateCatalog
       ? { data: { businessId: TEST_ID, templates: [], dependencies: [], page: {hasMore:false,nextCursor:null} } }
       : operation === PUBLIC_OPERATIONS.importFlowTemplate
-      ? { data: { businessId: TEST_ID, recipeId: TEST_ID, packId: url.pathname.split('/').at(-2), version: (await request.clone().json() as {version:string}).version, digest: 'sha256:'+'0'.repeat(64), status: 'draft' } }
+      ? { data: { businessId: TEST_ID, recipeId: TEST_ID, packId: url.pathname.split('/').at(-2), version: importInput!.version, digest: importInput!.blueprint?.digest??'sha256:'+'0'.repeat(64), status: 'draft' } }
       : operation === PUBLIC_OPERATIONS.publishEvent
       ? { data: { ...(fixture({ $ref: '#/components/schemas/PublicOperation' }) as Record<string, unknown>), kind: 'events.publish' } }
       : operation === PUBLIC_OPERATIONS.createContact

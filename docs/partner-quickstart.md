@@ -12,6 +12,15 @@ publish through InsideDM; imports never publish or start a flow. Keep a stable
 key per client/template intent to recover uncertain results without duplicating
 or overwriting client drafts. This is separate from `flows.read` run progress.
 
+For application-owned reusable sources, ask for `platform.blueprints.manage`.
+`platform.blueprints.listTemplates()` shows supported parameters and defaults;
+`createVersion/getVersion/listVersions` manage immutable versions. Declare which
+parameters clients may override. Source authoring itself creates no client draft
+or installation. Use `client.flows.blueprints.deploy(savedVersion, config)` after
+merchant approval. Later use `flows.deployments.previewUpdate()` and
+`applyUpdate(preview)` to preserve declared client overrides and avoid overwriting
+manual edits. These operations prepare drafts; human publication stays separate.
+
 ## 1. Register the application once
 
 InsideDM's controlled onboarding approves your partner organization, real human administrators, application, scope ceilings and exact HTTPS return URLs. Register separate exact return URLs for the journeys you use. Approval of a partner organization does not create merchant access or a software sponsorship agreement. Self-service partner registration and a public partner administration portal are not supplied by this kit.
