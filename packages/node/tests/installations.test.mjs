@@ -7,7 +7,7 @@ import {createProblemResponse,TEST_REQUEST_ID} from '../dist/esm/testing.js';
 const key=`idmp_${Buffer.alloc(12,7).toString('base64url')}_${Buffer.alloc(32,9).toString('base64url')}`,id=randomUUID(),app=randomUUID();
 const data=()=>({id,businessId:randomUUID(),applicationId:app,status:'active',scopes:['messages.send'],authorityVersion:'1',revision:'1'});
 const json=value=>new Response(JSON.stringify({data:value}),{headers:{'content-type':'application/json','x-request-id':TEST_REQUEST_ID}});
-const platform=(fetch,options={})=>new InsideDMPlatform({apiKey:key,baseUrl:'https://api.example',fetch,maxRetries:0,...options});
+const platform=(fetch,options={})=>new InsideDMPlatform({apiKey:key,fetch,maxRetries:0,...options});
 test('installation methods route only the installation ID and exact reviewed intent, without business discovery',async()=>{
   const calls=[],value=data();const client=platform(async(url,init)=>{
     calls.push(init);assert.equal(new Headers(init.headers).get('authorization'),`Bearer ${key}`);

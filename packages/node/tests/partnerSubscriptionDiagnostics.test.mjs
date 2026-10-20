@@ -11,7 +11,7 @@ const delivery=(patch={})=>({id:ID,deliveryId:'developer-webhook:'+'a'.repeat(64
 const replay=()=>delivery({id:OTHER,deliveryId:delivery().deliveryId+':replay:1',kind:'manual_replay',status:'pending',attemptCount:0,lastAttemptAt:null,lastHttpStatus:null,lastError:null,replayOf:ID,replayable:false});
 const health=(patch={})=>({...context,installationId:ID,authorityVersion:1,configurationStatus:'active',receiverStatus:'active',revision:'rh1_'+'a'.repeat(64),pausedReason:null,health:'unknown',consecutiveFailures:0,failureCount:0,lastDelivery:null,lastSuccessAt:null,lastFailureAt:null,asOf:AT,...patch});
 const json=data=>Response.json({data},{headers:{'x-request-id':TEST_REQUEST_ID}});
-const client=(fetch,options={})=>new InsideDMPlatform({apiKey:KEY,baseUrl:'https://api.example.test',fetch,maxRetries:0,...options});
+const client=(fetch,options={})=>new InsideDMPlatform({apiKey:KEY,fetch,maxRetries:0,...options});
 test('one application key reads health/history/detail and explicitly replays without construction or delegation requests',async()=>{
   const calls=[],sdk=client(async(url,init)=>{
     const path=new URL(url).pathname,headers=new Headers(init.headers);calls.push({path,method:init.method,headers,body:init.body?JSON.parse(init.body):null});assert.equal(headers.get('authorization'),`Bearer ${KEY}`);

@@ -37,7 +37,7 @@ test('configuration discovery selects the restricted view of the existing settin
   const result = await sdk.messaging.getConfiguration();
   assert.deepEqual(result.data.value.templateAliases, {});
   assert.equal(result.data.version, null);
-  assert.equal(requests[1].url, `https://sdk-fixture.invalid/api/v1/dashboard/${TEST_ID}/developer/messaging-settings?view=configuration`);
+  assert.equal(requests[1].url, `https://api.insidedm.io/api/v1/dashboard/${TEST_ID}/developer/messaging-settings?view=configuration`);
   assert.equal(requests[1].headers.get('idempotency-key'), null);
   assert.equal(await requests[1].clone().text(), '');
 });

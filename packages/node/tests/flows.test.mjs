@@ -7,7 +7,7 @@ test('run progress uses the canonical dashboard endpoint and a fixed minimal pro
   const requests=[],sdk=createTestClient({respond(request,response){requests.push(request);return response;}});
   const {data}=await sdk.flows.runs.get(TEST_ID);
   assert.equal(data.id,TEST_ID);assert.equal(data.status,'running');assert.equal(data.completedAt,null);
-  assert.equal(requests.length,2);assert.equal(requests[1].url,`https://sdk-fixture.invalid/api/v1/dashboard/${TEST_ID}/agent-runs/${TEST_ID}?view=progress`);
+  assert.equal(requests.length,2);assert.equal(requests[1].url,`https://api.insidedm.io/api/v1/dashboard/${TEST_ID}/agent-runs/${TEST_ID}?view=progress`);
   assert.equal(requests[1].headers.get('idempotency-key'),null);assert.equal(await requests[1].text(),'');
 });
 test('bad run IDs fail before discovery',async()=>{

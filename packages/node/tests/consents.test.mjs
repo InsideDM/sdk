@@ -16,7 +16,7 @@ test('marketing opt-in takes one retained message ID and freezes its body and ke
   } });
   const result = await sdk.consents.recordMarketingOptIn(input, { idempotencyKey: 'crm/native-message/one', maxRetries: 1 });
   assert.equal(writes.length, 2); assert.deepEqual(writes[0], writes[1]);
-  assert.equal(writes[0].url, `https://sdk-fixture.invalid/api/v1/dashboard/${TEST_ID}/consents/marketing-opt-in`);
+  assert.equal(writes[0].url, `https://api.insidedm.io/api/v1/dashboard/${TEST_ID}/consents/marketing-opt-in`);
   assert.deepEqual(JSON.parse(writes[0].body), { messageId: TEST_ID });
   assert.equal(result.data.purpose, 'marketing'); assert.equal(result.data.status, 'granted');
   assert.equal(result.meta.idempotencyKey, 'crm/native-message/one');
@@ -48,7 +48,7 @@ test('consent withdrawal uses the canonical suppression endpoint with one retain
   } });
   await sdk.consents.withdraw(input, { idempotencyKey: 'crm/opt-out/one', maxRetries: 1 });
   assert.equal(writes.length, 2); assert.deepEqual(writes[0], writes[1]);
-  assert.equal(writes[0].url, `https://sdk-fixture.invalid/api/v1/dashboard/${TEST_ID}/consents/withdraw`);
+  assert.equal(writes[0].url, `https://api.insidedm.io/api/v1/dashboard/${TEST_ID}/consents/withdraw`);
 });
 test('consent grants and invalid destinations fail locally without discovering the workspace', async () => {
   let calls = 0; const sdk = createTestClient({ respond(_, response) { calls++; return response; } });
@@ -72,7 +72,7 @@ test('consent discovery uses the shared contact history view and validates conta
   assert.equal(urls.length, 0);
   const result = await sdk.consents.get(TEST_ID);
   assert.deepEqual(result.data, { contactId: TEST_ID, identities: [] });
-  assert.equal(urls[1], `https://sdk-fixture.invalid/api/v1/dashboard/${TEST_ID}/contacts/consent-history?view=messaging&contactId=${TEST_ID}`);
+  assert.equal(urls[1], `https://api.insidedm.io/api/v1/dashboard/${TEST_ID}/contacts/consent-history?view=messaging&contactId=${TEST_ID}`);
 });
 test('consent discovery rejects another contact and malformed duplicate-purpose observations', async () => {
   for (const data of [

@@ -13,7 +13,7 @@ test('one key submits a notification, previews it and recovers progress without 
   const submitted=await sdk.messages.send(notification(),{idempotencyKey:'order/123'});
   assert.equal(submitted.data.kind,'messages.send');assert.equal(submitted.meta.idempotencyKey,'order/123');
   assert.deepEqual(await requests[1].clone().json(),{...notification(),content:{...notification().content,variables:{name:'Asha'}}});
-  assert.equal(requests[1].url,`https://sdk-fixture.invalid/api/v1/inbox/${TEST_ID}/messages`);
+  assert.equal(requests[1].url,`https://api.insidedm.io/api/v1/inbox/${TEST_ID}/messages`);
   const preview=await sdk.messages.preview(notification());assert.equal(preview.data.channel,'whatsapp');
   assert.equal(requests[2].headers.get('idempotency-key'),null);
   await sdk.operations.get(submitted.data.id);assert.equal(requests[3].method,'GET');assert.equal(await requests[3].clone().text(),'');

@@ -11,7 +11,7 @@ const workspace = () => json({ id: TEST_ID, name: 'Fixture', timeZone: 'UTC', ke
   id: TEST_ID, label: 'Fixture', prefix: 'idm_fixture', scopes: ['contacts.write'], state: 'active',
   createdAt: '2026-01-01T00:00:00Z', expiresAt: '2026-12-01T00:00:00Z',
 } });
-const client = (fetch, options = {}) => new InsideDM({ apiKey: KEY, baseUrl: 'https://api.example.test', fetch, maxRetries: 0, ...options });
+const client = (fetch, options = {}) => new InsideDM({ apiKey: KEY, fetch, maxRetries: 0, ...options });
 const updated = (attributes) => json({ contactId: TEST_ID, attributes, revision: '90071992547409930001' });
 
 test('profile edits freeze normalized names before discovery, recover the same key, and support explicit clearing', async () => {
@@ -26,7 +26,7 @@ test('profile edits freeze normalized names before discovery, recover the same k
   } });
   const result = await sdk.contacts.update(TEST_ID, input, { idempotencyKey: 'crm/profile/one', maxRetries: 1 });
   assert.equal(writes.length, 2); assert.deepEqual(writes[0], writes[1]);
-  assert.equal(writes[0].url, `https://sdk-fixture.invalid/api/v1/dashboard/${TEST_ID}/contacts/${TEST_ID}`);
+  assert.equal(writes[0].url, `https://api.insidedm.io/api/v1/dashboard/${TEST_ID}/contacts/${TEST_ID}`);
   assert.deepEqual(JSON.parse(writes[0].body), { displayName: 'मीरा' }); assert.equal(result.data.displayName, 'मीरा');
   assert.equal((await sdk.contacts.update(TEST_ID, { displayName: null })).data.displayName, null);
 });
@@ -153,7 +153,7 @@ test('tag replacement freezes a normalized full set before discovery and retries
   } });
   const result = await sdk.contacts.tags.replace(TEST_ID, input, { idempotencyKey: 'crm/tags/one', maxRetries: 1 });
   assert.equal(writes.length, 2); assert.deepEqual(writes[0], writes[1]);
-  assert.equal(writes[0].url, `https://sdk-fixture.invalid/api/v1/dashboard/${TEST_ID}/contacts/${TEST_ID}/tags`);
+  assert.equal(writes[0].url, `https://api.insidedm.io/api/v1/dashboard/${TEST_ID}/contacts/${TEST_ID}/tags`);
   assert.deepEqual(JSON.parse(writes[0].body), { tags: ['seasonal', 'vip'] }); assert.deepEqual(result.data.tags, ['seasonal', 'vip']);
   assert.deepEqual((await sdk.contacts.tags.replace(TEST_ID, { tags: [] })).data.tags, []);
 });
@@ -188,7 +188,7 @@ test('contact creation supplies its channel, freezes its address before discover
   } });
   const result = await sdk.contacts.create(input, { idempotencyKey: 'crm/customer/create-one', maxRetries: 1 });
   assert.equal(writes.length, 2); assert.deepEqual(writes[0], writes[1]);
-  assert.equal(writes[0].url, `https://sdk-fixture.invalid/api/v1/dashboard/${TEST_ID}/contacts?view=reference`);
+  assert.equal(writes[0].url, `https://api.insidedm.io/api/v1/dashboard/${TEST_ID}/contacts?view=reference`);
   assert.deepEqual(JSON.parse(writes[0].body), { channel: 'whatsapp', name: 'Asha', phone: '+6591234567' });
   assert.deepEqual(result.data, { contactId: TEST_ID, revision: '1' });
 });

@@ -10,11 +10,11 @@ test('one-key discovery serves the fixed catalog view and imports an exact versi
   const requests=[],client=createTestClient({respond(request,response){requests.push(request);return response;}});
   const catalog=await client.flows.templates.catalog({limit:undefined});
   assert.equal(catalog.data.businessId,TEST_ID);assert.deepEqual(catalog.data.page,{hasMore:false,nextCursor:null});
-  assert.equal(requests[1].url,`https://sdk-fixture.invalid/api/v1/dashboard/${TEST_ID}/automation-runtime/catalog?limit=25&view=flow_templates`);
+  assert.equal(requests[1].url,`https://api.insidedm.io/api/v1/dashboard/${TEST_ID}/automation-runtime/catalog?limit=25&view=flow_templates`);
   assert.equal(requests[1].headers.get('idempotency-key'),null);
   const imported=await client.flows.templates.import('lead-capture',{version:'1'},{idempotencyKey:'client/import/1'});
   assert.equal(imported.data.status,'draft');assert.equal(imported.meta.idempotencyKey,'client/import/1');
-  assert.equal(requests[2].method,'POST');assert.equal(requests[2].url,`https://sdk-fixture.invalid/api/v1/dashboard/${TEST_ID}/automation-runtime/template-packs/lead-capture/import`);
+  assert.equal(requests[2].method,'POST');assert.equal(requests[2].url,`https://api.insidedm.io/api/v1/dashboard/${TEST_ID}/automation-runtime/template-packs/lead-capture/import`);
   assert.deepEqual(await requests[2].clone().json(),{version:'1'});
 });
 test('invalid pack, revision, graph, authority and read options fail before workspace discovery', async () => {
@@ -48,7 +48,7 @@ test('approved partner imports snapshot bindings and retain one idempotency key 
   const appKey=`idmp_${Buffer.alloc(12,7).toString('base64url')}_${Buffer.alloc(32,9).toString('base64url')}`;
   const delegation=`idmd_${Buffer.alloc(12,8).toString('base64url')}_${Buffer.alloc(32,10).toString('base64url')}`;
   const requests=[],input={version:'1',bindings:{'followup-endpoint':{endpointId:TEST_ID,expectedRevision:0}}};
-  const platform=new InsideDMPlatform({apiKey:appKey,baseUrl:'https://api.example',maxRetries:1,fetch:async(url,init)=>{
+  const platform=new InsideDMPlatform({apiKey:appKey,maxRetries:1,fetch:async(url,init)=>{
     if(new URL(url).pathname==='/api/v1/platform/delegations')return json({token:delegation,businessId:TEST_ID,applicationId:TEST_ID,installationId:TEST_ID,authorityVersion:'1',scopes:['flows.deploy'],expiresAt:new Date(Date.now()+60_000).toISOString()});
     requests.push({url:String(url),body:init.body,key:new Headers(init.headers).get('idempotency-key')});
     assert.equal(new Headers(init.headers).get('authorization'),`Bearer ${delegation}`);input.bindings['followup-endpoint'].expectedRevision=99;
@@ -69,7 +69,7 @@ test('deployment metadata reads share the existing editor GET and refuse invalid
   await assert.rejects(client.flows.deployments.get('not-a-flow'),InsideDMConfigurationError);
   await assert.rejects(client.flows.deployments.get(TEST_ID,{idempotencyKey:'unused'}),InsideDMConfigurationError);assert.equal(requests.length,0);
   const result=await client.flows.deployments.get(TEST_ID);assert.deepEqual(result.data.draft,{state:'unchanged',revision:1});
-  assert.equal(requests[1].url,`https://sdk-fixture.invalid/api/v1/flows/${TEST_ID}/recipes/${TEST_ID}/graph?view=deployment`);
+  assert.equal(requests[1].url,`https://api.insidedm.io/api/v1/flows/${TEST_ID}/recipes/${TEST_ID}/graph?view=deployment`);
   assert.equal(requests[1].method,'GET');assert.equal(requests[1].headers.get('idempotency-key'),null);
 });
 test('deployment responses bind business and flow while refusing contradictory drift observations',async()=>{

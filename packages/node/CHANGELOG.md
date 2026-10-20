@@ -2,6 +2,9 @@
 
 ## 0.1.0-alpha.1 (unreleased)
 
+- The SDK manages its API endpoint. Consumers configure their server key without
+  a base URL; endpoint overrides are rejected before network access.
+
 - Rewritten npm guide with a complete WhatsApp quickstart, use cases and direct
   documentation links.
 - Consistent insideDM branding, descriptive package metadata and product links.

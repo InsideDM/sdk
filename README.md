@@ -34,8 +34,9 @@ const insideDM = new InsideDM({
 Use a scoped business key from insideDM. The SDK resolves your workspace and its
 WhatsApp account automatically. Applications call the insideDM service at
 `https://api.insidedm.io`; no provider token or sender selection is required.
-The alpha is for pre-production evaluation. While hosted production acceptance is
-pending, use `baseUrl` to connect to an existing insideDM test deployment.
+The endpoint is managed by the SDK. The alpha is for pre-production evaluation;
+hosted production acceptance is pending. Use the offline client in the Node.js
+guide to explore the interface without service access.
 
 Continue with the [WhatsApp notification quickstart](packages/node/README.md#quickstart-send-a-whatsapp-notification).
 

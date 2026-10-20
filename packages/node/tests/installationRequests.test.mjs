@@ -10,7 +10,7 @@ const input={scopes:['contacts.read'],returnUrl:'https://partner.example/approve
 const data=()=>({id,applicationId,status:'pending',scopes:['contacts.read'],expiresAt:new Date(Date.now()+600_000).toISOString(),result:null});
 const link=()=>`https://app.example/integrations/authorize#request=${id}&token=${'a'.repeat(42)}A`;
 const json=data=>new Response(JSON.stringify({data}),{headers:{'content-type':'application/json','x-request-id':TEST_REQUEST_ID}});
-const platform=fetch=>new InsideDMPlatform({apiKey:key,baseUrl:'https://api.example',fetch,maxRetries:0});
+const platform=fetch=>new InsideDMPlatform({apiKey:key,fetch,maxRetries:0});
 test('partner creates a private merchant link and authenticates its outcome without business discovery',async()=>{
   let calls=0;
   const sdk=platform(async(url,init)=>{
@@ -45,7 +45,7 @@ test('owner inconsistencies, foreign requests and callback capability leaks fail
   await sdk.installationRequests.get(id);await assert.rejects(sdk.installationRequests.get(id),InsideDMProtocolError);
 });
 test('creation transient retries reuse prepared canonical bytes and key',async()=>{
-  const seen=[];const sdk=new InsideDMPlatform({apiKey:key,baseUrl:'https://api.example',maxRetries:1,fetch:async(_url,init)=>{
+  const seen=[];const sdk=new InsideDMPlatform({apiKey:key,maxRetries:1,fetch:async(_url,init)=>{
     seen.push({body:init.body,key:new Headers(init.headers).get('idempotency-key')});return seen.length===1?createProblemResponse('rate_limited',{retryAfterSeconds:0}):json({...data(),authorizationUrl:link()});
   }});
   const result=await sdk.installationRequests.create(input);assert.equal(result.meta.attempts,2);assert.deepEqual(seen[0],seen[1]);

@@ -9,7 +9,7 @@ const input={businessId,provider:'whatsapp',returnUrl:'https://partner.example/s
 const base=()=>({id,businessId,applicationId,installationId,provider:'whatsapp',purpose:'connect',status:'created',revision:'1',expiresAt:new Date(Date.now()+600_000).toISOString(),finishExpiresAt:null,connection:null});
 const url=()=>`https://app.example/integrations/connect#session=${id}&business=${businessId}&token=${'A'.repeat(43)}`;
 const json=(data,status=200)=>new Response(JSON.stringify({data}),{status,headers:{'content-type':'application/json','x-request-id':TEST_REQUEST_ID}});
-const platform=(fetch,options={})=>new InsideDMPlatform({apiKey:key,baseUrl:'https://api.example',maxRetries:0,fetch,...options});
+const platform=(fetch,options={})=>new InsideDMPlatform({apiKey:key,maxRetries:0,fetch,...options});
 test('setup create and status use their canonical app endpoints with one key and no preliminary discovery',async()=>{
   let calls=0;const client=platform(async(address,init)=>{
     calls++;assert.equal(new Headers(init.headers).get('authorization'),`Bearer ${key}`);

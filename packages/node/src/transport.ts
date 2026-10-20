@@ -117,7 +117,7 @@ async function readJson(response: Response, signal: AbortSignal, deadline: numbe
 export class Transport {
   readonly #apiKey: string|null;
   readonly #authentication:TransportAuthentication|null;
-  readonly #baseUrl: string;
+  readonly #baseUrl = DEFAULT_API_BASE_URL;
   readonly #fetch: typeof globalThis.fetch;
   readonly #defaults: Settings;
   #businessId: string | null = null;
@@ -130,14 +130,7 @@ export class Transport {
     this.#authentication=authentication===null?null:{...authentication};
     this.#apiKey=authentication?.kind==='application'?authentication.token:apiKey;
     if(authentication?.kind==='delegation')this.#businessId=authentication.businessId;
-    let url: URL;
-    try { url = new URL(options.baseUrl ?? DEFAULT_API_BASE_URL); }
-    catch { throw new InsideDMConfigurationError('baseUrl: provide an absolute API origin for your environment.', 'baseUrl'); }
-    const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
-    if ((url.protocol !== 'https:' && !(local && url.protocol === 'http:')) || url.username || url.password || url.search || url.hash) {
-      throw new InsideDMConfigurationError('API base URLs require HTTPS, without credentials, query parameters, or fragments. HTTP is allowed for localhost.');
-    }
-    this.#baseUrl = url.href.replace(/\/+$/, '');
+    if ('baseUrl' in options) throw new InsideDMConfigurationError('baseUrl: the InsideDM API endpoint is managed by the SDK. Remove this option.', 'baseUrl');
     const fetcher = options.fetch ?? globalThis.fetch;
     if (typeof fetcher !== 'function') throw new InsideDMConfigurationError('A Fetch implementation is required.');
     this.#fetch = fetcher;

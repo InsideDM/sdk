@@ -9,7 +9,7 @@ const input={externalId:'merchant_42',name:'New merchant',timeZone:'Europe/Londo
 const data=()=>({id,applicationId,businessId,externalId:input.externalId,status:'needs_owner_claim',revision:'1',claimExpiresAt:new Date(Date.now()+600_000).toISOString()});
 const link=()=>`https://app.example/integrations/claim#creation=${id}&token=${'a'.repeat(42)}A`;
 const json=(data,status=200)=>new Response(JSON.stringify({data}),{status,headers:{'content-type':'application/json','x-request-id':TEST_REQUEST_ID}});
-const platform=(fetch,options={})=>new InsideDMPlatform({apiKey:key,baseUrl:'https://api.example',fetch,maxRetries:0,...options});
+const platform=(fetch,options={})=>new InsideDMPlatform({apiKey:key,fetch,maxRetries:0,...options});
 test('client provisioning, outcome reads and explicit link renewal use the canonical app owners without tenant discovery',async()=>{
   const client=platform(async(url,init)=>{
     const path=new URL(url).pathname;assert.equal(new Headers(init.headers).get('authorization'),`Bearer ${key}`);

@@ -59,7 +59,7 @@ export class InsideDMPlatform{
   constructor(options:PlatformClientOptions){
     if(!options||!parseApplicationCredential(options.apiKey))throw new InsideDMConfigurationError('apiKey: provide the complete server application credential (idmp_) from your secret store.', 'apiKey');
     this.#transport=new Transport(options,{kind:'application',token:options.apiKey});
-    this.#options={baseUrl:options.baseUrl,timeoutMs:options.timeoutMs,attemptTimeoutMs:options.attemptTimeoutMs,maxRetries:options.maxRetries,fetch:options.fetch};
+    this.#options={timeoutMs:options.timeoutMs,attemptTimeoutMs:options.attemptTimeoutMs,maxRetries:options.maxRetries,fetch:options.fetch};
     this.blueprints=createPlatformBlueprints(this.#transport,(id,requestId)=>{
       if(this.#applicationId!==null&&this.#applicationId!==id)throw new InsideDMProtocolError('InsideDM returned a blueprint for a different application.',{code:'invalid_response',requestId});
       this.#applicationId=id;

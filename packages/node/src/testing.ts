@@ -5,6 +5,7 @@ import { SCHEMAS } from './generated/schemas.js';
 import { decodeWebhookSecret, formatSignatureHeader, signWebhook } from './generated/webhookSignature.js';
 import type { Schema } from './schema.js';
 import type { ClientOptions,BlueprintUpdateTarget,FlowTemplateBinding } from './types.js';
+import { DEFAULT_API_BASE_URL } from './version.js';
 
 export const TEST_ID = '00000000-0000-4000-8000-000000000001';
 export const TEST_REQUEST_ID = `req_${Buffer.alloc(16).toString('base64url')}`;
@@ -43,7 +44,7 @@ export function createTestClient(options: TestClientOptions = {}): InsideDM {
   const fetcher: typeof globalThis.fetch = async (input, init) => {
     const request = new Request(input, init);
     const url = new URL(request.url);
-    if (url.origin !== 'https://sdk-fixture.invalid') throw new Error('Fixture transport refuses external hosts.');
+    if (url.origin !== DEFAULT_API_BASE_URL) throw new Error('Fixture transport refuses unexpected hosts.');
     const operation = Object.values(PUBLIC_OPERATIONS).find((candidate) => candidate.method === request.method && new RegExp(`^${candidate.path.replace(/\{[^}]+\}/g, '[^/]+')}$`).test(url.pathname));
     if (!operation) throw new Error('Fixture transport received an unknown operation.');
     const importInput=operation===PUBLIC_OPERATIONS.importFlowTemplate?await request.clone().json() as {version:string;blueprint?:{digest:string}}:null;
@@ -88,7 +89,7 @@ export function createTestClient(options: TestClientOptions = {}): InsideDM {
     const response = new Response(JSON.stringify(body), { status: operation.successStatus, headers: { 'content-type': 'application/json', 'x-request-id': TEST_REQUEST_ID } });
     return options.respond ? options.respond(request, response) : response;
   };
-  return new InsideDM({ apiKey: FIXTURE_KEY, baseUrl: 'https://sdk-fixture.invalid', fetch: fetcher,
+  return new InsideDM({ apiKey: FIXTURE_KEY, fetch: fetcher,
     maxRetries: 0, timeoutMs: options.timeoutMs, attemptTimeoutMs: options.attemptTimeoutMs });
 }
 

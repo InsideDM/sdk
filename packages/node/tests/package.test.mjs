@@ -80,6 +80,10 @@ import { createTestClient } from '@insidedm/sdk/testing';
 const sdk: InsideDM = createTestClient();
 async function check() {
   const platform = new InsideDMPlatform({ apiKey: 'example' });
+  // @ts-expect-error the SDK manages its API endpoint
+  new InsideDM({ apiKey: 'example', baseUrl: 'https://other.example' });
+  // @ts-expect-error the SDK manages its API endpoint
+  new InsideDMPlatform({ apiKey: 'example', baseUrl: 'https://other.example' });
   const setup = await platform.self.get();
   const applicationName: string = setup.data.application.name;
   const returnTargets: string[] = setup.data.returnUrls;

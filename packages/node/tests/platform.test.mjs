@@ -8,7 +8,7 @@ import {createProblemResponse,TEST_ID,TEST_REQUEST_ID} from '../dist/esm/testing
 const MASTER=`idmp_${Buffer.alloc(12,7).toString('base64url')}_${Buffer.alloc(32,9).toString('base64url')}`;
 const APP=randomUUID(),EXCHANGE='/api/v1/platform/delegations';
 const json=data=>new Response(JSON.stringify({data}),{headers:{'content-type':'application/json','x-request-id':TEST_REQUEST_ID}});
-const platform=(fetch,options={})=>new InsideDMPlatform({apiKey:MASTER,baseUrl:'https://api.example.test',fetch,maxRetries:0,...options});
+const platform=(fetch,options={})=>new InsideDMPlatform({apiKey:MASTER,fetch,maxRetries:0,...options});
 const grant=(businessId,scopes=['contacts.read','contacts.write'],extra={})=>({businessId,applicationId:APP,installationId:randomUUID(),authorityVersion:'1',scopes,
   token:`idmd_${randomBytes(12).toString('base64url')}_${randomBytes(32).toString('base64url')}`,expiresAt:new Date(Date.now()+10*60_000).toISOString(),...extra});
 const workspace=businessId=>json({id:businessId,name:'Approved business',timeZone:'Asia/Kolkata',key:null});
@@ -22,6 +22,7 @@ test('platform construction and business selection are local, bounded inputs wit
     assert.throws(()=>root.forBusiness(TEST_ID,options),InsideDMConfigurationError);
   assert.throws(()=>new InsideDMPlatform({apiKey:MASTER.replace('idmp_','idm_')}),InsideDMConfigurationError);
   assert.throws(()=>new InsideDM({apiKey:MASTER}),InsideDMConfigurationError);
+  assert.throws(()=>new InsideDMPlatform({apiKey:MASTER,baseUrl:'https://other.example'}),error=>error instanceof InsideDMConfigurationError&&error.field==='baseUrl');
   assert.ok(!inspect(root,{showHidden:true,depth:20}).includes(MASTER));
 });
 

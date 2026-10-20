@@ -42,7 +42,7 @@ test('approved business clients keep usage separate from application request tel
   const urls = [], from = new Date(period.from), input = { from, to: period.to };
   const appKey = `idmp_${Buffer.alloc(12, 7).toString('base64url')}_${Buffer.alloc(32, 9).toString('base64url')}`;
   const delegationKey = `idmd_${Buffer.alloc(12, 8).toString('base64url')}_${Buffer.alloc(32, 10).toString('base64url')}`;
-  const platform = new InsideDMPlatform({ apiKey: appKey, baseUrl: 'https://api.example', maxRetries: 1, fetch: async (url, init) => {
+  const platform = new InsideDMPlatform({ apiKey: appKey, maxRetries: 1, fetch: async (url, init) => {
     const parsed = new URL(url);
     if (parsed.pathname === '/api/v1/platform/delegations') return json({ token: delegationKey, businessId: TEST_ID,
       applicationId: TEST_ID, installationId: TEST_ID, authorityVersion: '1', scopes: ['usage.read'], expiresAt: new Date(Date.now() + 60_000).toISOString() });
@@ -60,7 +60,7 @@ test('current limits use the same GET operation with only its fixed software_lim
   const report = await client.usage.getLimits();
   assert.equal(report.data.source, 'current_plan_in_force'); assert.equal(report.data.limits.conversations.enforcement, 'soft');
   assert.equal(report.data.limits.includedAi.unit, 'paise'); assert.equal(typeof report.data.limits.includedAi.amountMinor, 'string');
-  assert.equal(requests[1].url, `https://sdk-fixture.invalid/api/v1/dashboard/${TEST_ID}/billing/v2?view=software_limits`);
+  assert.equal(requests[1].url, `https://api.insidedm.io/api/v1/dashboard/${TEST_ID}/billing/v2?view=software_limits`);
   assert.equal(requests[1].headers.get('idempotency-key'), null);
 });
 test('limits reject unsupported caller filters and mutation options before discovery', async () => {

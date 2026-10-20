@@ -10,7 +10,7 @@ const input={name:'Client events',url:'https://partner.example/events',events:['
 const sub=patch=>({id:ID,applicationId:APP,...input,status:'pending',revision:'1',targetGeneration:1,secretGeneration:1,secretPrefix:SECRET.slice(0,14),
   secretOverlapUntil:null,ready:false,readinessValidUntil:null,createdAt:AT,updatedAt:AT,...patch});
 const json=(data,status=200)=>Response.json({data},{status,headers:{'x-request-id':TEST_REQUEST_ID}});
-const client=(fetch,options={})=>new InsideDMPlatform({apiKey:KEY,baseUrl:'https://api.example.test',fetch,maxRetries:0,...options});
+const client=(fetch,options={})=>new InsideDMPlatform({apiKey:KEY,fetch,maxRetries:0,...options});
 test('one root key configures all receiver methods with no construction or workspace-discovery request',async()=>{
   const calls=[],sdk=client(async(url,init)=>{
     const path=new URL(url).pathname,headers=new Headers(init.headers);calls.push({path,method:init.method,headers,body:init.body?JSON.parse(init.body):null});

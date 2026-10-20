@@ -5,13 +5,13 @@ import { InsideDM, InsideDMApiError, InsideDMConfigurationError, InsideDMProtoco
 import { createTestClient, createProblemResponse, TEST_ID, TEST_REQUEST_ID } from '../dist/esm/testing.js';
 
 const KEY = `idm_${Buffer.alloc(12).toString('base64url')}_${Buffer.alloc(32, 1).toString('base64url')}`;
-const client = (fetch, options = {}) => new InsideDM({ apiKey: KEY, baseUrl: 'https://api.example.test', fetch, maxRetries: 0, ...options });
+const client = (fetch, options = {}) => new InsideDM({ apiKey: KEY, fetch, maxRetries: 0, ...options });
 const json = (body, status = 200, extra = {}) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'x-request-id': TEST_REQUEST_ID, ...extra } });
 
 test('a real delegation family uses the same business client and accepts workspace identity without a fabricated key',async()=>{
   const token=`idmd_${Buffer.alloc(12,2).toString('base64url')}_${Buffer.alloc(32,3).toString('base64url')}`;
   let calls=0;
-  const sdk=new InsideDM({apiKey:token,baseUrl:'https://api.example.test',fetch:async(url,init)=>{
+  const sdk=new InsideDM({apiKey:token,fetch:async(url,init)=>{
     calls++;assert.equal(new Headers(init.headers).get('authorization'),`Bearer ${token}`);
     assert.equal(new URL(url).pathname,'/v1/workspace');
     return json({data:{id:TEST_ID,name:'Approved business',timeZone:'Asia/Kolkata',key:null}});
@@ -50,14 +50,14 @@ test('constructor is local, credentials are private, and untrusted configuration
   assert.equal(calls, 0);
   assert.ok(!inspect(sdk, { showHidden: true, depth: 10 }).includes(KEY));
   for (const apiKey of ['', 'idm_fake', KEY + '=']) assert.throws(() => new InsideDM({ apiKey }), InsideDMConfigurationError);
-  for (const baseUrl of ['http://remote.test', 'https://user:pass@api.test', 'https://api.test?key=x', 'https://api.test/#x', 'file:///etc/passwd']) {
+  for (const baseUrl of ['https://api.insidedm.io', 'http://127.0.0.1:8000', 'https://user:pass@api.test', 'https://api.test?key=x', 'https://api.test/#x', 'file:///etc/passwd']) {
     assert.throws(() => new InsideDM({ apiKey: KEY, baseUrl }), InsideDMConfigurationError);
   }
   for (const maxRetries of [-1, 6, NaN, Infinity, '2']) assert.throws(() => client(fetch, { maxRetries }), InsideDMConfigurationError);
-  assert.doesNotThrow(() => new InsideDM({ apiKey: KEY, baseUrl: 'http://127.0.0.1:8000' }));
+  assert.equal(calls, 0);
 });
 
-test('strict request validation happens before transport and URL prefixes are preserved', async () => {
+test('strict request validation happens before transport and the API origin is fixed', async () => {
   let calls = 0;
   const sdk = createTestClient({ respond(_, response) { calls++; return response; } });
   for (const params of [{ limit: 0 }, { limit: 101 }, { limit: '2' }, { channel: 'unknown' }, { cursor: null }, { bogus: true }, { cursor: 'a'.repeat(2049) }]) {
@@ -66,11 +66,11 @@ test('strict request validation happens before transport and URL prefixes are pr
   await assert.rejects(sdk.contacts.get('../orders'), InsideDMConfigurationError);
   assert.equal(calls, 0);
   await client(async (url, init) => {
-    assert.equal(url, 'https://api.example.test/prefix/v1/contacts');
+    assert.equal(url, 'https://api.insidedm.io/v1/contacts');
     assert.equal(init.redirect, 'manual');
     assert.equal(init.headers.authorization, `Bearer ${KEY}`);
     return json({ data: [], page: { nextCursor: null } });
-  }, { baseUrl: 'https://api.example.test/prefix/' }).contacts.list();
+  }).contacts.list();
 });
 
 test('new response fields are discarded; unknown enums, strings for large values, and nulls survive', async () => {

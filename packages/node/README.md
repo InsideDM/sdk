@@ -52,10 +52,10 @@ Sending requires `messages.send`; tracking requires `operations.read`. Discover
 approved templates with `insideDM.templates.list({ limit: 25 })` when your key has
 `templates.read`. Use `messages.preview()` to inspect eligibility before sending.
 
-The default API is `https://api.insidedm.io`. **This release uses the alpha
-channel; hosted production acceptance is pending.** For evaluation against an
-existing insideDM test deployment, add `baseUrl` to the client configuration.
-Your application calls insideDM's service; the SDK does not deploy a backend.
+The SDK connects to `https://api.insidedm.io` automatically. No endpoint
+configuration is required. **This release uses the alpha channel; hosted
+production acceptance is pending.** Use the offline client below to explore the
+interface without service access.
 CommonJS uses `const { InsideDM } = require('@insidedm/sdk')`.
 
 ## What you can build

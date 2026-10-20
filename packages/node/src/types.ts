@@ -5,8 +5,6 @@ export type {ManagedPublicationRequest} from './generated/flowPublicationRequest
 export interface ClientOptions {
   /** Workspace API key. Keep it on your server. No provider credentials are needed. */
   apiKey: string;
-  /** Override the API origin for development. Production callers normally omit this. */
-  baseUrl?: string;
   /** Total request budget, including retries and workspace discovery. Default: 20,000 ms. */
   timeoutMs?: number;
   /** Maximum time for one attempt. Default: 10,000 ms. */

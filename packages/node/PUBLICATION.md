@@ -42,7 +42,8 @@ authentication adapters. Do not add a duplicate SDK business route.
 `npm run check:release` checks license/metadata, version/changelog, lockfile and
 artifact audit. It needs no cloud access. `npm run check:deployment` separately
 probes production TLS/readiness/API behavior. A published alpha does not establish
-service readiness; use a development `baseUrl` until production acceptance passes.
+service readiness. The SDK manages its endpoint; offline fixtures support
+evaluation until hosted production acceptance passes.
 
 Pinned Actions check Node 22/24. Manual `node-release.yml` uses environment `npm`,
 publishing only Node: prereleases under `next`, stable versions under `latest`.

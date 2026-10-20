@@ -8,7 +8,7 @@ const data=()=>({businessId:id,applicationId:app,installation:{id,status:'active
   from:'2026-10-18T00:00:00.000Z',to:'2026-10-19T00:00:00.000Z',totalAdmitted:3,totalRefused:1,points:[{bucketStart:'2026-10-18T00:00:00.000Z',admitted:3,refused:1}],
   freshness:{source:'batched_public_api_counters',observedAt:'2026-10-20T01:00:00.000Z',retainedSince:'2026-09-19T01:00:00.000Z',latestRecordedMinute:'2026-10-18T12:00:00.000Z'}});
 const json=value=>new Response(JSON.stringify({data:value}),{headers:{'content-type':'application/json','x-request-id':TEST_REQUEST_ID}});
-const platform=(fetch,options={})=>new InsideDMPlatform({apiKey:key,baseUrl:'https://api.example',fetch,maxRetries:0,...options});
+const platform=(fetch,options={})=>new InsideDMPlatform({apiKey:key,fetch,maxRetries:0,...options});
 test('usage normalizes convenient dates and routes one own-client telemetry read without discovery',async()=>{
   const client=platform(async(url,init)=>{
     const parsed=new URL(url);assert.equal(parsed.pathname,`/api/v1/platform/businesses/${id}/usage`);assert.equal(parsed.searchParams.get('from'),data().from);assert.equal(parsed.searchParams.get('to'),data().to);

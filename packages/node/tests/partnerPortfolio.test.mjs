@@ -6,7 +6,7 @@ import {createProblemResponse,TEST_REQUEST_ID} from '../dist/esm/testing.js';
 const key=`idmp_${Buffer.alloc(12,7).toString('base64url')}_${Buffer.alloc(32,9).toString('base64url')}`,id=randomUUID(),app=randomUUID();
 const business=(businessId=id,applicationId=app)=>({id:businessId,name:'Client',status:'active',timeZone:'Asia/Kolkata',installation:{id:businessId,businessId,applicationId,status:'active',scopes:['messages.send'],authorityVersion:'1',revision:'1'}});
 const json=value=>new Response(JSON.stringify(value),{headers:{'content-type':'application/json','x-request-id':TEST_REQUEST_ID}});
-const platform=fetch=>new InsideDMPlatform({apiKey:key,baseUrl:'https://api.example',fetch,maxRetries:0});
+const platform=fetch=>new InsideDMPlatform({apiKey:key,fetch,maxRetries:0});
 test('portfolio iterators are lazy, follow empty pages and preserve limits without business discovery',async()=>{
   const urls=[];const client=platform(async(url,init)=>{
     const parsed=new URL(url);urls.push(parsed);assert.equal(parsed.pathname,'/api/v1/platform/businesses');assert.equal(parsed.searchParams.get('limit'),'1');assert.equal(new Headers(init.headers).get('authorization'),`Bearer ${key}`);

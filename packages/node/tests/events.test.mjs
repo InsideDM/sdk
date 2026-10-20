@@ -11,7 +11,7 @@ test('a stable event ID publishes to the shared flow owner with inferred type an
   const sdk=createTestClient({respond(request,response){requests.push(request);return response;}});
   const result=await sdk.events.publish(input);
   assert.equal(result.data.kind,'events.publish');assert.equal(result.meta.idempotencyKey,input.id);
-  assert.equal(requests.length,2);assert.equal(requests[1].url,`https://sdk-fixture.invalid/api/v1/flows/${TEST_ID}/events`);
+  assert.equal(requests.length,2);assert.equal(requests[1].url,`https://api.insidedm.io/api/v1/flows/${TEST_ID}/events`);
   assert.equal(requests[1].headers.get('idempotency-key'),input.id);
   assert.deepEqual(await requests[1].clone().json(),{...input,type:'flow.triggered'});
   assert.equal(Object.hasOwn(input,'type'),false);
