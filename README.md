@@ -228,7 +228,55 @@ a draft only. Existing publications and pinned runs continue until the normal
 human review/publication path accepts a change. Selecting an earlier source can
 prepare a draft rollback under those same checks.
 
+### Update a selected group of clients
+
+Preview up to 25 explicit business/flow selections with one saved target version:
+
+```ts
+const plan = await platform.blueprints.rollouts.preview(nextVersion, [
+  { businessId: clientA.businessId, recipeId: clientA.flowId },
+  { businessId: clientB.businessId, recipeId: clientB.flowId },
+]);
+await saveRolloutPlan(plan); // Persist in your backend before any writes.
+
+for await (const outcome of platform.blueprints.rollouts.apply(plan)) {
+  await saveClientOutcome(plan.id, outcome);
+}
+```
+
+Inspect each `plan.clients[].preview` for changes, preserved overrides and
+action-required reasons; `error` records a failed preview. Supply optional
+client-specific `bindings` with the selection. The helper does not select clients
+from your portfolio automatically. Use your authenticated client records.
+
+Application is lazy and serial. Each outcome is `draft_updated`, `unchanged`,
+`action_required`, `preview_failed`, `not_attempted` or `failed`. One failed client
+does not prevent another from being attempted. Breaking the loop stops later
+clients; a canary stage can apply a subset of `plan.clients` while keeping the
+original plan ID and previews. Every write still rechecks current approval,
+source, resources and revision pins through the existing graph owner.
+
+Retain the plan and outcomes in your backend. Retry an uncertain write with the
+same saved plan: per-client keys are deterministic and matching retained intents
+recover the original receipt. A failed request can have committed; do not obtain
+a fresh plan to retry an unknown outcome. Repeating a known completed request
+after server receipt retention is not a recovery guarantee. Failed previews and
+customized drafts need resolution and a fresh explicit preview before inclusion.
+Plans and outcomes include client identifiers and configuration metadata; store
+them privately. Failure diagnostics exclude exception messages and raw responses.
+
+Both methods accept normal request options. Timeouts and retries apply per client;
+an `AbortSignal` also stops new clients from starting. Aborting a request cannot
+undo a committed draft update. This helper runs in your process: your application
+owns scheduling and persistence. Human publication, publication observation and
+already pinned runs keep their existing semantics.
+
 ## Available operations
+
+For customer-owned n8n, import the packaged [starting workflows](examples/n8n/README.md)
+for notifications, published-flow starts, uncertain-operation recovery and a
+synchronous flow webhook connection check. They use built-in nodes and the same
+canonical endpoints. See the [integration guide](docs/n8n.md) for setup and events.
 
 Read current software limits with the same `usage.read` approval:
 

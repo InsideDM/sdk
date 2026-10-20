@@ -26,6 +26,14 @@ After a draft update, a differing publication is expected until the merchant
 reviews and publishes it. Matching graph content does not establish execution
 eligibility or customer delivery.
 
+For a selected client group, `platform.blueprints.rollouts.preview(version,
+clients)` returns per-client diffs or failures. Save the plan, then iterate
+`platform.blueprints.rollouts.apply(plan)` and save every outcome. The helper
+handles at most 25 explicit selections, applies serially and isolates failures.
+Keep the original plan to recover uncertain writes; your backend owns durable
+scheduling and progress. This coordinates client drafts, with human publication
+still required. See the [SDK rollout example](../README.md#update-a-selected-group-of-clients).
+
 ## 1. Register the application once
 
 InsideDM's controlled onboarding approves your partner organization, real human administrators, application, scope ceilings and exact HTTPS return URLs. Register separate exact return URLs for the journeys you use. Approval of a partner organization does not create merchant access or a software sponsorship agreement. Self-service partner registration and a public partner administration portal are not supplied by this kit.

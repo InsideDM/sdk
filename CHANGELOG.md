@@ -1,5 +1,17 @@
 # Changelog
 
+- Four importable customer-owned n8n workflows for notification submission,
+  published-flow starts, original-key recovery and synchronous flow webhook
+  connection checks. Credentials stay outside workflow JSON; sample inputs stop
+  before network calls until configured. Includes setup and ownership guidance.
+
+- Partner blueprint draft rollouts: preview up to 25 explicit client flows,
+  persist a serializable plan, stream individual application outcomes and recover
+  uncertain writes with deterministic per-client keys. Existing owners recheck
+  current grants and revisions; client customization and human publication remain
+  protected. No cross-tenant transaction or server batch job is introduced.
+- Deployment reads include native lifecycle and immutable publication observation.
+
 - Managed blueprint update previews and draft-only application over the existing
   editor owner, preserving allowed client overrides, refusing manual graph
   overwrite and recording immutable managed revisions with stable recovery.

@@ -1,0 +1,47 @@
+{
+  "name": "InsideDM — start a published flow from a business event",
+  "active": false,
+  "settings": { "executionOrder": "v1", "saveDataSuccessExecution": "none", "saveDataErrorExecution": "none", "saveManualExecutions": false },
+  "nodes": [
+    { "id": "manual", "name": "Start manually", "type": "n8n-nodes-base.manualTrigger", "typeVersion": 1, "position": [0, 0], "parameters": {} },
+    {
+      "id": "configure", "name": "Configure event", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [240, 0],
+      "parameters": { "jsCode": "// Use a known contact and a published 'from your own system' flow. No API key belongs here.\nconst config = { apiOrigin: 'https://api.insidedm.in', eventId: 'orders/REPLACE_ORDER_ID/paid/v1', flowId: 'REPLACE_WITH_PUBLISHED_FLOW_UUID', contactId: 'REPLACE_WITH_EXISTING_CONTACT_UUID', properties: { order: { id: 'REPLACE_ORDER_ID', total: 499 } } };\nif (JSON.stringify(config).includes('REPLACE')) throw new Error('Configure the stable source event ID, published flow, contact and mapped event properties first.');\nreturn [{ json: config }];" },
+      "notes": "Keep eventId stable across retries and reruns. Configure property mappings in the native flow builder. This starts a flow; it cannot resume an arbitrary paused run."
+    },
+    {
+      "id": "workspace", "name": "Discover workspace", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [480, 0],
+      "parameters": { "url": "={{ $('Configure event').first().json.apiOrigin + '/v1/workspace' }}", "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth", "options": { "timeout": 20000, "redirect": { "redirect": { "followRedirects": false } }, "response": { "response": { "responseFormat": "json" } } } },
+      "notes": "Select a Header Auth credential: Authorization = Bearer <business-key>. Use the same credential on every HTTP node."
+    },
+    {
+      "id": "publish", "name": "Retain business event", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [720, 0],
+      "parameters": {
+        "method": "POST", "url": "={{ $('Configure event').first().json.apiOrigin + '/api/v1/flows/' + encodeURIComponent($json.data.id) + '/events' }}",
+        "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth", "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Idempotency-Key", "value": "={{ $('Configure event').first().json.eventId }}" }] },
+        "sendBody": true, "contentType": "json", "specifyBody": "json",
+        "jsonBody": "={{ { id: $('Configure event').first().json.eventId, binding: $('Configure event').first().json.flowId, subject: { contactId: $('Configure event').first().json.contactId }, properties: $('Configure event').first().json.properties } }}",
+        "options": { "timeout": 20000, "redirect": { "redirect": { "followRedirects": false } }, "response": { "response": { "responseFormat": "json" } } }
+      },
+      "notes": "Requires events.write. HTTP 202 retains the start. Later flow admission, effects and delivery remain separate."
+    },
+    {
+      "id": "status", "name": "Read operation once", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [960, 0],
+      "parameters": {
+        "url": "={{ $('Configure event').first().json.apiOrigin + '/api/v1/inbox/' + encodeURIComponent($('Discover workspace').first().json.data.id) + '/operations/' + encodeURIComponent($json.data.id) }}",
+        "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth",
+        "options": { "timeout": 20000, "redirect": { "redirect": { "followRedirects": false } }, "response": { "response": { "responseFormat": "json" } } }
+      },
+      "notes": "Requires operations.read. Observe the authorized run separately with flows.read; flow completion alone does not prove delivery."
+    }
+  ],
+  "connections": {
+    "Start manually": { "main": [[{ "node": "Configure event", "type": "main", "index": 0 }]] },
+    "Configure event": { "main": [[{ "node": "Discover workspace", "type": "main", "index": 0 }]] },
+    "Discover workspace": { "main": [[{ "node": "Retain business event", "type": "main", "index": 0 }]] },
+    "Retain business event": { "main": [[{ "node": "Read operation once", "type": "main", "index": 0 }]] }
+  },
+  "pinData": {},
+  "tags": []
+}

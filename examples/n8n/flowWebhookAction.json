@@ -1,0 +1,21 @@
+{
+  "name": "InsideDM — synchronous flow webhook connection check",
+  "active": false,
+  "settings": { "executionOrder": "v1", "saveDataSuccessExecution": "none", "saveDataErrorExecution": "none", "saveManualExecutions": false },
+  "nodes": [
+    {
+      "id": "webhook", "name": "Receive flow action", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [0, 0],
+      "webhookId": "98de69b6-e1ba-428d-a0d4-aefb9b497cc9",
+      "parameters": { "httpMethod": "POST", "path": "insidedm-flow-connection-check", "authentication": "headerAuth", "responseMode": "responseNode", "options": {} },
+      "notes": "Choose a separate inbound Header Auth credential. Configure the same header name/value and this node's Production URL in InsideDM's existing endpoint setup. This does not use your InsideDM API key."
+    },
+    {
+      "id": "respond", "name": "Return bounded JSON", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.4, "position": [260, 0],
+      "parameters": { "respondWith": "json", "responseBody": "{\"connected\":true}", "options": { "responseCode": 200 } },
+      "notes": "Connection check only. Replace with bounded synchronous integration work and declare response mappings in the flow builder. Every successful branch must reach a response. Header Auth authenticates access; it does not provide deduplication or an asynchronous continuation."
+    }
+  ],
+  "connections": { "Receive flow action": { "main": [[{ "node": "Return bounded JSON", "type": "main", "index": 0 }]] } },
+  "pinData": {},
+  "tags": []
+}

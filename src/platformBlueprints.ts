@@ -4,6 +4,8 @@ import {parseCreateBlueprintVersion,parseBlueprintKey,parseBlueprintPathVersion,
   type CreateBlueprintVersionInput,type PublicBlueprintVersion,type PublicBlueprintTemplate} from './generated/partnerBlueprints.js';
 import {InsideDMConfigurationError,InsideDMProtocolError,InsideDMError,attachWriteRecovery} from './errors.js';
 import {isIdempotencyKey} from './generated/idempotency.js';
+import {createBlueprintRollouts} from './blueprintRollouts.js';
+import type {BusinessClient} from './client.js';
 import type {RequestOptions,WriteRequestOptions,ResponseMeta,Result} from './types.js';
 
 function options<T extends RequestOptions>(value:T,write=false):T{
@@ -13,12 +15,13 @@ function target(key:string,version?:number){
   try{parseBlueprintKey(key);if(version!==undefined){if(typeof version!=='number')throw new Error();parseBlueprintPathVersion(String(version));}return {blueprintKey:key,...(version===undefined?{}:{version:String(version)})};}
   catch{throw new InsideDMConfigurationError('Provide a blueprint key and a positive integer version.');}
 }
-export function createPlatformBlueprints(transport:Transport,bindApplication:(id:string,requestId:string)=>void){
+export function createPlatformBlueprints(transport:Transport,bindApplication:(id:string,requestId:string)=>void,forBusiness:(id:string)=>BusinessClient){
   function check(item:PublicBlueprintVersion,meta:ResponseMeta,key:string,version?:number){
     if(item.definition.key!==key||version!==undefined&&item.definition.version!==version)throw new InsideDMProtocolError('InsideDM returned a different blueprint version.',{code:'invalid_response',requestId:meta.requestId});
     bindApplication(item.applicationId,meta.requestId);return item;
   }
   return {
+    rollouts:createBlueprintRollouts(forBusiness),
     /** Discover supported portable sources and their named, typed customization fields. */
     listTemplates:async(request:RequestOptions={}):Promise<Result<PublicBlueprintTemplate[]>>=>{
       const result=await transport.request('listBlueprintTemplates',{},{},options(request));

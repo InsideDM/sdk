@@ -63,7 +63,7 @@ export class InsideDMPlatform{
     this.blueprints=createPlatformBlueprints(this.#transport,(id,requestId)=>{
       if(this.#applicationId!==null&&this.#applicationId!==id)throw new InsideDMProtocolError('InsideDM returned a blueprint for a different application.',{code:'invalid_response',requestId});
       this.#applicationId=id;
-    });
+    },id=>this.forBusiness(id,{scopes:['flows.deploy']}));
     this.subscriptions=createPlatformSubscriptions(this.#transport,(id,requestId)=>{
       if(this.#applicationId!==null&&this.#applicationId!==id)throw new InsideDMProtocolError('InsideDM returned configuration for a different application.',{code:'invalid_response',requestId});
       this.#applicationId=id;

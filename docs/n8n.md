@@ -1,6 +1,6 @@
 # Connect customer-owned n8n workflows
 
-Use n8n's built-in HTTP Request, Webhook, Header Auth and Respond to Webhook nodes. No custom node or additional SDK configuration is required. These recipes use existing InsideDM endpoints. The bridge example is tested with signed fixtures; an actual n8n workflow import and live deployment remain unverified.
+Use n8n's built-in HTTP Request, Webhook, Header Auth and Respond to Webhook nodes. No custom node or additional SDK configuration is required. These recipes use existing InsideDM endpoints. The package includes [four importable starting workflows](../examples/n8n/README.md): notification submission, published-flow start, uncertain-operation recovery and a synchronous flow webhook connection check. Select a scoped credential and replace the non-secret example inputs. The bridge example is tested with signed fixtures; an actual n8n workflow import and live deployment remain unverified.
 
 ## Send a notification
 

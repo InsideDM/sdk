@@ -32,7 +32,7 @@ try {
   [pack] = JSON.parse(execFileSync('npm', ['pack', '--dry-run', '--ignore-scripts', '--json', '--cache', cache], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
 } finally { rmSync(cache, { recursive: true, force: true }); }
 for (const { path } of pack.files) {
-  if (!/^(?:dist\/(?:esm|cjs)\/[A-Za-z0-9_./-]+\.(?:js|ts|json)|dist\/shared\/contract\.json|openapi\/public-v1\.yaml|docs\/(?:client-provisioning|hosted-onboarding|partner-webhooks|partner-quickstart|n8n)\.md|examples\/n8nResourceBridge\.mjs|package\.json|README\.md|CHANGELOG\.md|PUBLICATION\.md|LICENSE(?:\.[A-Za-z]+)?)$/.test(path)) errors.push(`Non-allowlisted npm artifact: ${path}`);
+  if (!/^(?:dist\/(?:esm|cjs)\/[A-Za-z0-9_./-]+\.(?:js|ts|json)|dist\/shared\/contract\.json|openapi\/public-v1\.yaml|docs\/(?:client-provisioning|hosted-onboarding|partner-webhooks|partner-quickstart|n8n)\.md|examples\/n8nResourceBridge\.mjs|examples\/n8n\/(?:sendNotification|startPublishedFlow|recoverOperation|flowWebhookAction)\.json|examples\/n8n\/README\.md|package\.json|README\.md|CHANGELOG\.md|PUBLICATION\.md|LICENSE(?:\.[A-Za-z]+)?)$/.test(path)) errors.push(`Non-allowlisted npm artifact: ${path}`);
 }
 if (pack.unpackedSize > 1024 * 1024) errors.push('Package exceeds the 1 MiB distribution budget.');
 if (errors.length) { console.error(errors.join('\n')); process.exitCode = 1; }

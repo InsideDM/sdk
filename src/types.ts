@@ -1,4 +1,5 @@
 import type { PublicChannel, PublicConversationState, PublicOrderState, PublicPaymentState } from './generated/wire.js';
+export type {BlueprintRolloutClient,BlueprintRolloutFailure,BlueprintRolloutPlan,BlueprintRolloutOutcome} from './blueprintRollouts.js';
 
 export interface ClientOptions {
   /** Workspace API key. Keep it on your server. No provider credentials are needed. */
