@@ -26,6 +26,12 @@ After a draft update, a differing publication is expected until the merchant
 reviews and publishes it. Matching graph content does not establish execution
 eligibility or customer delivery.
 
+Once a managed draft is ready, pass its current deployment read to
+`flows.deployments.requestPublication(current, {note?}, {idempotencyKey})`.
+Track `getPublicationRequest(flowId, requestId)` while the merchant reviews and
+publishes through the existing native controls. The integration is the recorded
+requester. Even an approved request grants no machine publication authority.
+
 For a selected client group, `platform.blueprints.rollouts.preview(version,
 clients)` returns per-client diffs or failures. Save the plan, then iterate
 `platform.blueprints.rollouts.apply(plan)` and save every outcome. The helper

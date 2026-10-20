@@ -1,5 +1,10 @@
 # Changelog
 
+- Managed draft publication requests and status through the existing native
+  release endpoints. Shared compilation, simulation, governance and human
+  publication remain authoritative; requester attribution uses the integration's
+  real identity. Stable retry intent recovers the current request status.
+
 - Four importable customer-owned n8n workflows for notification submission,
   published-flow starts, original-key recovery and synchronous flow webhook
   connection checks. Credentials stay outside workflow JSON; sample inputs stop

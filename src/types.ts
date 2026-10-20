@@ -1,5 +1,6 @@
 import type { PublicChannel, PublicConversationState, PublicOrderState, PublicPaymentState } from './generated/wire.js';
 export type {BlueprintRolloutClient,BlueprintRolloutFailure,BlueprintRolloutPlan,BlueprintRolloutOutcome} from './blueprintRollouts.js';
+export type {ManagedPublicationRequest} from './generated/flowPublicationRequests.js';
 
 export interface ClientOptions {
   /** Workspace API key. Keep it on your server. No provider credentials are needed. */
@@ -31,6 +32,7 @@ export interface WriteRequestOptions extends RequestOptions {
 }
 
 export type WriteRecovery = {operation:'updateContactAttributes';contactId:string;idempotencyKey:string}
+  |{operation:'requestFlowPublication';recipeId:string;idempotencyKey:string}
   |{operation:'createBlueprintVersion';blueprintKey:string;version:number;idempotencyKey:string}
   |{operation:'applyBlueprintUpdate';recipeId:string;idempotencyKey:string}
   |{operation:'importFlowTemplate';packId:string;idempotencyKey:string}

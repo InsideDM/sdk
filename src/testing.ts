@@ -48,7 +48,11 @@ export function createTestClient(options: TestClientOptions = {}): InsideDM {
     if (!operation) throw new Error('Fixture transport received an unknown operation.');
     const importInput=operation===PUBLIC_OPERATIONS.importFlowTemplate?await request.clone().json() as {version:string;blueprint?:{digest:string}}:null;
     const updateInput=operation===PUBLIC_OPERATIONS.previewBlueprintUpdate||operation===PUBLIC_OPERATIONS.applyBlueprintUpdate?await request.clone().json() as {target:BlueprintUpdateTarget;bindings?:Record<string,FlowTemplateBinding>;expectedDeploymentRevision?:number;expectedDraftRevision?:number}:null;
-    const body = operation===PUBLIC_OPERATIONS.previewBlueprintUpdate
+    const publicationInput=operation===PUBLIC_OPERATIONS.requestFlowPublication?await request.clone().json() as {expectedDeploymentRevision:number;expectedDraftRevision:number}:null;
+    const body = operation===PUBLIC_OPERATIONS.requestFlowPublication||operation===PUBLIC_OPERATIONS.getFlowPublicationRequest
+      ? {data:{businessId:TEST_ID,recipeId:url.pathname.split('/').at(operation===PUBLIC_OPERATIONS.requestFlowPublication?-2:-3),id:operation===PUBLIC_OPERATIONS.requestFlowPublication?TEST_ID:url.pathname.split('/').at(-1),
+        deploymentRevision:publicationInput?.expectedDeploymentRevision??1,draftRevision:publicationInput?.expectedDraftRevision??1,status:'pending',requestedAt:AT,publishedVersionId:null}}
+      : operation===PUBLIC_OPERATIONS.previewBlueprintUpdate
       ? {data:{businessId:TEST_ID,recipeId:url.pathname.split('/').at(-3),deploymentRevision:1,draftRevision:1,from:updateInput!.target,target:updateInput!.target,
         state:'action_required',reasons:['source_unavailable'],bindings:updateInput!.bindings??{},changes:null}}
       : operation===PUBLIC_OPERATIONS.applyBlueprintUpdate

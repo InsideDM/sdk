@@ -228,6 +228,37 @@ a draft only. Existing publications and pinned runs continue until the normal
 human review/publication path accepts a change. Selecting an earlier source can
 prepare a draft rollback under those same checks.
 
+### Submit a managed draft for publication
+
+```ts
+const { data: current } = await client.flows.deployments.get(draft.recipeId);
+const { data: request } = await client.flows.deployments.requestPublication(
+  current, { note: 'Please review the updated client journey.' },
+  { idempotencyKey: 'client-123/agency-leads/review-v2' },
+);
+const { data: review } = await client.flows.deployments.getPublicationRequest(
+  draft.recipeId, request.id,
+);
+```
+
+This submits your integration's unchanged managed draft through the existing
+builder release owner, compiler and simulation. Current channel/dependency
+readiness and governance still apply. The saved managed revision, draft revision
+and current publication are checked together; manual edits require resolution.
+Use the business client that owns the deployment. Keep the same deployment,
+note and retry key after an uncertain answer; matching retained intent returns
+the same request with its current status, including after human publication.
+
+`pending` needs native human review; `pending_evidence` also needs the configured
+regression evidence. `approved` means the release is approved under its native
+policy, which may require no reviewer; it does not mean published. A real human
+publisher still uses InsideDM's existing release controls. The SDK cannot approve,
+publish, change governance or bypass required evidence. It records the integration
+as requester, without borrowing a person's identity. Rejected, superseded and
+dismissed requests remain observable; a deliberate new attempt needs fresh state
+and a new key. `publishedVersionId` is present only for a published request.
+Publication and customer delivery remain separate facts.
+
 ### Update a selected group of clients
 
 Preview up to 25 explicit business/flow selections with one saved target version:

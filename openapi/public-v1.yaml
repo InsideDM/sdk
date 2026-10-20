@@ -40,6 +40,67 @@ tags:
   - name: Usage
   - name: Flows
 paths:
+  /api/v1/automation-governance/{businessId}/recipes/{recipeId}/release-requests:
+    post:
+      operationId: requestFlowPublication
+      tags: [Flows]
+      summary: Submit this integration's unchanged managed draft for native human publication
+      description: Requires flows.deploy. Uses the editor's compiler, simulation and release owner. Binds managed/draft/current-publication revisions. Creates a native release request, never publishes or approves as a human. Current governance and evidence rules apply. Matching retained intent recovers the same request's current status.
+      parameters:
+        - { $ref: '#/components/parameters/BusinessId' }
+        - { name: recipeId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ManagedPublicationInput' }
+      responses:
+        '201':
+          description: Retained native release request, without publication authority
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/ManagedPublicationRequest' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/v1/automation-governance/{businessId}/recipes/{recipeId}/release-requests/{releaseRequestId}:
+    get:
+      operationId: getFlowPublicationRequest
+      tags: [Flows]
+      summary: Observe this integration's managed publication request
+      description: Requires flows.deploy and exactly view=managed. Returns status metadata, without graphs, evidence content or human identity. Current integration authority and managed-flow ownership remain required.
+      parameters:
+        - { $ref: '#/components/parameters/BusinessId' }
+        - { name: recipeId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: releaseRequestId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: view, in: query, required: true, schema: { type: string, const: managed } }
+      responses:
+        '200':
+          description: Current native release request status
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/ManagedPublicationRequest' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
   /api/v1/platform/blueprints/templates:
     get:
       operationId: listBlueprintTemplates
@@ -4066,6 +4127,29 @@ components:
         dependencies: { $ref: '#/components/schemas/BlueprintDependencies' }
         variables: { $ref: '#/components/schemas/BlueprintVariables' }
         capabilities: { $ref: '#/components/schemas/BlueprintCapabilities' }
+    ManagedPublicationInput:
+      type: object
+      additionalProperties: false
+      required: [kind, expectedDeploymentRevision, expectedDraftRevision, expectedPublishedVersionId]
+      properties:
+        kind: { type: string, const: managed_deployment }
+        expectedDeploymentRevision: { type: integer, minimum: 1, maximum: 2147483647 }
+        expectedDraftRevision: { type: integer, minimum: 1, maximum: 2147483647 }
+        expectedPublishedVersionId: { type: [string, 'null'], format: uuid }
+        note: { type: string, maxLength: 500, pattern: '^[^\x00-\x1f\x7f]*$' }
+    ManagedPublicationRequest:
+      type: object
+      additionalProperties: false
+      required: [businessId, recipeId, id, deploymentRevision, draftRevision, status, requestedAt, publishedVersionId]
+      properties:
+        businessId: { type: string, format: uuid }
+        recipeId: { type: string, format: uuid }
+        id: { type: string, format: uuid }
+        deploymentRevision: { type: integer, minimum: 1, maximum: 2147483647 }
+        draftRevision: { type: integer, minimum: 1, maximum: 2147483647 }
+        status: { type: string, enum: [pending, pending_evidence, approved, rejected, published, superseded, dismissed] }
+        requestedAt: { type: string, format: date-time }
+        publishedVersionId: { type: [string, 'null'], format: uuid }
     FlowTemplateDeployment:
       type: object
       additionalProperties: false

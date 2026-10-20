@@ -3,6 +3,8 @@ import type { PublicOperationId } from './generated/operations.js';
 import { InsideDMConfigurationError, InsideDMProtocolError } from './errors.js';
 import {parseBlueprintVersion} from './generated/partnerBlueprints.js';
 import {parseBlueprintUpdatePreview} from './generated/flowBlueprintUpdates.js';
+import {parseFlowTemplateDeployment} from './generated/flowTemplateDeployments.js';
+import type {ManagedPublicationRequest} from './generated/flowPublicationRequests.js';
 import type {
   ClientOptions, RequestOptions, WriteRequestOptions, UpdateContactAttributesInput, UpdatedContactAttributes, PaginationOptions, Result, PageResult, PageParams,
   ContactListParams, ConversationListParams, MessageListParams, OrderListParams,
@@ -124,6 +126,20 @@ export class BusinessClient {
         return {data:(body as {data:FlowTemplateImportReceipt}).data,meta};
       },
     }, deployments: {
+      /** Submit an unchanged managed draft to the native human release journey. Never publishes. */
+      requestPublication:async(deployment:FlowTemplateDeployment,config:{note?:string}={},options?:WriteRequestOptions):Promise<Result<ManagedPublicationRequest>>=>{
+        let current:FlowTemplateDeployment;
+        try{current=parseFlowTemplateDeployment(JSON.parse(JSON.stringify(deployment)));if(current.draft.state!=='unchanged'||current.draft.revision===null||!config||typeof config!=='object'||Array.isArray(config)||Object.keys(config).some(k=>k!=='note'))throw new Error();}
+        catch{throw new InsideDMConfigurationError('Read a current unchanged deployment before requesting publication. Supply only an optional review note.');}
+        const {body,meta}=await transport.ownerOperation('requestFlowPublication',current.recipeId,{kind:'managed_deployment',expectedDeploymentRevision:current.revision,
+          expectedDraftRevision:current.draft.revision,expectedPublishedVersionId:current.publication.versionId,...(config.note===undefined?{}:{note:config.note})},options,current.businessId);
+        return {data:(body as {data:ManagedPublicationRequest}).data,meta};
+      },
+      /** Observe this integration's native release request without receiving graphs or private evidence. */
+      getPublicationRequest:async(recipeId:string,releaseRequestId:string,options?:RequestOptions):Promise<Result<ManagedPublicationRequest>>=>{
+        const {body,meta}=await transport.requestForBusiness('getFlowPublicationRequest',{view:'managed'},options,{recipeId,releaseRequestId});
+        return {data:(body as {data:ManagedPublicationRequest}).data,meta};
+      },
       /** Inspect a source update while preserving client overrides; no draft is changed. */
       previewUpdate:async(recipeId:string,blueprint:PublicBlueprintVersion,config:Pick<DeployBlueprintOptions,'bindings'>={},options?:RequestOptions):Promise<Result<BlueprintUpdatePreview>>=>{
         let source:PublicBlueprintVersion;

@@ -15,6 +15,7 @@ import { parseFlowRunProgress } from './generated/flowRunProgress.js';
 import { parseFlowTemplateCatalogQuery, parseFlowTemplateCatalog, parseFlowTemplateImport, parseFlowTemplateImportReceipt, parseFlowTemplateId } from './generated/flowTemplateDeployments.js';
 import {parseFlowDeploymentQuery,parseFlowTemplateDeployment} from './generated/flowTemplateDeployments.js';
 import {parsePreviewBlueprintUpdate,parseApplyBlueprintUpdate,parseBlueprintUpdatePreview,parseBlueprintUpdateReceipt} from './generated/flowBlueprintUpdates.js';
+import {parseManagedPublicationInput,parseManagedPublicationRequest,parseManagedPublicationQuery} from './generated/flowPublicationRequests.js';
 import { parseSoftwareUsageView, parseSoftwareUsageSummary, parseSoftwareLimits } from './generated/softwareUsage.js';
 import {parseConsentWithdrawal,parseConsentStateQuery,parseContactConsentState} from './generated/consents.js';
 import { parseMarketingOptIn } from './generated/consents.js';
@@ -183,11 +184,11 @@ export class Transport {
     }
   }
 
-  async ownerOperation(operationId:'previewBlueprintUpdate'|'applyBlueprintUpdate'|'importFlowTemplate'|'publishEvent'|'sendMessage'|'previewMessage'|'getOperation'|'lookupOperation'|'cancelOperation'|'withdrawConsent'|'recordMarketingOptIn',
-    resourceId:string|null,input:unknown,options:WriteRequestOptions={}){
+  async ownerOperation(operationId:'requestFlowPublication'|'previewBlueprintUpdate'|'applyBlueprintUpdate'|'importFlowTemplate'|'publishEvent'|'sendMessage'|'previewMessage'|'getOperation'|'lookupOperation'|'cancelOperation'|'withdrawConsent'|'recordMarketingOptIn',
+    resourceId:string|null,input:unknown,options:WriteRequestOptions={},expectedBusinessId?:string){
     const config=settings(options,this.#defaults),deadline=performance.now()+config.timeoutMs;
     const operation=PUBLIC_OPERATIONS[operationId];
-    let idempotencyKey=operationId==='applyBlueprintUpdate'||operationId==='importFlowTemplate'||operationId==='sendMessage'||operationId==='cancelOperation'||operationId==='withdrawConsent'||operationId==='recordMarketingOptIn'?options.idempotencyKey??randomUUID():undefined;
+    let idempotencyKey=operationId==='requestFlowPublication'||operationId==='applyBlueprintUpdate'||operationId==='importFlowTemplate'||operationId==='sendMessage'||operationId==='cancelOperation'||operationId==='withdrawConsent'||operationId==='recordMarketingOptIn'?options.idempotencyKey??randomUUID():undefined;
     if(idempotencyKey!==undefined&&!isIdempotencyKey(idempotencyKey))throw new InsideDMConfigurationError('Idempotency keys require 1–128 visible ASCII characters.');
     if(idempotencyKey===undefined&&operationId!=='publishEvent'&&options.idempotencyKey!==undefined)throw new InsideDMConfigurationError('Read and preview requests do not take an idempotency key.');
     let body:string|undefined;
@@ -208,6 +209,7 @@ export class Transport {
         if(operationId==='importFlowTemplate')body=JSON.stringify(parseFlowTemplateImport(body));
         if(operationId==='previewBlueprintUpdate')body=JSON.stringify(parsePreviewBlueprintUpdate(body));
         if(operationId==='applyBlueprintUpdate')body=JSON.stringify(parseApplyBlueprintUpdate(body));
+        if(operationId==='requestFlowPublication')body=JSON.stringify(parseManagedPublicationInput(body));
         if (operationId === 'publishEvent') {
           const { occurredAt, ...event } = captureEventPublish(input);
           if (options.idempotencyKey !== undefined && options.idempotencyKey !== event.id) throw new Error('The event ID is its retry key.');
@@ -222,6 +224,7 @@ export class Transport {
         const workspace=await this.request('getWorkspace',{},{},{...options,timeoutMs:Math.max(1,Math.floor(deadline-performance.now()))});
         this.#businessId=(workspace.body as {data:{id:string}}).data.id;
       }
+      if(expectedBusinessId!==undefined&&this.#businessId!==expectedBusinessId)throw new InsideDMConfigurationError('Use the business client that owns the saved deployment.');
       const remaining=Math.floor(deadline-performance.now());
       if(remaining<1)throw new InsideDMTransportError('timeout',{code:'request_timeout'});
       const result=await this.request(operationId,{businessId:this.#businessId,...(resourceId?operationId==='importFlowTemplate'?{packId:resourceId}:'recipeId' in operation.pathParameters?{recipeId:resourceId}:{operationId:resourceId}:{})},{},
@@ -233,6 +236,13 @@ export class Transport {
           if(data.businessId!==this.#businessId||data.packId!==resourceId||data.version!==expected.version||expected.blueprint&&data.digest!==expected.blueprint.digest)throw new Error('Wrong template attribution.');
           result.body={data};
         }catch{throw new InsideDMProtocolError('InsideDM returned an invalid template creation receipt.',{code:'invalid_response',requestId:result.meta.requestId});}
+      }
+      if(operationId==='requestFlowPublication'){
+        try{
+          const expected=parseManagedPublicationInput(body!),data=parseManagedPublicationRequest((result.body as {data:unknown}).data);
+          if(data.businessId!==this.#businessId||data.recipeId!==resourceId||data.deploymentRevision!==expected.expectedDeploymentRevision||data.draftRevision!==expected.expectedDraftRevision)throw new Error();
+          result.body={data};
+        }catch{throw new InsideDMProtocolError('InsideDM returned an invalid publication request.',{code:'invalid_response',requestId:result.meta.requestId});}
       }
       if(operationId==='previewBlueprintUpdate'||operationId==='applyBlueprintUpdate'){
         try{
@@ -247,7 +257,7 @@ export class Transport {
       }
       return result;
     }catch(error){
-      if(error instanceof InsideDMError&&idempotencyKey)throw attachWriteRecovery(error,operationId==='applyBlueprintUpdate'?{operation:operationId,recipeId:resourceId!,idempotencyKey}:operationId==='importFlowTemplate'?{operation:operationId,packId:resourceId!,idempotencyKey}:operationId==='sendMessage'||operationId==='publishEvent'
+      if(error instanceof InsideDMError&&idempotencyKey)throw attachWriteRecovery(error,operationId==='requestFlowPublication'||operationId==='applyBlueprintUpdate'?{operation:operationId,recipeId:resourceId!,idempotencyKey}:operationId==='importFlowTemplate'?{operation:operationId,packId:resourceId!,idempotencyKey}:operationId==='sendMessage'||operationId==='publishEvent'
         ?{operation:operationId,idempotencyKey}:operationId==='withdrawConsent'||operationId==='recordMarketingOptIn'?{operation:operationId,idempotencyKey}:{operation:'cancelOperation',operationId:resourceId!,idempotencyKey});
       throw error;
     }
@@ -343,10 +353,14 @@ export class Transport {
   }
 
   /** Shared read owners use the workspace derived from the key, never caller-supplied tenant context. */
-  async requestForBusiness(operationId: 'getFlowDeployment' | 'getFlowTemplateCatalog' | 'getSoftwareUsage' | 'listTemplates' | 'getMessagingReadiness' | 'getMessagingConfiguration' | 'getConsentState' | 'getFlowRun', query: object, options: RequestOptions = {}, pathValues: Record<string,string> = {}) {
+  async requestForBusiness(operationId: 'getFlowPublicationRequest' | 'getFlowDeployment' | 'getFlowTemplateCatalog' | 'getSoftwareUsage' | 'listTemplates' | 'getMessagingReadiness' | 'getMessagingConfiguration' | 'getConsentState' | 'getFlowRun', query: object, options: RequestOptions = {}, pathValues: Record<string,string> = {}) {
     const config = settings(options, this.#defaults), deadline = performance.now() + config.timeoutMs;
     if (!isRecord(query)) throw new InsideDMConfigurationError('Query parameters must be an object.');
     const snapshot = { ...query };
+    if(operationId==='getFlowPublicationRequest'){
+      try{if('idempotencyKey' in options)throw new Error();parseManagedPublicationQuery('?'+new URLSearchParams(snapshot as Record<string,string>).toString());}
+      catch{throw new InsideDMConfigurationError('Publication request reads take flow/request IDs and normal request options.');}
+    }
     if(operationId==='getFlowDeployment'){
       try{
         if('idempotencyKey' in options)throw new Error('Read mutation key.');
@@ -379,6 +393,10 @@ export class Transport {
     const remaining = Math.floor(deadline - performance.now());
     if (remaining < 1) throw new InsideDMTransportError('timeout', { code: 'request_timeout' });
     const result = await this.request(operationId, { ...pathValues, businessId: this.#businessId }, snapshot, { ...options, timeoutMs: remaining });
+    if(operationId==='getFlowPublicationRequest'){
+      try{const data=parseManagedPublicationRequest((result.body as {data:unknown}).data);if(data.businessId!==this.#businessId||data.recipeId!==pathValues.recipeId||data.id!==pathValues.releaseRequestId)throw new Error();result.body={data};}
+      catch{throw new InsideDMProtocolError('InsideDM returned an invalid publication request.',{code:'invalid_response',requestId:result.meta.requestId});}
+    }
     if(operationId==='getFlowDeployment'){
       try{
         const data=parseFlowTemplateDeployment((result.body as {data:unknown}).data);
