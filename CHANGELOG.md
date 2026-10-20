@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.1.0-alpha.0 (unreleased)
+
 - Webhook follow-up template version 2 preserves full Production URLs and stops
   on HTTP failure. Discovery offers current families; exact older sources remain pinned.
 
