@@ -49,6 +49,10 @@ Retain business intent and reconciliation state in your own durable system.
 In `flowWebhookAction.json`, select a separate inbound Header Auth credential,
 activate the workflow when ready, and copy the Webhook node's **Production URL**
 into InsideDM's existing endpoint configuration with the matching auth header.
+Leave the action's path override blank to preserve the complete Production URL.
+The current `governed-webhook-followup` template (version 2) does this and fails
+before waiting if the HTTP action fails. Existing version 1 sources retain their
+fixed `/automation` path; upgrade through a reviewed blueprint draft update.
 Use a unique path if you import multiple copies. Map the boolean `connected`
 response into a declared flow response field if you need it. This response proves
 only a synchronous connection check, not customer eligibility or an approval.

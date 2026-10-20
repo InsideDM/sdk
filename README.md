@@ -525,6 +525,12 @@ URLs or credentials. Only eligible POST endpoints appear. Dependencies paginate;
 pass `catalog.page.nextCursor` and the same limit while `hasMore` is true, including
 after an empty filtered page. Availability can change between pages and imports.
 
+The catalog offers the current version of each family; saved exact older source
+versions remain resolvable. `governed-webhook-followup` version 2 preserves the
+reviewed endpoint's full URL and follows the wait only after HTTP success.
+Existing version 1 sources retain their `/automation` path and original digest;
+upgrading requires a new source version, draft preview/update and native review.
+
 Imports create drafts through the existing builder owner. Review and publish in
 InsideDM before execution. Reuse the same key and exact version/bindings after a
 lost response; matching retries return the original creation receipt without

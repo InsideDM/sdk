@@ -29,6 +29,13 @@ Use the same stable event ID as the `Idempotency-Key`. Configure, publish and ac
 3. Configure **Using Respond to Webhook** and return a small JSON object on every successful path, for example `{"eligible":true,"reference":"quote-123"}`. Map only declared response fields into the flow.
 4. Keep the work within the action's timeout: default 10 seconds, maximum 30 seconds. Requests are limited to 64 KiB and responses to 256 KiB. Redirects and private/reserved addresses are refused.
 
+Leave the HTTP action's path override blank when the endpoint contains the full
+Production URL. The current `governed-webhook-followup` template is version 2:
+it uses that exact reviewed URL and stops on HTTP/mapping failure before its wait.
+Version 1 retains its fixed `/automation` path for existing pinned sources. For
+managed clients, save a new blueprint source selecting version 2, preview/apply
+the draft update and request native review. Existing publications are untouched.
+
 Enable POST/PATCH retries only after implementing durable receiver deduplication and result recovery. A normal n8n Webhook does not provide that contract. The production engine retains one idempotency key per flow-node visit across retries and changes it on a later visit. Header Auth authenticates access; it does not deduplicate effects. For longer work, use the start-and-poll template below. An immediate acknowledgement cannot later supply synchronous response mappings.
 
 ## Run a longer external job

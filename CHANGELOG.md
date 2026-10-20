@@ -1,5 +1,8 @@
 # Changelog
 
+- Webhook follow-up template version 2 preserves full Production URLs and stops
+  on HTTP failure. Discovery offers current families; exact older sources remain pinned.
+
 - Published event-binding discovery with mapped input requirements, start-endpoint
   setup status and bounded pagination through the existing native flow-list route.
 
