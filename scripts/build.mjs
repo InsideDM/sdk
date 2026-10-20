@@ -59,6 +59,7 @@ if (!process.exitCode) {
     await writeEsmEntrypointWrappers(pkg);
     await prunePrivateDeclarations(pkg);
     await prunePrivateRuntimeModules(pkg);
+    await stripRuntimeComments(path.join(root, 'dist'));
   }
   process.stdout.write(`${pkg.name}: ${check ? 'typechecked' : 'built'} ESM and CJS.\n`);
 }
@@ -180,4 +181,19 @@ async function prunePrivateRuntimeModules(pkg) {
 
 function host() {
   return { getCanonicalFileName: (file) => file, getCurrentDirectory: () => root, getNewLine: () => '\n' };
+}
+
+// Keep editor-facing JSDoc in declarations. Runtime copies do not need the same
+// comments; parse/print JS so strings, regular expressions and module syntax stay intact.
+async function stripRuntimeComments(directory) {
+  const printer = ts.createPrinter({removeComments: true, newLine: ts.NewLineKind.LineFeed});
+  for (const entry of await readdir(directory, {withFileTypes: true})) {
+    const file = path.join(directory, entry.name);
+    if (entry.isDirectory()) await stripRuntimeComments(file);
+    else if (file.endsWith('.js')) {
+      const source = ts.createSourceFile(file, await readFile(file, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+      if (source.parseDiagnostics.length) throw new Error('Cannot parse emitted runtime JavaScript.');
+      await writeFile(file, printer.printFile(source));
+    }
+  }
 }

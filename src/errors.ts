@@ -56,7 +56,15 @@ export class InsideDMError extends Error {
 }
 
 export class InsideDMConfigurationError extends InsideDMError {
-  constructor(message: string) { super('configuration', message, { code: 'invalid_configuration' }); this.name = 'InsideDMConfigurationError'; }
+  /** Documented input field that needs correction, when known. Never contains its supplied value. */
+  readonly field: string | null;
+  constructor(message: string, field: string | null = null) {
+    super('configuration', message, { code: 'invalid_configuration' });
+    this.name = 'InsideDMConfigurationError'; this.field = field;
+  }
+  override toJSON(): Readonly<Record<string, string | number | boolean | null>> {
+    return {...super.toJSON(), field: this.field, message: this.message};
+  }
 }
 
 export class InsideDMApiError extends InsideDMError {

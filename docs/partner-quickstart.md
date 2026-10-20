@@ -4,41 +4,11 @@ Use one application credential on your server and one saved InsideDM business ID
 
 This is an unpublished alpha. Production origin, hosted pages and live-provider acceptance still need release verification. For local evaluation, install the checked tarball and pass your development `baseUrl`. The normal published configuration is one `apiKey`; there are no sender defaults to select.
 
-For repeatable client flow setup, request `flows.deploy` only when needed, then
-use `client.flows.templates.catalog()` and `client.flows.templates.import()`.
-These create client-owned drafts from exact supported versions and reviewed
-endpoint references. Each required slot must be bound. Merchants review and
-publish through InsideDM; imports never publish or start a flow. Keep a stable
-key per client/template intent to recover uncertain results without duplicating
-or overwriting client drafts. This is separate from `flows.read` run progress.
-
-For application-owned reusable sources, ask for `platform.blueprints.manage`.
-`platform.blueprints.listTemplates()` shows supported parameters and defaults;
-`createVersion/getVersion/listVersions` manage immutable versions. Declare which
-parameters clients may override. Source authoring itself creates no client draft
-or installation. Use `client.flows.blueprints.deploy(savedVersion, config)` after
-merchant approval. Later use `flows.deployments.previewUpdate()` and
-`applyUpdate(preview)` to preserve declared client overrides and avoid overwriting
-manual edits. These operations prepare drafts; human publication stays separate.
-Read `flows.deployments.get(flowId)` to observe `flowStatus`, the current
-`publication.versionId` and whether its graph matches the latest managed source.
-After a draft update, a differing publication is expected until the merchant
-reviews and publishes it. Matching graph content does not establish execution
-eligibility or customer delivery.
-
-Once a managed draft is ready, pass its current deployment read to
-`flows.deployments.requestPublication(current, {note?}, {idempotencyKey})`.
-Track `getPublicationRequest(flowId, requestId)` while the merchant reviews and
-publishes through the existing native controls. The integration is the recorded
-requester. Even an approved request grants no machine publication authority.
-
-For a selected client group, `platform.blueprints.rollouts.preview(version,
-clients)` returns per-client diffs or failures. Save the plan, then iterate
-`platform.blueprints.rollouts.apply(plan)` and save every outcome. The helper
-handles at most 25 explicit selections, applies serially and isolates failures.
-Keep the original plan to recover uncertain writes; your backend owns durable
-scheduling and progress. This coordinates client drafts, with human publication
-still required. See the [SDK rollout example](../README.md#update-a-selected-group-of-clients).
+Start with registration, merchant approval and one notification below. An
+**installation** is the merchant-approved connection to your application;
+**delegation** is the short-lived access the SDK manages internally. Once the
+first integration works, add [reusable flows and controlled rollouts](blueprints.md)
+or [portfolio operations](partner-reference.md) as needed.
 
 ## 1. Register the application once
 

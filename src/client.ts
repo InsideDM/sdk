@@ -31,8 +31,17 @@ function pageBound(value: number | undefined): number {
   return value;
 }
 
+interface Collection<T, P extends PageParams> {
+  /** Read one page. Continue with page.nextCursor, or use iterate() to traverse lazily. */
+  list(params?: P, options?: RequestOptions): Promise<PageResult<T>>;
+  /** Fetch pages lazily; set maxPages/maxItems and signal to bound the work. Empty continuation pages are valid. */
+  pages(params?: P, options?: PaginationOptions): AsyncIterableIterator<PageResult<T>>;
+  /** Yield records lazily; more pages are fetched as consumed. Set maxPages/maxItems or break to stop. */
+  iterate(params?: P, options?: PaginationOptions): AsyncIterableIterator<T>;
+}
+
 export function collection<T, P extends PageParams>(transport: Transport, operation: PublicOperationId, path: Record<string, string>,
-  project?: (body: unknown, requestId: string) => { data: T[]; page: { nextCursor: string | null } }) {
+  project?: (body: unknown, requestId: string) => { data: T[]; page: { nextCursor: string | null } }): Collection<T, P> {
   const list = async (params: P = {} as P, options: RequestOptions = {}): Promise<PageResult<T>> => {
     if(options!==null&&typeof options==='object'&&'idempotencyKey' in options)throw new InsideDMConfigurationError('Collection reads do not take an idempotency key.');
     const { body, meta } = await (operation === 'listTemplates'||operation==='listEventBindings' ? transport.requestForBusiness(operation, params, options) : transport.request(operation, path, params, options));
@@ -77,18 +86,31 @@ function detail<T>(transport: Transport, operation: PublicOperationId, path: Rec
 
 /** Business resource surface shared by direct and approved installation clients. */
 export class BusinessClient {
+  /** This key's business and current granted scopes. The client discovers it automatically when needed. */
   readonly workspace;
+  /** Customer records, display names, tags and custom fields; creation grants no messaging consent. */
   readonly contacts;
+  /** Authorized conversation history and its messages. */
   readonly conversations;
+  /** Preview/send notifications and read messages. Submission success and customer delivery are separate. */
   readonly messages;
+  /** Track, recover or cancel this integration's submitted work. */
   readonly operations;
+  /** Discover published flow inputs and submit business events to start them. */
   readonly events;
+  /** Native flow templates, client-owned drafts, human publication review and execution progress. */
   readonly flows;
+  /** Discover approved WhatsApp templates and their exact variable keys. */
   readonly templates;
+  /** Read WhatsApp account setup and optional aliases; use messages.preview() for recipient eligibility. */
   readonly messaging;
+  /** Inspect current consent, record a verified native request for offers, or withdraw one purpose. */
   readonly consents;
+  /** Authorized order visibility; no order/payment mutation. */
   readonly orders;
+  /** Authorized shipment visibility. */
   readonly shipments;
+  /** Observed business AI usage and current plan limits, separately granted through usage.read. */
   readonly usage;
 
   protected constructor(transport:Transport) {
@@ -183,9 +205,14 @@ export class BusinessClient {
       },
     } };
     this.events = {
-      /** Active published from-system flows and their mapped input requirements. */
+      /** Active published flows and mapped input requirements. Use a returned id as events.publish input.binding. */
       bindings:collection<PublicEventBinding,EventBindingParams>(transport,'listEventBindings',{}),
-      /** Publish one stable event to a published from-system flow for a known contact. The event ID is its retry key. */
+      /**
+       * Retain one event to start an active published flow for an existing contact.
+       * binding is the flow ID from events.bindings; id is your saved logical event/retry key.
+       * Acceptance does not mean execution or delivery. Track the operation, then flows.runs.get().
+       * Requires events.write; progress reads separately need operations.read and flows.read.
+       */
       publish: async (input: PublishEventInput, options?: RequestOptions): Promise<Result<PublicOperation>> => {
         const { body, meta } = await transport.ownerOperation('publishEvent', null, input, options);
         return { data: (body as { data: PublicOperation }).data, meta };
@@ -277,9 +304,13 @@ export class BusinessClient {
       const {body,meta}=await transport.ownerOperation(operation,id,input,options);return {data:(body as {data:PublicOperation}).data,meta};
     };
     this.operations={
-      /** Read current progress for an operation created by this integration. */
+      /** Read this integration's operation by ID. Requires operations.read; message success means provider submission, not delivery. */
       get:(id:string,options?:RequestOptions)=>operationResult('getOperation',id,null,options),
-      /** Recover an operation using the original send's idempotency key after a lost response. */
+      /**
+       * Recover a lost response without submitting new work. Requires operations.read.
+       * Pass the original message key, or {kind:'events.publish', idempotencyKey: originalEventId}.
+       * Keep the original intent; a fresh key creates another action rather than recovering it.
+       */
       lookup:(input:string|OperationLookupInput,options?:RequestOptions)=>operationResult('lookupOperation',null,typeof input==='string'?{idempotencyKey:input}:input,options),
       /** Cancel work before provider submission starts; use the revision returned by get(). */
       cancel:(id:string,input:{expectedRevision:string},options?:WriteRequestOptions)=>operationResult('cancelOperation',id,input,options),

@@ -22,12 +22,14 @@ export interface RequestOptions {
   signal?: AbortSignal;
   /** Override the client's total request budget for this call. */
   timeoutMs?: number;
+  /** Maximum milliseconds per attempt (1–60000); included in timeoutMs, never added to it. */
   attemptTimeoutMs?: number;
+  /** Extra transient retries (0–5); writes retain their original input and retry key. */
   maxRetries?: number;
 }
 
 export interface WriteRequestOptions extends RequestOptions {
-  /** Reuse this key and the same input to recover an uncertain result. Defaults to a generated UUID. */
+  /** Save one key per logical action. Reuse it with identical input after a lost response or restart. Defaults to a generated UUID. */
   idempotencyKey?: string;
 }
 
@@ -83,8 +85,12 @@ export type { UpdateContactInput, UpdatedContact } from './generated/contactUpda
 type CanonicalNotification=Extract<import('./generated/messageSend.js').MessageSendInput,{intent:'notification'}>;
 type TemplateInput=Omit<import('./generated/messageSend.js').MessageTemplateContent,'variables'>&{variables?:Record<string,string>};
 /** Send a business notification. The SDK supplies its canonical intent automatically. */
-export type NotificationInput=Omit<CanonicalNotification,'content'|'intent'>&{
+export type NotificationInput=Omit<CanonicalNotification,'content'|'intent'|'to'>&{
+  /** Choose exactly one: E.164 phone, existing contactId, or existing conversationId. */
+  to:CanonicalNotification['to'];
+  /** Optional; the SDK supplies notification. This client never impersonates an inbox human reply. */
   intent?:'notification';
+  /** Approved template and its exact discovered variables, or text under an existing purpose binding. */
   content:import('./generated/messageSend.js').MessageTextContent|TemplateInput;
 };
 export type {PublicOperation,PublicOperationState,PublicOperationEffects} from './generated/operation.js';
@@ -92,6 +98,7 @@ export type {MessagePreview} from './generated/messageOperations.js';
 export type {PublicTemplate, TemplateListParams, MessagingReadiness, PublicMessagingConfiguration} from './generated/messagingDiscovery.js';
 
 export interface ResponseMeta {
+  /** Server correlation ID for support; never a client-generated substitute. */
   requestId: string;
   status: number;
   attempts: number;
@@ -99,6 +106,7 @@ export interface ResponseMeta {
   idempotencyKey?: string;
 }
 
+/** Domain result plus request diagnostics. A write receipt establishes only the lifecycle stage documented by that method. */
 export interface Result<T> { data: T; meta: ResponseMeta }
 export interface PageResult<T> extends Result<T[]> { page: { nextCursor: string | null } }
 export interface PageParams { limit?: number; cursor?: string }

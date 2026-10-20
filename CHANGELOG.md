@@ -2,6 +2,11 @@
 
 ## 0.1.0-alpha.0 (unreleased)
 
+- Task-first entry guide, separate business/partner/blueprint references, editor
+  help for collection traversal and lifecycle-aware methods. Local configuration
+  failures identify documented fields with fixed corrective hints; supplied values
+  stay out of diagnostics. Method names, wire contracts and retry intent are retained.
+
 - Runnable customer-owned async-job receiver with durable start/status responses,
   tenant/authority binding, one-time worker claims and explicit uncertain-effect
   reconciliation. Uses the existing start-and-poll flow contract.

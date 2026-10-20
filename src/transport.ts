@@ -36,19 +36,29 @@ export type TransportAuthentication={kind:'application';token:string}|{kind:'del
   get:(options:RequestOptions&Settings)=>Promise<string>;invalidate:(token:string)=>void};
 type Operation = { method: string; path: string; successStatus: number; pathParameters: Readonly<Record<string, Schema>>; queryParameters: Readonly<Record<string, Schema>>; response: Schema };
 
-function bounded(value: unknown, fallback: number, min: number, max: number): number {
+function bounded(value: unknown, fallback: number, min: number, max: number, field: string): number {
   if (value === undefined) return fallback;
   if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < min || value > max) {
-    throw new InsideDMConfigurationError('Request limits must be finite integers within the documented bounds.');
+    throw new InsideDMConfigurationError(`${field}: use an integer from ${min} to ${max}.`, field);
   }
   return value;
 }
 
 function settings(options: RequestOptions, defaults: Settings): Settings {
-  if (!isRecord(options) || (options.signal !== undefined && !(options.signal instanceof AbortSignal))) throw new InsideDMConfigurationError('Request options require an options object and a native AbortSignal.');
-  return { timeoutMs: bounded(options.timeoutMs, defaults.timeoutMs, 1, 120_000),
-    attemptTimeoutMs: bounded(options.attemptTimeoutMs, defaults.attemptTimeoutMs, 1, 60_000),
-    maxRetries: bounded(options.maxRetries, defaults.maxRetries, 0, 5) };
+  if (!isRecord(options)) throw new InsideDMConfigurationError('Provide a request options object.', 'options');
+  if (options.signal !== undefined && !(options.signal instanceof AbortSignal)) throw new InsideDMConfigurationError('signal: use a native AbortSignal, such as AbortSignal.timeout(5000).', 'signal');
+  return { timeoutMs: bounded(options.timeoutMs, defaults.timeoutMs, 1, 120_000, 'timeoutMs'),
+    attemptTimeoutMs: bounded(options.attemptTimeoutMs, defaults.attemptTimeoutMs, 1, 60_000, 'attemptTimeoutMs'),
+    maxRetries: bounded(options.maxRetries, defaults.maxRetries, 0, 5, 'maxRetries') };
+}
+
+/** Preserve only schema-owned field names and fixed hints, never thrown user values. */
+function configurationFailure(error: unknown, fallback: string, field = 'input'): InsideDMConfigurationError {
+  if (error instanceof SchemaMismatch) {
+    const publicField = error.field === 'request' ? 'input' : error.field.replace(/^request\./, '');
+    return new InsideDMConfigurationError(`${publicField}: ${error.hint}`, publicField);
+  }
+  return new InsideDMConfigurationError(fallback, field);
 }
 
 function retryAfter(response: Response): number | null {
@@ -116,13 +126,13 @@ export class Transport {
     if (typeof window !== 'undefined') throw new InsideDMConfigurationError('InsideDM API keys belong on your server.');
     const apiKey=options&&'apiKey' in options?options.apiKey:null;
     if(!options||authentication===null&&!parseApiKey(apiKey)&&!parseDelegationCredential(apiKey)
-      ||authentication?.kind==='application'&&!parseApplicationCredential(authentication.token))throw new InsideDMConfigurationError('Provide a valid InsideDM API key or business delegation token.');
+      ||authentication?.kind==='application'&&!parseApplicationCredential(authentication.token))throw new InsideDMConfigurationError('apiKey: provide the complete InsideDM server key from your secret store.', 'apiKey');
     this.#authentication=authentication===null?null:{...authentication};
     this.#apiKey=authentication?.kind==='application'?authentication.token:apiKey;
     if(authentication?.kind==='delegation')this.#businessId=authentication.businessId;
     let url: URL;
     try { url = new URL(options.baseUrl ?? DEFAULT_API_BASE_URL); }
-    catch { throw new InsideDMConfigurationError('Provide a valid API base URL.'); }
+    catch { throw new InsideDMConfigurationError('baseUrl: provide an absolute API origin for your environment.', 'baseUrl'); }
     const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
     if ((url.protocol !== 'https:' && !(local && url.protocol === 'http:')) || url.username || url.password || url.search || url.hash) {
       throw new InsideDMConfigurationError('API base URLs require HTTPS, without credentials, query parameters, or fragments. HTTP is allowed for localhost.');
@@ -142,9 +152,9 @@ export class Transport {
     let body: string;
     try {
       const operation = PUBLIC_OPERATIONS[operationId];
-      if ('contactId' in operation.pathParameters) decode(operation.pathParameters.contactId, contactId, 'path', false);
+      if ('contactId' in operation.pathParameters) decode(operation.pathParameters.contactId, contactId, 'contactId', false);
       if (operationId === 'createContact') {
-        if (!isRecord(input) || Object.keys(input).some(key => !['name', 'phone'].includes(key))) throw new Error('Invalid contact creation.');
+        if (!isRecord(input) || Object.keys(input).some(key => !['name', 'phone'].includes(key))) throw new SchemaMismatch('request', 'contacts.create accepts only name and phone; use separate tag and custom-field methods.');
         input = { ...input, channel: 'whatsapp' };
       }
       // Validate runtime input before serializing: JSON silently drops undefined and changes NaN to null.
@@ -153,9 +163,13 @@ export class Transport {
       body = JSON.stringify(operationId === 'createContact' ? parseContactCreation(JSON.stringify(input))
         : operationId === 'updateContact' ? parseContactUpdate(JSON.stringify(input))
         : operationId === 'replaceContactTags' ? parseContactTagsReplacement(JSON.stringify(input)) : parseContactAttributeUpdate(JSON.stringify(input)));
-    } catch { throw new InsideDMConfigurationError(operationId === 'createContact'
-      ? 'Provide a contact name and one E.164 phone number, without additional fields.'
-      : 'Provide a valid contact ID and contact update of at most 64 KiB.'); }
+    } catch (error) {
+      const fallback = operationId === 'createContact' ? 'Use a nonblank name of at most 256 characters and an E.164 phone number.'
+        : operationId === 'updateContact' ? 'displayName: use 1–256 nonblank characters without control characters, or null to clear it.'
+        : operationId === 'replaceContactTags' ? 'tags: provide at most 50 nonblank strings of 1–256 characters; [] clears the set.'
+        : 'attributes: provide 1–500 custom-field names with string, finite number, boolean or null values, within 64 KiB.';
+      throw configurationFailure(error, fallback, operationId === 'updateContact' ? 'displayName' : operationId === 'replaceContactTags' ? 'tags' : operationId === 'updateContactAttributes' ? 'attributes' : 'input');
+    }
     try {
       if (this.#businessId === null) {
         const workspace = await this.request('getWorkspace', {}, {}, { ...options, timeoutMs: Math.max(1, Math.floor(deadline - performance.now())) });
@@ -194,9 +208,9 @@ export class Transport {
     if(idempotencyKey===undefined&&operationId!=='publishEvent'&&options.idempotencyKey!==undefined)throw new InsideDMConfigurationError('Read and preview requests do not take an idempotency key.');
     let body:string|undefined;
     try{
-      if('operationId' in operation.pathParameters)decode(operation.pathParameters.operationId,resourceId,'path',false);
+      if('operationId' in operation.pathParameters)decode(operation.pathParameters.operationId,resourceId,'operationId',false);
       if(operationId==='importFlowTemplate')parseFlowTemplateId(resourceId);
-      if('recipeId' in operation.pathParameters)decode(operation.pathParameters.recipeId,resourceId,'path',false);
+      if('recipeId' in operation.pathParameters)decode(operation.pathParameters.recipeId,resourceId,'recipeId',false);
       if(operation.request!==undefined){
         if((operationId==='sendMessage'||operationId==='previewMessage')&&typeof input==='object'&&input!==null&&!Array.isArray(input)){
           const message=input as {intent?:unknown};
@@ -213,13 +227,24 @@ export class Transport {
         if(operationId==='requestFlowPublication')body=JSON.stringify(parseManagedPublicationInput(body));
         if (operationId === 'publishEvent') {
           const { occurredAt, ...event } = captureEventPublish(input);
-          if (options.idempotencyKey !== undefined && options.idempotencyKey !== event.id) throw new Error('The event ID is its retry key.');
+          if (options.idempotencyKey !== undefined && options.idempotencyKey !== event.id) throw new SchemaMismatch('idempotencyKey', 'events.publish uses input.id as its retry key. Omit options.idempotencyKey or use that same ID.');
           idempotencyKey = event.id;
           body = JSON.stringify({ ...event, ...(occurredAt === null ? {} : { occurredAt }) });
         }
-        if(Buffer.byteLength(body)>65536)throw new Error('Request bound exceeded.');
+        if(Buffer.byteLength(body)>65536)throw new SchemaMismatch('request', 'Keep the serialized request within 64 KiB.');
       }
-    }catch{throw new InsideDMConfigurationError('Provide valid flow template, message, event, consent or operation parameters.');}
+    }catch(error){
+      const hint = operationId === 'sendMessage' || operationId === 'previewMessage'
+        ? 'Use nonblank text of at most 1000 characters, or an approved template with nonblank variable values of at most 1024 characters.'
+        : operationId === 'publishEvent' ? 'Use a stable event ID, published flow binding and known contact. Properties must be plain JSON within 32 KiB, without undefined, Date or non-finite numbers.'
+        : operationId === 'withdrawConsent' ? 'Use one E.164 phone number and a supported purpose, without consent-grant fields.'
+        : operationId === 'recordMarketingOptIn' ? 'Provide only the ID of the retained inbound message containing the customer request.'
+        : operationId === 'importFlowTemplate' ? 'Use a discovered template ID, its exact version and reviewed endpoint bindings.'
+        : operationId === 'lookupOperation' ? 'Provide the original send key, or {kind: "events.publish", idempotencyKey: originalEventId}.'
+        : operationId === 'cancelOperation' ? 'Provide the operation ID and its current opaque revision.'
+        : 'Use the current saved deployment or source preview with its exact revisions and reviewed bindings.';
+      throw configurationFailure(error, hint);
+    }
     try{
       if(this.#businessId===null){
         const workspace=await this.request('getWorkspace',{},{},{...options,timeoutMs:Math.max(1,Math.floor(deadline-performance.now()))});
@@ -457,20 +482,20 @@ export class Transport {
     try {
       for (const [name, schema] of Object.entries(operation.pathParameters)) {
         if (deferBusinessId && name === 'businessId' && values[name] === undefined) continue;
-        decode(schema, values[name], 'path', false);
+        decode(schema, values[name], name, false);
         path = path.replace(`{${name}}`, encodeURIComponent(values[name]!));
       }
       const url = new URL(this.#baseUrl + path);
       for (const [name, value] of Object.entries(query)) {
         const schema = operation.queryParameters[name];
-        if (!schema) throw new SchemaMismatch('query');
+        if (!schema) throw new SchemaMismatch('params', 'Remove filters not listed in the collection parameter type.');
         if (value === undefined) continue;
-        decode(schema, value, 'query', false);
+        decode(schema, value, name, false);
         url.searchParams.set(name, String(value));
       }
       return url.href;
-    } catch {
-      throw new InsideDMConfigurationError('Request parameters do not match the public API contract.');
+    } catch (error) {
+      throw configurationFailure(error, 'Use the documented resource IDs and collection filters.', 'params');
     }
   }
 }

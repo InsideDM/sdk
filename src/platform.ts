@@ -57,7 +57,7 @@ export class InsideDMPlatform{
   #pending=0;
   #applicationId:string|null=null;
   constructor(options:PlatformClientOptions){
-    if(!options||!parseApplicationCredential(options.apiKey))throw new InsideDMConfigurationError('Provide a valid server application credential (idmp_).');
+    if(!options||!parseApplicationCredential(options.apiKey))throw new InsideDMConfigurationError('apiKey: provide the complete server application credential (idmp_) from your secret store.', 'apiKey');
     this.#transport=new Transport(options,{kind:'application',token:options.apiKey});
     this.#options={baseUrl:options.baseUrl,timeoutMs:options.timeoutMs,attemptTimeoutMs:options.attemptTimeoutMs,maxRetries:options.maxRetries,fetch:options.fetch};
     this.blueprints=createPlatformBlueprints(this.#transport,(id,requestId)=>{
@@ -256,8 +256,13 @@ export class InsideDMPlatform{
       this.#applicationId=data.applicationId;return data;
     }catch{throw new InsideDMProtocolError('InsideDM returned an invalid installation request.',{code:'invalid_response',requestId});}
   }
+  /**
+   * Select an approved client from your authenticated server-side mapping; performs no I/O.
+   * Returns the same business methods as InsideDM. The SDK acquires/refreshes delegated tokens on use.
+   * Selection creates no merchant grant; a fresh approval cannot adopt work from an old installation.
+   */
   forBusiness(businessId:string,options:ForBusinessOptions={}):BusinessClient{
-    if(typeof businessId!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(businessId))throw new InsideDMConfigurationError('Provide a valid business ID.');
+    if(typeof businessId!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(businessId))throw new InsideDMConfigurationError('businessId: use the saved InsideDM business ID from this client\'s approved connection.', 'businessId');
     if(!options||typeof options!=='object'||Array.isArray(options)||Object.keys(options).some(key=>key!=='scopes'))throw new InsideDMConfigurationError('Business selection accepts only an optional scope subset.');
     const parsed=options.scopes===undefined?null:parsePublicScopes(options.scopes);
     if(parsed!==null&&!Array.isArray(parsed))throw new InsideDMConfigurationError('Provide a nonempty set of known business scopes.');
