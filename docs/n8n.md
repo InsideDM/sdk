@@ -89,6 +89,76 @@ variables for native builder/subflow use; the SDK run read reports progress only
 Arbitrary callback-based resume and n8n administration/editor embedding remain
 separate capabilities. Live n8n deployment acceptance is still outstanding.
 
+### Copy a durable start/status receiver
+
+The tarball includes [`examples/asyncJobReceiver.mjs`](../examples/asyncJobReceiver.mjs).
+Copy it into your backend and import it locally. It needs a private persistent
+POSIX directory with hard links and `fsync`; ephemeral function storage is unsuitable.
+
+```js
+import {createAsyncJobReceiver} from './asyncJobReceiver.mjs';
+
+const jobs = createAsyncJobReceiver({
+  directory: '/var/lib/your-app/insidedm-jobs',
+  authenticate: request => endpointCredentials.authenticate(request),
+  isAuthorized: identity => clientAccess.isCurrent(identity),
+  execute: ({input, idempotencyKey, signal, businessId, authorityId}) =>
+    reports.generate(input, {idempotencyKey, signal, businessId, authorityId}),
+});
+// Your framework's dedicated HTTPS POST routes, before a JSON body parser:
+// /insidedm/jobs/start  -> jobs.start(request)
+// /insidedm/jobs/status -> jobs.status(request)
+```
+
+`authenticate` verifies the endpoint credential from your secret store and returns
+`{businessId, authorityId}`, or `null`. Derive these values from your trusted saved
+client mapping, never request JSON or a caller-supplied business header. For a
+partner use the original installation ID and authority version as `authorityId`,
+for example `${installationId}:${authorityVersion}`. For a direct business use a
+saved integration epoch. Routine secret rotation can preserve that identity;
+revocation/reinstallation must not. `isAuthorized` must check that exact original
+identity is still allowed. All three callbacks run only on your server.
+
+The native flow supplies `Idempotency-Key`. Start saves the exact JSON bytes and
+original authority before returning `{job:{id}}`. Repeating the same key/body
+recovers the job; changed bytes conflict. Status accepts only `{id}` and requires
+the same authenticated authority. Job IDs confer no access. Input is limited to
+32 KiB and must be an object; completed JSON results are limited to 16 KiB.
+
+Schedule a bounded pass in your existing backend worker:
+
+```js
+let count = 0;
+for await (const id of jobs.pending()) {
+  const outcome = await jobs.tick(id, {signal: AbortSignal.timeout(30_000)});
+  await recordSafeJobOutcome(outcome); // IDs/state only, without input or secrets
+  if (++count === 25) break;
+}
+```
+
+Each pass streams the directory and skips terminal or already-claimed jobs, so
+an unresolved claim cannot consume every worker slot. Separately scan
+`jobs.pending({claimed:true})` for running/interrupted work requiring observation
+or reconciliation, including after restart. A durable claim allows
+only one automatic invocation across workers/restarts. Status stays `pending`
+until a terminal result is saved. `reconcile` from `tick` means a worker already
+claimed the job; it may still be running or its external effect may be uncertain.
+Do not automatically execute it again. After stopping the original worker and
+checking the external system with the supplied stable `idempotencyKey`, use the
+private backend method `jobs.reconcile(id, {status:'succeeded', result})` or
+`{status:'failed', result:null}`. Terminal results are immutable; conflicting
+settlement refuses. Never expose this method as a public callback endpoint.
+
+`execute` must honor its signal and enforce current authorization at its actual
+effect boundary. A timeout or thrown error cannot prove an effect failed and
+therefore leaves the claim for reconciliation. For n8n, call an authenticated
+Production URL with no redirects and durable downstream deduplication; a normal
+Webhook alone is insufficient. Keep final results while flows may poll, retain
+deduplication records through your retry horizon, and implement tenant erasure,
+retention and alerts before production. This reference receiver supplies local
+storage/recovery; it does not host n8n, impose a job deadline or cancel external
+work when an InsideDM flow stops.
+
 ## Receive resource events
 
 Use `InsideDM → backend durable inbox → private n8n production Webhook`. The backend verifies exact bytes with `constructWebhookEvent` and answers verification challenges. n8n Code cannot read stored Header Auth credentials, so direct HMAC verification requires an independently protected secret channel. Do not hardcode signing secrets in Code or store them in item data.

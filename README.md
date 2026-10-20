@@ -503,6 +503,9 @@ Revoking or expiring the original key, removing its scope, disabling the workspa
 
 ## Create a flow draft from a template
 
+For slow external tasks, the [start-and-poll guide](docs/n8n.md#run-a-longer-external-job)
+includes a copyable durable backend receiver and worker with restart recovery.
+
 Use `flows.deploy` for template discovery and draft imports. `flows.read` remains
 the separate scope for this integration's flow-run progress. The same methods
 work on `platform.forBusiness(businessId)` after merchant approval.

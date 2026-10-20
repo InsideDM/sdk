@@ -2,6 +2,10 @@
 
 ## 0.1.0-alpha.0 (unreleased)
 
+- Runnable customer-owned async-job receiver with durable start/status responses,
+  tenant/authority binding, one-time worker claims and explicit uncertain-effect
+  reconciliation. Uses the existing start-and-poll flow contract.
+
 - Webhook follow-up template version 2 preserves full Production URLs and stops
   on HTTP failure. Discovery offers current families; exact older sources remain pinned.
 
@@ -60,12 +64,12 @@
 - Business `usage.get({ from, to })`: observed AI calls and whole token totals over explicit bounded windows, through the shared billing owner. Requires a separate merchant-approved `usage.read` grant; preserves source, dispatch-time attribution and provisional semantics. Application `usage.get` remains own-client API request telemetry. No financial totals or Meta billing are inferred.
 - Distribution follows runtime entrypoints as well as public type dependencies, omitting unreachable type-only runtime modules while preserving installed ESM/CommonJS and strict TypeScript consumers.
 
-- Customer-owned n8n setup recipes and a tested raw-body resource receiver example with durable inbox admission, stable event deduplication and original partner installation context. Async result/resume support remains unfinished.
+- Customer-owned n8n setup recipes and a raw-body resource receiver example with durable inbox admission, stable event deduplication and original partner installation context. Arbitrary callback-based resume remains unavailable; bounded start/status polling is supported.
 
 - Partner `subscriptions.create/list/get/update/verify/activate/pause/disable/rotateSecret` over canonical Conversations receiver owners. Creation and rotation retain retry intent; unkeyed revision commands run once. New events bind automatically to approved merchant installations, with v2 app attribution and current authority before receiver I/O.
 - Partner `subscriptions.getHealth` and `deliveries.list/pages/iterate/get/replay` over the shared delivery owners. Thin history has bounded filters and signed cursors; explicit replay retains original event/grant/receiver custody and recovers stable intent.
 - Partner `subscriptions.recover`: restore one health-paused client with a reviewed health revision and fresh receiver proof. Active proof refresh keeps other merchants running. Retried intent observes current health without resuming a newer pause; cancelled work remains cancelled.
-- Compact generated schema/operation data preserves every runtime value and the original 1 MiB package limit. The distributed OpenAPI guide remains readable.
+- Compact generated schema/operation data preserves every runtime value and the original 1 MiB package limit. The packaged OpenAPI snapshot preserves the readable source's complete contract.
 
 - Recognize receiver-verification throttling as a typed API error with its own policy label, while preserving the default edge policy and rejecting unregistered labels.
 
