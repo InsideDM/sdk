@@ -4,9 +4,9 @@ The official Node.js and TypeScript SDK for [insideDM](https://insidedm.io).
 Send WhatsApp notifications, start published flows and connect approved client
 businesses with one server key. The organization's WhatsApp account is resolved automatically.
 
-**Unpublished npm alpha:** npm access and production acceptance are pending.
+**Pre-production alpha:** production API/provider acceptance remains pending.
 Requires Node.js 22+, supports ESM/CommonJS and has zero runtime dependencies.
-For local evaluation, build a tarball and use your development `baseUrl`.
+Use your development API `baseUrl` until the default production API is ready.
 
 | Your task | Start here | More detail |
 | --- | --- | --- |
@@ -17,7 +17,13 @@ For local evaluation, build a tarball and use your development `baseUrl`.
 
 ## Install and configure
 
-Build the current alpha from source:
+Install the alpha:
+
+```sh
+npm install @insidedm/sdk@next
+```
+
+Or build from source:
 
 ```sh
 git clone https://github.com/insideDM/sdk.git
@@ -28,17 +34,19 @@ npm pack
 ```
 
 In your application, install the resulting `insidedm-sdk-0.1.0-alpha.0.tgz`
-using `npm install /path/to/insidedm-sdk-0.1.0-alpha.0.tgz`. After the first npm
-release, installation will be `npm install @insidedm/sdk`.
+using `npm install /path/to/insidedm-sdk-0.1.0-alpha.0.tgz`.
 
 ```ts
 import { InsideDM } from '@insidedm/sdk';
-const insideDM = new InsideDM({ apiKey: process.env.INSIDEDM_API_KEY! });
+const insideDM = new InsideDM({
+  apiKey: process.env.INSIDEDM_API_KEY!,
+  baseUrl: process.env.INSIDEDM_API_BASE_URL!, // Your development API origin.
+});
 ```
 
 Create a scoped business key in InsideDM. Construction makes no request; the
 first operation discovers the business when needed. You do not pass a WhatsApp
-sender or provider token. For local development only, add your API `baseUrl`.
+sender or provider token. For this alpha, use your development API `baseUrl`.
 CommonJS uses `const { InsideDM } = require('@insidedm/sdk')`.
 
 ## Send a notification

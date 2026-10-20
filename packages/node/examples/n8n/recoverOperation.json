@@ -6,7 +6,7 @@
     { "id": "manual", "name": "Start manually", "type": "n8n-nodes-base.manualTrigger", "typeVersion": 1, "position": [0, 0], "parameters": {} },
     {
       "id": "configure", "name": "Configure recovery", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [240, 0],
-      "parameters": { "jsCode": "// Use the ORIGINAL intent key and the same integration lineage. This workflow never sends or starts a flow.\nconst config = { apiOrigin: 'https://api.insidedm.in', intentKey: 'REPLACE_WITH_ORIGINAL_INTENT_KEY', kind: 'messages.send' };\nif (config.intentKey.includes('REPLACE') || !['messages.send', 'events.publish'].includes(config.kind)) throw new Error('Configure the original key and kind: messages.send or events.publish.');\nreturn [{ json: config }];" },
+      "parameters": { "jsCode": "// Use the ORIGINAL intent key and the same integration lineage. This workflow never sends or starts a flow.\nconst config = { apiOrigin: 'https://api.insidedm.io', intentKey: 'REPLACE_WITH_ORIGINAL_INTENT_KEY', kind: 'messages.send' };\nif (config.intentKey.includes('REPLACE') || !['messages.send', 'events.publish'].includes(config.kind)) throw new Error('Configure the original key and kind: messages.send or events.publish.');\nreturn [{ json: config }];" },
       "notes": "A missing retained receipt does not prove no side effect happened. Reconcile the original intent; do not switch to a fresh key automatically."
     },
     {

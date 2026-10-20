@@ -13,7 +13,7 @@ account; SDK consumers do not manage provider tokens or select a sender.
 
 | Runtime | Package | Status | Start here |
 | --- | --- | --- | --- |
-| Node.js 22+ — JavaScript and TypeScript | `@insidedm/sdk` on npm | Implemented alpha; npm publication pending | [Node.js quickstart](packages/node/README.md) |
+| Node.js 22+ — JavaScript and TypeScript | `@insidedm/sdk` on npm | Pre-production alpha (`next`) | [Node.js quickstart](packages/node/README.md) |
 | Python | PyPI distribution to be selected | Planned; no Python package is implemented or published | [Python status](packages/python/README.md) |
 
 JavaScript and TypeScript share the Node.js SDK. Language packages have independent
@@ -23,8 +23,13 @@ versions and changelogs; releases use runtime-prefixed tags such as
 
 ## Start with Node.js
 
-Build the current alpha from source; `npm install @insidedm/sdk` becomes available
-after its first npm release:
+Install the pre-production alpha:
+
+```sh
+npm install @insidedm/sdk@next
+```
+
+Or build from source:
 
 ```sh
 git clone https://github.com/insideDM/sdk.git
@@ -40,11 +45,14 @@ server-side business key:
 ```ts
 import { InsideDM } from '@insidedm/sdk';
 
-const insideDM = new InsideDM({ apiKey: process.env.INSIDEDM_API_KEY! });
+const insideDM = new InsideDM({
+  apiKey: process.env.INSIDEDM_API_KEY!,
+  baseUrl: process.env.INSIDEDM_API_BASE_URL!, // Your development API origin.
+});
 ```
 
-For local evaluation, pass your development API `baseUrl`. Production API and
-provider acceptance and npm access remain pending.
+Pass your development API `baseUrl`: the default production API and provider
+acceptance remain pending. Installing the SDK does not deploy or configure a service.
 
 ## What would you like to build?
 

@@ -17,17 +17,5 @@ const expected = process.env.GITHUB_REPOSITORY;
 if (expected && repository && repository.replace(/\.git$/, '') !== `https://github.com/${expected}`) failures.push('OIDC repository identity does not match package metadata.');
 try { execFileSync(process.execPath, [resolve(root, 'scripts/auditPackage.mjs')], { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] }); }
 catch { failures.push('The package artifact audit did not pass.'); }
-if (failures.length === 0) {
-  // Anonymous, read-only probe. Never send a customer credential to a release check.
-  try {
-    const origin = 'https://api.insidedm.in';
-    for (const [path, status] of [['/healthz/ready', 200], ['/v1/workspace', 401]]) {
-      const response = await fetch(origin + path, { redirect: 'manual', signal: AbortSignal.timeout(10_000) });
-      if (response.status !== status || response.redirected) throw new Error('unexpected deployment response');
-      if (path.startsWith('/v1/') && !response.headers.get('content-type')?.includes('application/problem+json')) throw new Error('public contract is not deployed');
-      void response.body?.cancel();
-    }
-  } catch { failures.push('The default production origin did not pass TLS, readiness and anonymous API contract probes.'); }
-}
 if (failures.length) { console.error('Release blocked:\n' + failures.map((message) => `- ${message}`).join('\n')); process.exitCode = 1; }
 else console.log(`Release checks passed for ${pkg.name}@${pkg.version}. This check does not publish.`);

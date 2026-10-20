@@ -2,6 +2,9 @@
 
 ## 0.1.0-alpha.0 (unreleased)
 
+- Package release checks are independent of hosted API deployment checks.
+- Default API origin and n8n examples use `api.insidedm.io`.
+
 - MIT licensing for the SDK, examples, documentation and bundled public API
   contract, with notices included in repository exports and the npm package.
 

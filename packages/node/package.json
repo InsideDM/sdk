@@ -36,6 +36,7 @@
     "test": "npm run build && node --test tests/*.test.mjs",
     "prepack": "npm run build && node scripts/auditPackage.mjs",
     "check:release": "node scripts/checkRelease.mjs",
+    "check:deployment": "node scripts/checkDeployment.mjs",
     "prepublishOnly": "npm run test && npm run check:release",
     "export:kit": "node scripts/exportKit.mjs"
   },

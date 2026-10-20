@@ -6,7 +6,7 @@
     { "id": "manual", "name": "Start manually", "type": "n8n-nodes-base.manualTrigger", "typeVersion": 1, "position": [0, 0], "parameters": {} },
     {
       "id": "configure", "name": "Configure notification", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [240, 0],
-      "parameters": { "jsCode": "// Replace these non-secret example values. Keep the API key in Header Auth credentials.\nconst config = { apiOrigin: 'https://api.insidedm.in', intentKey: 'orders/REPLACE_ORDER_ID/shipped/v1', phone: 'REPLACE_WITH_E164', templateId: 'REPLACE_WITH_APPROVED_TEMPLATE_ID', variables: { customer_name: 'Asha' } };\nif (Object.values(config).some(value => typeof value === 'string' && value.includes('REPLACE')) || !/^\\+[1-9]\\d{7,14}$/.test(config.phone)) throw new Error('Configure a real source intent key, recipient and approved template first.');\nreturn [{ json: config }];" },
+      "parameters": { "jsCode": "// Replace these non-secret example values. Keep the API key in Header Auth credentials.\nconst config = { apiOrigin: 'https://api.insidedm.io', intentKey: 'orders/REPLACE_ORDER_ID/shipped/v1', phone: 'REPLACE_WITH_E164', templateId: 'REPLACE_WITH_APPROVED_TEMPLATE_ID', variables: { customer_name: 'Asha' } };\nif (Object.values(config).some(value => typeof value === 'string' && value.includes('REPLACE')) || !/^\\+[1-9]\\d{7,14}$/.test(config.phone)) throw new Error('Configure a real source intent key, recipient and approved template first.');\nreturn [{ json: config }];" },
       "notes": "Use a source business action ID, not $execution.id or a timestamp. Reuse the exact key and body when recovering an uncertain result."
     },
     {

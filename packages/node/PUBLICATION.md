@@ -39,19 +39,22 @@ authentication adapters. Do not add a duplicate SDK business route.
 
 ## Release checks
 
-`npm run check:release` checks license/metadata, version/changelog, lockfile, artifact
-audit and anonymous production TLS/readiness/API probes. Local pack/check commands
-remain usable while release is blocked.
+`npm run check:release` checks license/metadata, version/changelog, lockfile and
+artifact audit. It needs no cloud access. `npm run check:deployment` separately
+probes production TLS/readiness/API behavior. A published alpha does not establish
+service readiness; use a development `baseUrl` until production acceptance passes.
 
 Pinned Actions check Node 22/24. Manual `node-release.yml` uses environment `npm`,
 publishing only Node: prereleases under `next`, stable versions under `latest`.
 Configure npm trusted publishing for the exact owner/repository, that workflow
 and environment; use npm 11.5.1+ on a GitHub-hosted runner. Initial registration
-may require a bootstrap publish. Workflows do not create npm accounts or publishers.
+may require a local bootstrap publish without provenance, followed by trusted
+publisher setup. Subsequent CI releases retain provenance. Workflows do not create
+npm accounts or publishers.
 
 Exclude credentials, environment manifests, backend packages, infrastructure and
 private issue links. Review the complete export; audits supplement that review.
 
 CI checks package contents and consumers offline. Production authorization,
 tenant isolation, throttling, delivery and availability require deployed acceptance
-before the first customer release.
+before production customer use, independently of pre-production package publication.
