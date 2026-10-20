@@ -8,13 +8,14 @@ const pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
 const failures = [];
 if (!pkg.license || pkg.license === 'UNLICENSED' || !['LICENSE', 'LICENSE.md'].some((name) => existsSync(resolve(root, name)))) failures.push('Set the owner-approved license and include its license text.');
 const repository = pkg.repository?.url;
-if (typeof repository !== 'string' || !/^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?:\.git)?$/.test(repository)) failures.push('Set repository.url to the actual public SDK GitHub repository.');
+const repositoryUrl = typeof repository === 'string' ? repository.replace(/^git\+/, '') : null;
+if (!repositoryUrl || !/^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?:\.git)?$/.test(repositoryUrl)) failures.push('Set repository.url to the actual public SDK GitHub repository.');
 if (pkg.private === true) failures.push('The package is marked private.');
 if (!readFileSync(resolve(root, 'src/version.ts'), 'utf8').includes(`'${pkg.version}'`)) failures.push('Client and package versions differ.');
 if (!readFileSync(resolve(root, 'CHANGELOG.md'), 'utf8').includes(pkg.version)) failures.push('Add the release version to CHANGELOG.md.');
 if (!existsSync(resolve(root, 'package-lock.json'))) failures.push('Generate and validate the standalone npm lockfile.');
 const expected = process.env.GITHUB_REPOSITORY;
-if (expected && repository && repository.replace(/\.git$/, '') !== `https://github.com/${expected}`) failures.push('OIDC repository identity does not match package metadata.');
+if (expected && repositoryUrl && repositoryUrl.replace(/\.git$/, '') !== `https://github.com/${expected}`) failures.push('OIDC repository identity does not match package metadata.');
 try { execFileSync(process.execPath, [resolve(root, 'scripts/auditPackage.mjs')], { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] }); }
 catch { failures.push('The package artifact audit did not pass.'); }
 if (failures.length) { console.error('Release blocked:\n' + failures.map((message) => `- ${message}`).join('\n')); process.exitCode = 1; }

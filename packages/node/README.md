@@ -1,136 +1,124 @@
 # insideDM SDK for Node.js
 
-The official Node.js and TypeScript SDK for [insideDM](https://insidedm.io).
-Send WhatsApp notifications, start published flows and connect approved client
-businesses with one server key. The organization's WhatsApp account is resolved automatically.
+**WhatsApp messaging, customer workflows and partner integrations in JavaScript and TypeScript.**
 
-**Pre-production alpha:** production API/provider acceptance remains pending.
-Requires Node.js 22+, supports ESM/CommonJS and has zero runtime dependencies.
-Use your development API `baseUrl` until the default production API is ready.
+The official SDK for [insideDM](https://insidedm.io). Connect your application to
+insideDM to send customer notifications, synchronize contact data, trigger
+automations and manage integrations for approved client businesses.
 
-| Your task | Start here | More detail |
-| --- | --- | --- |
-| Notify a customer | [Send a notification](#send-a-notification) | [Templates, eligibility and recovery](docs/business-reference.md#send-a-notification) |
-| Start an existing automation | [Start a published flow](#start-a-published-flow-from-your-business-system) | [Inputs and run progress](docs/business-reference.md#start-a-published-flow-from-your-business-system) |
-| Serve client businesses | [Partners and white labels](#partners-and-white-labels) | [Merchant approval and first send](docs/partner-quickstart.md) |
-| Connect n8n | [Integration guide](docs/n8n.md) | [Importable workflows](examples/n8n/README.md) |
+**Node.js 22+ · TypeScript types · ESM and CommonJS · Zero runtime dependencies · MIT**
 
-## Install and configure
+[Website](https://insidedm.io) · [API reference](https://github.com/insideDM/sdk/blob/main/packages/node/docs/business-reference.md) · [Partner guide](https://github.com/insideDM/sdk/blob/main/packages/node/docs/partner-quickstart.md) · [GitHub](https://github.com/insideDM/sdk)
 
-Install the alpha:
+## Install
 
 ```sh
 npm install @insidedm/sdk@next
 ```
 
-Or build from source:
+Use this server-side SDK in Node.js applications, background workers and your
+integration backend. Keep API keys in your server's environment or secret manager.
 
-```sh
-git clone https://github.com/insideDM/sdk.git
-cd sdk/packages/node
-npm ci --ignore-scripts
-npm run build
-npm pack
-```
+## Quickstart: send a WhatsApp notification
 
-In your application, install the resulting `insidedm-sdk-0.1.0-alpha.0.tgz`
-using `npm install /path/to/insidedm-sdk-0.1.0-alpha.0.tgz`.
+Create a scoped business key in your insideDM workspace. Use an approved WhatsApp
+template and a customer you are permitted to contact. The SDK resolves your
+organization's WhatsApp account automatically.
 
 ```ts
 import { InsideDM } from '@insidedm/sdk';
+
 const insideDM = new InsideDM({
   apiKey: process.env.INSIDEDM_API_KEY!,
-  baseUrl: process.env.INSIDEDM_API_BASE_URL!, // Your development API origin.
 });
+
+const { data: operation, meta } = await insideDM.messages.send(
+  {
+    to: { phone: '+919800000099' },
+    content: {
+      type: 'template',
+      template: { id: process.env.INSIDEDM_TEMPLATE_ID! },
+      variables: { name: 'Asha' },
+    },
+  },
+  { idempotencyKey: 'orders/order-123/shipped' },
+);
+
+console.log(operation.id, operation.state, meta.requestId);
 ```
 
-Create a scoped business key in InsideDM. Construction makes no request; the
-first operation discovers the business when needed. You do not pass a WhatsApp
-sender or provider token. For this alpha, use your development API `baseUrl`.
+Replace the sample recipient, template ID and variable keys with your own values.
+Sending requires `messages.send`; tracking requires `operations.read`. Discover
+approved templates with `insideDM.templates.list({ limit: 25 })` when your key has
+`templates.read`. Use `messages.preview()` to inspect eligibility before sending.
+
+The default API is `https://api.insidedm.io`. **This release uses the alpha
+channel; hosted production acceptance is pending.** For evaluation against an
+existing insideDM test deployment, add `baseUrl` to the client configuration.
+Your application calls insideDM's service; the SDK does not deploy a backend.
 CommonJS uses `const { InsideDM } = require('@insidedm/sdk')`.
 
-## Send a notification
+## What you can build
 
-Use an approved WhatsApp template and a customer you are permitted to contact.
-This task needs `messages.send`; tracking needs `operations.read`. With
-`templates.read`, discover IDs and exact variable keys using
-`insideDM.templates.list({limit:25})`. An existing approved template ID needs no
-alias setup. Replace the sample phone and template ID with your own inputs.
+| Business need | SDK capabilities |
+| --- | --- |
+| Customer notifications | Discover approved templates, preview eligibility and send WhatsApp notifications. |
+| CRM synchronization | Create contacts and update names, tags and custom fields. |
+| Event-driven automation | Start published flows from your order, CRM or business events and inspect run progress. |
+| Reliable processing | Recover submissions with the original intent key, inspect operations and verify signed webhooks. |
+| White-label and reseller integrations | Connect separately approved businesses through one application credential. |
+| Reusable client automations | Deploy blueprints as drafts, inspect changes and request native human publication review. |
+| n8n integrations | Connect customer workflows using importable examples, published flows and verified events. |
 
-```ts
-import type { NotificationInput } from '@insidedm/sdk';
+Configure templates and flows in the insideDM dashboard, then use them from
+your application through the SDK.
+See the [complete business reference](https://github.com/insideDM/sdk/blob/main/packages/node/docs/business-reference.md)
+and [partner reference](https://github.com/insideDM/sdk/blob/main/packages/node/docs/partner-reference.md)
+for methods, permissions and result meanings.
 
-const notification: NotificationInput = {
-  to: { phone: '+919800000099' },
-  content: {
-    type: 'template',
-    template: { id: process.env.INSIDEDM_TEMPLATE_ID! },
-    variables: { name: 'Asha' }, // Exact keys come from the chosen template.
-  },
-};
-
-const { data: preview } = await insideDM.messages.preview(notification);
-if (!preview.eligible) {
-  console.log(preview.reasonCode); // Resolve eligibility before sending.
-} else {
-  // Save this key in your own order/job record before sending.
-  const key = 'orders/order-123/ready';
-  const { data: operation, meta } = await insideDM.messages.send(
-    notification,
-    { idempotencyKey: key },
-  );
-  console.log(operation.id, operation.state, meta.requestId);
-}
-```
-
-In JavaScript, omit the type import and `: NotificationInput`; the object and calls
-are identical. Preview sends nothing and grants no consent. Send rechecks current policy.
-An accepted operation means retained work, not customer delivery.
-Keep the operation ID and the same logical key across retries and restarts:
+## Track a notification
 
 ```ts
-const { data: progress } = await insideDM.operations.get(savedOperationId);
-// If the send answer was lost, recover with the original key:
-const { data: recovered } = await insideDM.operations.lookup(savedNotificationKey);
+const { data: progress } = await insideDM.operations.get(operation.id);
+console.log(progress.state);
+
+// If the original send response was lost, recover with the SAME saved key.
+const { data: recovered } = await insideDM.operations.lookup(
+  'orders/order-123/shipped',
+);
 ```
 
-Use a fresh key only for a different action. An uncertain provider outcome needs
-reconciliation; blindly sending with a new key can duplicate it. See
-[message outcomes and signed events](docs/business-reference.md#receive-webhooks).
+Save the intent key before sending and reuse it across retries and restarts.
+An accepted operation confirms retained work; provider submission and customer
+delivery are separate outcomes. Never create a new key merely because a response
+was lost. See [operation recovery and signed events](https://github.com/insideDM/sdk/blob/main/packages/node/docs/business-reference.md#receive-webhooks).
 
-## Start a published flow from your business system
+## Start a published flow
 
-First publish and activate a from-system flow in the existing builder and enable
-its start endpoint. With `events.write`, discover its ID, mapped input fields and
-`endpointConfigured` status using `insideDM.events.bindings.list({limit:25})`.
-Choose the intended flow and save its ID in your integration configuration.
-`binding` below is that flow ID; `subject.contactId` is an existing contact.
+Publish and activate a from-system flow in the insideDM flow builder, enable its
+start endpoint and map the input fields. Discover eligible flows with
+`insideDM.events.bindings.list({ limit: 25 })` using `events.write`.
 
 ```ts
 const { data: submission } = await insideDM.events.publish({
-  id: 'order-123-ready', // Save once per business event; this is also its retry key.
-  binding: savedFlowId,
-  subject: { contactId: savedContactId },
-  properties: { payload: { orderId: 'order-123' } }, // Match the flow's mapped fields.
+  id: 'order-123-paid',
+  binding: process.env.INSIDEDM_FLOW_ID!,
+  subject: { contactId: process.env.INSIDEDM_CONTACT_ID! },
+  properties: { payload: { orderId: 'order-123' } },
 });
 
-const { data: eventProgress } = await insideDM.operations.get(submission.id);
-if (eventProgress.phase === 'flow_started' && eventProgress.resource?.type === 'flow_run') {
-  const { data: run } = await insideDM.flows.runs.get(eventProgress.resource.id);
-  console.log(run.status);
-}
+const { data: status } = await insideDM.operations.get(submission.id);
 ```
 
-Progress reads need `operations.read`; run reads need `flows.read`. The first read
-may still show queued work. Intake, execution and delivery are separate stages.
-See the [complete flow reference](docs/business-reference.md#start-a-published-flow-from-your-business-system).
+Keep the event ID stable and match `properties` to the flow's configured mappings.
+Tracking needs `operations.read`; run reads need `flows.read`. See
+[flow inputs and run progress](https://github.com/insideDM/sdk/blob/main/packages/node/docs/business-reference.md#start-a-published-flow-from-your-business-system).
 
-## Partners and white labels
+## Partners, white labels and resellers
 
-Keep one application key on your backend. Each business separately approves your
-application and scopes. An **installation** is that approved connection;
-**delegation** is the short-lived access the SDK obtains internally to use it.
-Select the business from your authenticated saved client mapping:
+Keep one application key on your backend. Each client business approves an
+independent installation and its scopes. Select the business from your saved,
+authenticated client mapping; the SDK handles delegated credentials internally.
 
 ```ts
 import { InsideDMPlatform } from '@insidedm/sdk';
@@ -138,43 +126,28 @@ import { InsideDMPlatform } from '@insidedm/sdk';
 const platform = new InsideDMPlatform({
   apiKey: process.env.INSIDEDM_APPLICATION_KEY!,
 });
-const business = platform.forBusiness(savedClient.insideDmBusinessId);
-const { data: operation } = await business.messages.send(notification, {
-  idempotencyKey: 'orders/order-123/ready',
-});
+
+const business = platform.forBusiness(process.env.INSIDEDM_BUSINESS_ID!);
+const { data: contacts } = await business.contacts.list({ limit: 25 });
 ```
 
-The same business methods and input types work for direct and partner clients.
-`forBusiness()` makes no request and creates no permission; access is checked
-when used. Begin with the [partner quickstart](docs/partner-quickstart.md), then
-use [provisioning](docs/client-provisioning.md), [hosted WhatsApp setup](docs/hosted-onboarding.md),
-[partner events](docs/partner-webhooks.md) or [reusable flow blueprints](docs/blueprints.md)
-when needed. Draft creation and review requests retain human publication authority.
+Direct and partner clients share the same business methods. Client selection
+makes no request; each operation checks current access. Start with the
+[partner onboarding guide](https://github.com/insideDM/sdk/blob/main/packages/node/docs/partner-quickstart.md).
 
-## Understand results and errors
+## Errors and request tracing
 
-Detail calls return `{data, meta}`. Lists also return `page.nextCursor`.
-`meta.requestId` identifies the server request; it is useful for support.
-
-| Observation | What it establishes |
-| --- | --- |
-| `messages.preview().data.eligible` | Current eligibility for that input; sends nothing. |
-| `messages.send()` returns an operation | Submission work was retained; inspect its state. |
-| Message operation `state: 'succeeded'` | Provider submission succeeded; delivery/read status is separate. |
-| `messages.get(messageId).data.deliveryState` | Latest retained message receipt; requires `messages.read`. |
-| `events.publish()` returns an operation | Event intake was retained; inspect flow admission separately. |
-| `flows.runs.get(runId)` | Actual run progress; completion alone does not prove delivery. |
-| Managed draft/review request | Prepared for human review; no machine approval or publication. |
+Detail responses return `{ data, meta }`; list responses also include
+`page.nextCursor`. Use `meta.requestId` for support and tracing.
 
 ```ts
-import { InsideDMConfigurationError, InsideDMApiError } from '@insidedm/sdk';
+import { InsideDMApiError, InsideDMConfigurationError } from '@insidedm/sdk';
 
 try {
   await insideDM.contacts.list({ limit: 25 });
 } catch (error) {
   if (error instanceof InsideDMConfigurationError) {
-    console.error(error.message); // e.g. to.phone: Use an E.164 phone number...
-    // error.field identifies the documented field, without its supplied value.
+    console.error(error.field, error.message);
   } else if (error instanceof InsideDMApiError) {
     console.error(error.code, error.requestId, error.retryAfterSeconds);
   }
@@ -182,37 +155,43 @@ try {
 }
 ```
 
-Keep server details (`error.problem`) and retry context (`error.recovery`) out of
-routine logs. Requests have bounded retries/timeouts and accept `signal`.
-See [request controls and error categories](docs/business-reference.md#results-errors-and-request-controls).
+Keep `error.problem` and `error.recovery` out of routine logs. Requests support
+bounded retries, timeouts and cancellation. See
+[request controls and error categories](https://github.com/insideDM/sdk/blob/main/packages/node/docs/business-reference.md#results-errors-and-request-controls).
 
-## Explore more
-
-| Need | Interface or guide |
-| --- | --- |
-| Page through records | `list()` reads one page; `iterate()` yields records lazily; `pages()` yields pages. Set `maxPages`/`maxItems` or break to stop. |
-| Sync CRM context | [Contacts, display names, tags and custom fields](docs/business-reference.md#available-operations) |
-| Inspect permissions and setup | `workspace.get()`, `messaging.getReadiness()`, `consents.get(contactId)`; scopes remain separate. |
-| Track outcomes | [Raw-body webhook verification](docs/business-reference.md#receive-webhooks) and [partner receivers](docs/partner-webhooks.md) |
-| Manage reusable client flows | [Blueprints, controlled updates and human review](docs/blueprints.md) |
-| Read every supported method | [Business reference](docs/business-reference.md), [partner reference](docs/partner-reference.md) and [OpenAPI](openapi/public-v1.yaml) |
-
-Try a synthetic client without a key or network connection:
+## Try the interface offline
 
 ```ts
 import { createTestClient } from '@insidedm/sdk/testing';
+
 const demo = createTestClient();
 const { data: workspace } = await demo.workspace.get();
 ```
 
-Fixtures do not prove live authorization or delivery. See [offline development](docs/business-reference.md#offline-development).
-For source builds and publishing gates, see [PUBLICATION.md](PUBLICATION.md).
+The test client uses synthetic responses and needs no key or network connection.
+It helps explore the interface; it does not establish live permissions or delivery.
 
-Explore insideDM's [WhatsApp automation](https://insidedm.io/whatsapp) and
-[Instagram automation](https://insidedm.io/instagram) for customer conversations.
+## Guides and reference
+
+| Topic | Documentation |
+| --- | --- |
+| Business API | [Methods, scopes, pagination and webhooks](https://github.com/insideDM/sdk/blob/main/packages/node/docs/business-reference.md) |
+| Partner platform | [Approvals, client provisioning and hosted setup](https://github.com/insideDM/sdk/blob/main/packages/node/docs/partner-reference.md) |
+| Reusable automations | [Blueprints, controlled updates and human review](https://github.com/insideDM/sdk/blob/main/packages/node/docs/blueprints.md) |
+| n8n | [Integration guide and importable workflows](https://github.com/insideDM/sdk/blob/main/packages/node/docs/n8n.md) |
+| API contract | [OpenAPI specification](https://github.com/insideDM/sdk/blob/main/packages/node/openapi/public-v1.yaml) |
+| Source and releases | [Repository](https://github.com/insideDM/sdk), [changelog](https://github.com/insideDM/sdk/blob/main/packages/node/CHANGELOG.md), [contributing](https://github.com/insideDM/sdk/blob/main/CONTRIBUTING.md) |
+| Help and security | [Report an issue](https://github.com/insideDM/sdk/issues), [private security reporting](https://github.com/insideDM/sdk/blob/main/SECURITY.md) |
+
+## About insideDM
+
+[insideDM](https://insidedm.io) helps businesses manage and automate customer
+conversations. Explore [WhatsApp automation for businesses](https://insidedm.io/whatsapp)
+and [Instagram DM automation](https://insidedm.io/instagram), alongside the SDK's
+programmatic notification and workflow integrations.
 
 ## License
 
-[MIT](LICENSE) covers this SDK, examples, documentation and bundled API contract.
-Commercial use and redistribution are permitted; retain the license notice.
-The private backend and hosted-service access are governed separately.
+[MIT](https://github.com/insideDM/sdk/blob/main/LICENSE). Commercial and white-label
+redistribution are permitted with the license notice retained. The private
+backend and hosted-service access are governed separately.

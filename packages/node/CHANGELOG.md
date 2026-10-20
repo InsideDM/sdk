@@ -1,6 +1,14 @@
 # Changelog
 
-## 0.1.0-alpha.0 (unreleased)
+## 0.1.0-alpha.1 (unreleased)
+
+- Rewritten npm guide with a complete WhatsApp quickstart, customer use cases,
+  partner examples and direct documentation links.
+- Consistent insideDM branding, descriptive package metadata and product links.
+- Keep the maintainer publication guide in the source repository; npm retains
+  customer guides, examples, the full API contract and MIT license.
+
+## 0.1.0-alpha.0 (2026-10-21)
 
 - Package release checks are independent of hosted API deployment checks.
 - Default API origin and n8n examples use `api.insidedm.io`.

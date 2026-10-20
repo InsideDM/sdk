@@ -1,35 +1,60 @@
 # insideDM SDKs
 
-Official SDKs for [insideDM](https://insidedm.io), the customer-conversation
-platform for [WhatsApp automation](https://insidedm.io/whatsapp) and
-[Instagram automation](https://insidedm.io/instagram).
+**Build customer messaging and automation integrations with insideDM.**
 
-Connect your backend to supported insideDM APIs: notify customers, synchronize
-contact context, start published flows, track outcomes and serve independently
-approved client businesses. The platform resolves each organization's WhatsApp
-account; SDK consumers do not manage provider tokens or select a sender.
+Official SDKs for [insideDM](https://insidedm.io), the platform for
+[WhatsApp automation](https://insidedm.io/whatsapp) and
+[Instagram DM automation](https://insidedm.io/instagram).
+Connect your applications to supported insideDM APIs for WhatsApp notifications,
+contact synchronization, published flows and approved partner integrations.
 
 ## Choose your SDK
 
-| Runtime | Package | Status | Start here |
+| Language | Package | Status | Documentation |
 | --- | --- | --- | --- |
-| Node.js 22+ — JavaScript and TypeScript | `@insidedm/sdk` on npm | Pre-production alpha (`next`) | [Node.js quickstart](packages/node/README.md) |
-| Python | PyPI distribution to be selected | Planned; no Python package is implemented or published | [Python status](packages/python/README.md) |
+| JavaScript / TypeScript · Node.js 22+ | [`@insidedm/sdk`](https://www.npmjs.com/package/@insidedm/sdk) | Alpha channel: `next` | [Quickstart and examples](packages/node/README.md) |
+| Python | Planned | Not implemented or published | [Python status](packages/python/README.md) |
 
-JavaScript and TypeScript share the Node.js SDK. Language packages have independent
-versions and changelogs; releases use runtime-prefixed tags such as
-`node-v0.1.0-alpha.0`. A future Python release will use its own version and
-`python-v…` tag. There is no repository-wide package version.
+Each language package has independent versions, changelogs and releases.
 
-## Start with Node.js
-
-Install the pre-production alpha:
+## Get started with Node.js
 
 ```sh
 npm install @insidedm/sdk@next
 ```
 
-Or build from source:
+```ts
+import { InsideDM } from '@insidedm/sdk';
+
+const insideDM = new InsideDM({
+  apiKey: process.env.INSIDEDM_API_KEY!,
+});
+```
+
+Use a scoped business key from insideDM. The SDK resolves your workspace and its
+WhatsApp account automatically. Applications call the insideDM service at
+`https://api.insidedm.io`; no provider token or sender selection is required.
+The alpha is for pre-production evaluation. While hosted production acceptance is
+pending, use `baseUrl` to connect to an existing insideDM test deployment.
+
+Continue with the [WhatsApp notification quickstart](packages/node/README.md#quickstart-send-a-whatsapp-notification).
+
+## Build with insideDM
+
+| Customer task | Guide |
+| --- | --- |
+| Send WhatsApp notifications | [Templates, sending and operation recovery](packages/node/README.md) |
+| Synchronize customer context | [Contacts, tags, custom fields and pagination](packages/node/docs/business-reference.md) |
+| Trigger an automation | [Published flow inputs and run progress](packages/node/docs/business-reference.md#start-a-published-flow-from-your-business-system) |
+| Serve client businesses | [Partner, reseller and white-label onboarding](packages/node/docs/partner-quickstart.md) |
+| Reuse automations across clients | [Blueprints, updates and publication review](packages/node/docs/blueprints.md) |
+| Connect n8n | [Integration guide and importable workflows](packages/node/docs/n8n.md) |
+| Explore all supported operations | [Business reference](packages/node/docs/business-reference.md), [partner reference](packages/node/docs/partner-reference.md), [OpenAPI](packages/node/openapi/public-v1.yaml) |
+
+Each guide explains permissions, safe retry keys and result meanings. Submitted
+work, flow completion and customer delivery remain distinct stages.
+
+## Develop from source
 
 ```sh
 git clone https://github.com/insideDM/sdk.git
@@ -39,58 +64,18 @@ npm run build
 npm pack
 ```
 
-Install the resulting tarball in your backend application, then configure one
-server-side business key:
+The repository groups implementations under `packages/node` and, when implemented,
+`packages/python`. Runtime-specific checks and manual releases live in
+`.github/workflows`. Node releases use `node-v<version>` tags; future Python
+releases will use `python-v<version>` with their own PyPI workflow.
 
-```ts
-import { InsideDM } from '@insidedm/sdk';
-
-const insideDM = new InsideDM({
-  apiKey: process.env.INSIDEDM_API_KEY!,
-  baseUrl: process.env.INSIDEDM_API_BASE_URL!, // Your development API origin.
-});
-```
-
-Pass your development API `baseUrl`: the default production API and provider
-acceptance remain pending. Installing the SDK does not deploy or configure a service.
-
-## What would you like to build?
-
-| Customer task | Guide |
-| --- | --- |
-| Send a WhatsApp notification | [Approved templates, preview, send and recovery](packages/node/README.md#send-a-notification) |
-| Start an existing flow | [Discover inputs, submit an event and track the run](packages/node/README.md#start-a-published-flow-from-your-business-system) |
-| Integrate client businesses | [Partner approval and first notification](packages/node/docs/partner-quickstart.md) |
-| Reuse flows across approved clients | [Blueprints, controlled updates and native human review](packages/node/docs/blueprints.md) |
-| Connect n8n or a slow external job | [Workflows, signed events and durable start/status receiver](packages/node/docs/n8n.md) |
-| Read the complete supported interface | [Business reference](packages/node/docs/business-reference.md), [partner reference](packages/node/docs/partner-reference.md), [OpenAPI](packages/node/openapi/public-v1.yaml) |
-
-An accepted message operation does not prove customer delivery. Event intake,
-flow execution and human publication are separate stages. Each guide explains
-the result meaning, required scopes and original-key recovery.
-
-## Repository layout
-
-```text
-packages/
-  node/       Node.js SDK, types, examples, tests and its own package version
-  python/     Planned Python SDK; status only until implementation
-.github/
-  workflows/  Runtime-specific checks and release workflows
-```
-
-The Node workflow builds and checks Node 22 and 24. Its manually dispatched
-release workflow uses the `npm` environment and publishes only the Node package.
-A future Python package will have independent PyPI credentials, checks and a
-release workflow; adding a language does not require releasing every other SDK.
-
-See [contributing](CONTRIBUTING.md), [security reporting](SECURITY.md) and the
-[Node publication guide](packages/node/PUBLICATION.md).
+See [contributing](CONTRIBUTING.md), [security reporting](SECURITY.md),
+[Node release notes](packages/node/CHANGELOG.md) and
+[publication guidance](packages/node/PUBLICATION.md).
 
 ## License
 
-The SDK source, examples, documentation and bundled API contract are licensed
-under [MIT](LICENSE). Businesses and white-label partners may use, modify and
-redistribute them commercially while retaining the copyright and license notice.
-The private InsideDM backend and access to the hosted service are governed
-separately; this license does not grant API credentials or service access.
+[MIT](LICENSE) covers the SDK source, examples, documentation and bundled API
+contract. Businesses and white-label partners may use, modify and redistribute
+them commercially while retaining the copyright and license notice. The private
+backend and hosted-service access are governed separately.
