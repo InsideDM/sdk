@@ -12,6 +12,7 @@ for (const optional of ['package-lock.json', 'LICENSE', 'LICENSE.md']) if (exist
 const templates = existsSync(resolve(root, 'repository')) ? resolve(root, 'repository') : resolve(root, '../..');
 const github = existsSync(resolve(root, '.github')) ? resolve(root, '.github') : resolve(templates, '.github');
 const copies = entries.map(entry => ({source: resolve(root, entry), destination: `packages/node/${entry}`}));
+for (const license of ['LICENSE', 'LICENSE.md']) if (existsSync(resolve(root, license))) copies.push({source: resolve(root, license), destination: license});
 copies.push(
   {source: resolve(templates, 'README.md'), destination: 'README.md'},
   {source: resolve(templates, 'CONTRIBUTING.md'), destination: 'CONTRIBUTING.md'},

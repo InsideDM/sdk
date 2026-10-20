@@ -1,5 +1,7 @@
 # Contributing
 
+Contributions are provided under this SDK's [MIT license](LICENSE).
+
 Use Node.js 22 or 24. Install with `npm ci --ignore-scripts`, run `npm test`, and run `npm pack` to check the distribution. Tests run without an InsideDM account, API key, or provider connection. Keep changes focused on a complete customer use case and include a changelog entry for public behavior changes.
 
 The package root, `/webhooks`, and `/testing` are the supported entrypoints. Internal files are not public imports. Do not add runtime dependencies or another client resource without explaining the customer need and the supporting server contract. Configuration must remain local and side-effect free until a method is called. Never add real merchant data or credentials to fixtures.

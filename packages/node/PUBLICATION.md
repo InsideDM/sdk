@@ -1,40 +1,57 @@
 # Public kit and npm publication
 
-This package is maintained alongside its authoritative backend contract, then exported as a standalone source repository. Contract generation runs only in the private monorepo. Public contributors need no access to that monorepo to build, test or pack the exported kit.
+The SDK source, examples, documentation and bundled API contract use [MIT](LICENSE).
+The private backend and hosted-service access are governed separately. Preserve
+the license in source exports and npm artifacts.
 
-The public repository is `insideDM/sdk`. Node lives in `packages/node` with its
-own npm version and changelog. Python is planned, not implemented; its eventual
-PyPI version and release workflow will be independent. Build/package commands
-below run from `packages/node`; source-kit export also includes the shared shell.
+The public repository is `insideDM/sdk`. Node lives in `packages/node` with its own
+version and changelog. Python is planned; its eventual release will be independent.
+Run the commands below from `packages/node` in the public repository.
 
 ## Prepare the repository
 
-1. Set the owner-approved repository and license in `package.json`; include the corresponding license text. Confirm that copied public contract and signing-code sources may be distributed under that license. `UNLICENSED` deliberately blocks release until that decision is recorded.
-2. Confirm ownership and availability of the npm scope and package name. The current planned name is `@insidedm/sdk`; its availability has not been asserted.
-3. Generate the standalone npm lockfile with `npm install --package-lock-only --ignore-scripts`, then run `npm ci --ignore-scripts`, `npm test` and `npm pack` in a clean exported directory.
-4. Export with `npm run export:kit -- --out /absolute/new-directory`. The exporter refuses existing destinations and copies an explicit allowlist. Inspect the result, including the npm dry-run manifest. Create the intended public GitHub repository and push that curated directory after publication is authorized. Do not make the application monorepo public.
-5. Keep repository metadata pinned to GitHub's registered casing and `directory: packages/node`. Configure main-branch protection, private vulnerability reporting and the `npm` release environment. Tag Node releases `node-v<package version>` from a reviewed `main` commit. Other runtimes use their own tag prefix and versions.
+1. Confirm npm scope/package publishing access for `@insidedm/sdk`.
+2. Keep `package.json` and the standalone lockfile aligned. From a clean export,
+   run `npm ci --ignore-scripts`, `npm test` and `npm pack`; inspect the manifest.
+3. `npm run export:kit -- --out /absolute/new-directory` copies an allowlist,
+   including root and Node licenses, and refuses existing destinations. Review
+   source changes before pushing. Never publish the private application monorepo.
+4. Preserve registered repository casing, `directory: packages/node`, branch
+   protection, private vulnerability reporting and the `npm` environment.
+   Node tags use `node-v<package version>` from reviewed `main`; other runtimes
+   use their own tag prefixes and versions.
 
 ## Contract updates in the application monorepo
 
-Run `node scripts/sdk/syncContract.mjs`, review the resulting diff and run `node scripts/sdk/syncContract.mjs --check`. The generator snapshots public wire types, vocabulary, schemas, operation descriptors, key grammar and the signing codec. It strips private imports. Its closed manifest permits the reviewed contact PATCH and message/preview/lookup/cancel POST operations; other new non-GET operations require review.
+Maintainers run `node scripts/sdk/syncContract.mjs`, review the diff, then run it
+with `--check`. It snapshots reviewed public types, schemas, operations and signing
+code while removing private imports. New writes require contract review. Public
+contributors can build and check the kit without the private repository.
 
-Deployment verification for this alpha includes custom-field updates and notification execution: configure the dedicated transport secret at edge and owner, register the edge's public verification key, deploy its private signing key only to the edge, and rebuild a disposable database from the current schema. Deploy the owning message worker and the UI connector together; the previous inbox reply route is retired. Exercise one approved test contact, same-key replay, changed-input conflict, consent withdrawal, cancellation, lost response and revocation through the SDK. Local provider tests replace the network and do not prove production Meta acceptance. Missing signing or transport configuration returns `dependency_unavailable`; an unconfigured operation must not be described as production-ready.
+Backend acceptance requires current edge/owner transport and signing configuration,
+a disposable schema rebuild, and coordinated worker/UI deployment. Exercise an
+approved test contact, replay, changed-input conflict, consent withdrawal,
+cancellation, lost response and revocation. Missing signing or transport returns
+`dependency_unavailable`. Local provider substitutes do not prove Meta acceptance.
 
-These files are contract snapshots, not a second backend implementation. There is no SDK-specific business route. Any operation added later must first follow the shared-endpoint architecture: one operation, DTO and owning handler for UI and SDK, with appropriate authentication adapters. Do not add an SDK route beside an existing UI route for the same action.
+UI and SDK actions share one operation, DTO and owning handler with appropriate
+authentication adapters. Do not add a duplicate SDK business route.
 
 ## Release checks
 
-`npm run check:release` requires approved metadata and license text, a version/changelog match, the npm lockfile, a clean distribution audit and the default production origin's TLS/readiness/public-API probes. Its network probes are anonymous. Local pack/test commands remain usable while publication is blocked.
+`npm run check:release` checks license/metadata, version/changelog, lockfile, artifact
+audit and anonymous production TLS/readiness/API probes. Local pack/check commands
+remain usable while release is blocked.
 
-The pinned GitHub Actions check Node 22/24 in `packages/node`. Manual
-`node-release.yml` uses the `npm` environment and publishes only this package:
-prereleases under `next`, stable versions under `latest`. Configure npm trusted
-publishing with the exact GitHub owner/repository, workflow `node-release.yml`
-and environment `npm`; use npm 11.5.1+ and publication permission on a GitHub-hosted
-runner. A new npm package may require a separately authorized bootstrap publish.
-No workflow creates registry accounts, organizations or publisher associations.
+Pinned Actions check Node 22/24. Manual `node-release.yml` uses environment `npm`,
+publishing only Node: prereleases under `next`, stable versions under `latest`.
+Configure npm trusted publishing for the exact owner/repository, that workflow
+and environment; use npm 11.5.1+ on a GitHub-hosted runner. Initial registration
+may require a bootstrap publish. Workflows do not create npm accounts or publishers.
 
-Do not put long-lived npm tokens, API keys, webhook secrets, environment manifests, backend packages, infrastructure configuration or private issue links in the public kit. The export and distribution audits are guardrails; review the complete source export before its first public push.
+Exclude credentials, environment manifests, backend packages, infrastructure and
+private issue links. Review the complete export; audits supplement that review.
 
-CI verifies package contents and consumers without network calls to InsideDM. It does not prove production authorization, tenant isolation, throttling, webhook delivery or backend availability. Those remain backend deployment acceptance checks and must pass before the first customer release.
+CI checks package contents and consumers offline. Production authorization,
+tenant isolation, throttling, delivery and availability require deployed acceptance
+before the first customer release.

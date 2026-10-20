@@ -7,7 +7,7 @@
   "bugs": { "url": "https://github.com/insideDM/sdk/issues" },
   "keywords": ["insidedm", "whatsapp", "automation", "sdk", "typescript", "nodejs", "n8n"],
   "type": "module",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "engines": { "node": ">=22" },
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",

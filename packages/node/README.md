@@ -4,7 +4,7 @@ The official Node.js and TypeScript SDK for [insideDM](https://insidedm.io).
 Send WhatsApp notifications, start published flows and connect approved client
 businesses with one server key. The organization's WhatsApp account is resolved automatically.
 
-**Unpublished npm alpha:** licensing, npm access and production acceptance are pending.
+**Unpublished npm alpha:** npm access and production acceptance are pending.
 Requires Node.js 22+, supports ESM/CommonJS and has zero runtime dependencies.
 For local evaluation, build a tarball and use your development `baseUrl`.
 
@@ -202,3 +202,9 @@ For source builds and publishing gates, see [PUBLICATION.md](PUBLICATION.md).
 
 Explore insideDM's [WhatsApp automation](https://insidedm.io/whatsapp) and
 [Instagram automation](https://insidedm.io/instagram) for customer conversations.
+
+## License
+
+[MIT](LICENSE) covers this SDK, examples, documentation and bundled API contract.
+Commercial use and redistribution are permitted; retain the license notice.
+The private backend and hosted-service access are governed separately.

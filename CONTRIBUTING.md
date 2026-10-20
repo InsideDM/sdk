@@ -25,3 +25,5 @@ Shared repository documentation should accurately describe each runtime's curren
 capabilities. Never copy backend services, environment files, real customer data,
 provider credentials or registry tokens into this repository. Report sensitive
 issues through [the private security process](SECURITY.md).
+
+Contributions to this repository are provided under its [MIT license](LICENSE).

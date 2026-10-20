@@ -2,6 +2,9 @@
 
 ## 0.1.0-alpha.0 (unreleased)
 
+- MIT licensing for the SDK, examples, documentation and bundled public API
+  contract, with notices included in repository exports and the npm package.
+
 - Task-first entry guide, separate business/partner/blueprint references, editor
   help for collection traversal and lifecycle-aware methods. Local configuration
   failures identify documented fields with fixed corrective hints; supplied values

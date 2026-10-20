@@ -44,8 +44,7 @@ const insideDM = new InsideDM({ apiKey: process.env.INSIDEDM_API_KEY! });
 ```
 
 For local evaluation, pass your development API `baseUrl`. Production API and
-provider acceptance, npm access and licensing remain pending. Source is currently
-`UNLICENSED`; public visibility does not establish an open-source license.
+provider acceptance and npm access remain pending.
 
 ## What would you like to build?
 
@@ -79,3 +78,11 @@ release workflow; adding a language does not require releasing every other SDK.
 
 See [contributing](CONTRIBUTING.md), [security reporting](SECURITY.md) and the
 [Node publication guide](packages/node/PUBLICATION.md).
+
+## License
+
+The SDK source, examples, documentation and bundled API contract are licensed
+under [MIT](LICENSE). Businesses and white-label partners may use, modify and
+redistribute them commercially while retaining the copyright and license notice.
+The private InsideDM backend and access to the hosted service are governed
+separately; this license does not grant API credentials or service access.
