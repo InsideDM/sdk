@@ -2,13 +2,18 @@
 
 This package is maintained alongside its authoritative backend contract, then exported as a standalone source repository. Contract generation runs only in the private monorepo. Public contributors need no access to that monorepo to build, test or pack the exported kit.
 
+The public repository is `insideDM/sdk`. Node lives in `packages/node` with its
+own npm version and changelog. Python is planned, not implemented; its eventual
+PyPI version and release workflow will be independent. Build/package commands
+below run from `packages/node`; source-kit export also includes the shared shell.
+
 ## Prepare the repository
 
 1. Set the owner-approved repository and license in `package.json`; include the corresponding license text. Confirm that copied public contract and signing-code sources may be distributed under that license. `UNLICENSED` deliberately blocks release until that decision is recorded.
 2. Confirm ownership and availability of the npm scope and package name. The current planned name is `@insidedm/sdk`; its availability has not been asserted.
 3. Generate the standalone npm lockfile with `npm install --package-lock-only --ignore-scripts`, then run `npm ci --ignore-scripts`, `npm test` and `npm pack` in a clean exported directory.
 4. Export with `npm run export:kit -- --out /absolute/new-directory`. The exporter refuses existing destinations and copies an explicit allowlist. Inspect the result, including the npm dry-run manifest. Create the intended public GitHub repository and push that curated directory after publication is authorized. Do not make the application monorepo public.
-5. Add the actual repository URL, bugs URL and homepage to package metadata. Set the public repository's main branch protection, private vulnerability reporting and an `npm` environment for releases. A release must correspond to a reviewed version commit on `main`; tag it consistently as `v<package version>`. The release workflow refuses other branches.
+5. Keep repository metadata pinned to GitHub's registered casing and `directory: packages/node`. Configure main-branch protection, private vulnerability reporting and the `npm` release environment. Tag Node releases `node-v<package version>` from a reviewed `main` commit. Other runtimes use their own tag prefix and versions.
 
 ## Contract updates in the application monorepo
 
@@ -22,7 +27,13 @@ These files are contract snapshots, not a second backend implementation. There i
 
 `npm run check:release` requires approved metadata and license text, a version/changelog match, the npm lockfile, a clean distribution audit and the default production origin's TLS/readiness/public-API probes. Its network probes are anonymous. Local pack/test commands remain usable while publication is blocked.
 
-The public GitHub Actions workflows use pinned official actions and test Node 22 and 24. The release workflow runs only through manual dispatch and the `npm` environment. Prereleases publish under `next`; stable versions publish under `latest`. It uses npm trusted publishing and provenance; configure the exact public GitHub owner, repository, workflow filename `release.yml`, and environment `npm` in npm before invoking it. Use a supported npm version (at least 11.5.1) on a GitHub-hosted runner. Choose publisher permissions that permit publication, rather than staging alone. Bootstrap of a new npm package may require a separate authorized first-publish step; this workflow does not create npm accounts, organizations or publisher associations.
+The pinned GitHub Actions check Node 22/24 in `packages/node`. Manual
+`node-release.yml` uses the `npm` environment and publishes only this package:
+prereleases under `next`, stable versions under `latest`. Configure npm trusted
+publishing with the exact GitHub owner/repository, workflow `node-release.yml`
+and environment `npm`; use npm 11.5.1+ and publication permission on a GitHub-hosted
+runner. A new npm package may require a separately authorized bootstrap publish.
+No workflow creates registry accounts, organizations or publisher associations.
 
 Do not put long-lived npm tokens, API keys, webhook secrets, environment manifests, backend packages, infrastructure configuration or private issue links in the public kit. The export and distribution audits are guardrails; review the complete source export before its first public push.
 

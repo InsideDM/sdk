@@ -210,8 +210,12 @@ test('public source export uses a fresh allowlisted directory and refuses overwr
   const target = resolve(dir, 'public-kit');
   try {
     run(process.execPath, ['scripts/exportKit.mjs', '--out', target], root);
-    assert.ok(existsSync(resolve(target, 'src/index.ts')));
-    assert.ok(existsSync(resolve(target, '.github/workflows/ci.yml')));
+    assert.ok(existsSync(resolve(target, 'packages/node/src/index.ts')));
+    assert.ok(existsSync(resolve(target, '.github/workflows/node-ci.yml')));
+    assert.ok(existsSync(resolve(target, '.github/workflows/node-release.yml')));
+    assert.ok(existsSync(resolve(target, 'packages/python/README.md')));
+    assert.equal(existsSync(resolve(target, 'packages/python/pyproject.toml')), false);
+    assert.equal(existsSync(resolve(target, 'packages/node/.github')), false);
     for (const path of ['.git', 'node_modules', 'dist', 'apps', 'env', 'infra', 'pnpm-lock.yaml']) assert.equal(existsSync(resolve(target, path)), false);
     assert.throws(() => run(process.execPath, ['scripts/exportKit.mjs', '--out', target], root));
     assert.ok(readdirSync(target).length < 20);

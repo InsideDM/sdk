@@ -1,9 +1,12 @@
-name: Publish SDK
+name: Publish Node SDK
 on:
   workflow_dispatch:
 permissions:
   contents: read
   id-token: write
+defaults:
+  run:
+    working-directory: packages/node
 jobs:
   publish:
     if: github.ref == 'refs/heads/main'
@@ -16,6 +19,7 @@ jobs:
           node-version: '24'
           registry-url: https://registry.npmjs.org
           cache: npm
+          cache-dependency-path: packages/node/package-lock.json
       - run: npm ci --ignore-scripts
       - run: npm test
       - run: npm run check:release

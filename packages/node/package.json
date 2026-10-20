@@ -1,7 +1,11 @@
 {
   "name": "@insidedm/sdk",
   "version": "0.1.0-alpha.0",
-  "description": "Typed server-side client for the InsideDM API.",
+  "description": "Official insideDM SDK for Node.js and TypeScript: WhatsApp notifications, automation flows and approved partner integrations.",
+  "repository": { "type": "git", "url": "https://github.com/InsideDM/sdk.git", "directory": "packages/node" },
+  "homepage": "https://insidedm.io",
+  "bugs": { "url": "https://github.com/insideDM/sdk/issues" },
+  "keywords": ["insidedm", "whatsapp", "automation", "sdk", "typescript", "nodejs", "n8n"],
   "type": "module",
   "license": "UNLICENSED",
   "engines": { "node": ">=22" },
