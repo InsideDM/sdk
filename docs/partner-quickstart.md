@@ -4,6 +4,14 @@ Use one application credential on your server and one saved InsideDM business ID
 
 This is an unpublished alpha. Production origin, hosted pages and live-provider acceptance still need release verification. For local evaluation, install the checked tarball and pass your development `baseUrl`. The normal published configuration is one `apiKey`; there are no sender defaults to select.
 
+For repeatable client flow setup, request `flows.deploy` only when needed, then
+use `client.flows.templates.catalog()` and `client.flows.templates.import()`.
+These create client-owned drafts from exact supported versions and reviewed
+endpoint references. Each required slot must be bound. Merchants review and
+publish through InsideDM; imports never publish or start a flow. Keep a stable
+key per client/template intent to recover uncertain results without duplicating
+or overwriting client drafts. This is separate from `flows.read` run progress.
+
 ## 1. Register the application once
 
 InsideDM's controlled onboarding approves your partner organization, real human administrators, application, scope ceilings and exact HTTPS return URLs. Register separate exact return URLs for the journeys you use. Approval of a partner organization does not create merchant access or a software sponsorship agreement. Self-service partner registration and a public partner administration portal are not supplied by this kit.

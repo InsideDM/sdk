@@ -46,7 +46,11 @@ export function createTestClient(options: TestClientOptions = {}): InsideDM {
     if (url.origin !== 'https://sdk-fixture.invalid') throw new Error('Fixture transport refuses external hosts.');
     const operation = Object.values(PUBLIC_OPERATIONS).find((candidate) => candidate.method === request.method && new RegExp(`^${candidate.path.replace(/\{[^}]+\}/g, '[^/]+')}$`).test(url.pathname));
     if (!operation) throw new Error('Fixture transport received an unknown operation.');
-    const body = operation === PUBLIC_OPERATIONS.publishEvent
+    const body = operation === PUBLIC_OPERATIONS.getFlowTemplateCatalog
+      ? { data: { businessId: TEST_ID, templates: [], dependencies: [], page: {hasMore:false,nextCursor:null} } }
+      : operation === PUBLIC_OPERATIONS.importFlowTemplate
+      ? { data: { businessId: TEST_ID, recipeId: TEST_ID, packId: url.pathname.split('/').at(-2), version: (await request.clone().json() as {version:string}).version, digest: 'sha256:'+'0'.repeat(64), status: 'draft' } }
+      : operation === PUBLIC_OPERATIONS.publishEvent
       ? { data: { ...(fixture({ $ref: '#/components/schemas/PublicOperation' }) as Record<string, unknown>), kind: 'events.publish' } }
       : operation === PUBLIC_OPERATIONS.createContact
       ? { data: { contactId: TEST_ID, revision: '1' } }

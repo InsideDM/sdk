@@ -97,6 +97,14 @@ async function check() {
   const provisionalUsage: 'provisional' = softwareUsage.data.finality;
   const observedTokens: number = softwareUsage.data.ai.inputTokens;
   const limits = await platform.forBusiness(profile.data.id).usage.getLimits();
+  const catalog = await platform.forBusiness(profile.data.id).flows.templates.catalog({ limit: 25 });
+  const templateVersion: string | undefined = catalog.data.templates[0]?.version;
+  const draft = await sdk.flows.templates.import('lead-capture', { version: '1' }, { idempotencyKey: 'import/client1/v1' });
+  const draftOnly: 'draft' = draft.data.status;
+  // @ts-expect-error imports accept a version and references, never a caller graph
+  await sdk.flows.templates.import('lead-capture', { version: '1', graph: {} });
+  // @ts-expect-error catalog reads do not accept an idempotency key
+  await sdk.flows.templates.catalog({}, { idempotencyKey: 'unused' });
   const agentPlaces: number | 'all' = limits.data.limits.agentSlots;
   const includedAiPaise: string = limits.data.limits.includedAi.amountMinor;
   const creation = await platform.businesses.create({ externalId: 'client_123', name: 'New client', returnUrl: 'https://partner.example/claim' }, { idempotencyKey: 'create/client_123' });

@@ -15,6 +15,7 @@ import type {
   RecordMarketingOptInInput, MarketingOptInRegistration,
   PublishEventInput, OperationLookupInput, PublicFlowRun,
   SoftwareUsageInput, SoftwareUsageSummary, SoftwareLimits,
+  FlowTemplateCatalogParams, FlowTemplateCatalog, FlowTemplateImportBody, FlowTemplateImportReceipt,
 } from './types.js';
 
 function pageBound(value: number | undefined): number {
@@ -111,6 +112,17 @@ export class BusinessClient {
       get: async (runId: string, options?: RequestOptions): Promise<Result<PublicFlowRun>> => {
         const { body, meta } = await transport.requestForBusiness('getFlowRun', { view: 'progress' }, options, { runId });
         return { data: (body as { data: PublicFlowRun }).data, meta };
+      },
+    }, templates: {
+      /** Versioned templates and one page of eligible endpoint references. Requires flows.deploy. */
+      catalog: async (params: FlowTemplateCatalogParams = {}, options?: RequestOptions): Promise<Result<FlowTemplateCatalog>> => {
+        const { body, meta } = await transport.requestForBusiness('getFlowTemplateCatalog', params, options);
+        return { data: (body as { data: FlowTemplateCatalog }).data, meta };
+      },
+      /** Create a client-owned draft. Publication remains a separate human decision. */
+      import: async (packId: string, input: FlowTemplateImportBody, options?: WriteRequestOptions): Promise<Result<FlowTemplateImportReceipt>> => {
+        const { body, meta } = await transport.ownerOperation('importFlowTemplate', packId, input, options);
+        return { data: (body as { data: FlowTemplateImportReceipt }).data, meta };
       },
     } };
     this.events = {

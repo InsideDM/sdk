@@ -38,7 +38,91 @@ tags:
   - name: Events
   - name: Platform
   - name: Usage
+  - name: Flows
 paths:
+  /api/v1/dashboard/{businessId}/automation-runtime/catalog:
+    get:
+      operationId: getFlowTemplateCatalog
+      tags: [Flows]
+      summary: Discover versioned flow templates and eligible client endpoint references
+      description: |
+        Requires flows.deploy, independently of flows.read. Uses the existing flow
+        catalog owner with a fixed view. Returns bounded template metadata and
+        eligible business-owned webhook references, without URLs or credentials.
+        Dependencies paginate by a signed cursor bound to current authority,
+        business and limit. Availability is current, not a snapshot export. An
+        empty dependencies page can have hasMore=true; follow nextCursor.
+      parameters:
+        - { $ref: '#/components/parameters/BusinessId' }
+        - name: view
+          in: query
+          required: true
+          schema: { type: string, const: flow_templates }
+        - { $ref: '#/components/parameters/Limit' }
+        - name: cursor
+          in: query
+          schema: { type: string, minLength: 1, maxLength: 2048, pattern: '^[A-Za-z0-9_.-]+$' }
+      responses:
+        '200':
+          description: Current template catalog and one page of eligible references
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/FlowTemplateCatalog' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/v1/dashboard/{businessId}/automation-runtime/template-packs/{packId}/import:
+    post:
+      operationId: importFlowTemplate
+      tags: [Flows]
+      summary: Create a client-owned draft from an exact flow template version
+      description: |
+        Requires flows.deploy. Uses the existing builder import owner. All declared
+        dependency slots must bind current business-owned endpoint references and
+        reviewed revisions. No arbitrary graph, URL, secret or actor is accepted.
+        Creates a draft only; never publishes or executes a flow. Reuse the same
+        Idempotency-Key and input to recover its original creation receipt, even
+        after draft customization. Changed intent conflicts. The draft receipt is
+        historical and does not assert the flow's current publication state.
+      parameters:
+        - { $ref: '#/components/parameters/BusinessId' }
+        - name: packId
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FlowTemplateImportBody' }
+      responses:
+        '201':
+          description: Historical draft creation receipt, including matching retries
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/FlowTemplateImportReceipt' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/Unavailable' }
   /api/v1/dashboard/{businessId}/billing/v2:
     get:
       operationId: getSoftwareUsage
@@ -3525,6 +3609,97 @@ components:
                     id:
                       type: string
                       format: uuid
+    FlowTemplateIdentifier:
+      type: string
+      pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$'
+    FlowTemplateVersion:
+      type: string
+      pattern: '^[1-9]\d{0,9}$'
+      description: Positive decimal version, at most 2147483647.
+    FlowTemplateDigest:
+      type: string
+      pattern: '^sha256:[0-9a-f]{64}$'
+    FlowTemplateBinding:
+      type: object
+      additionalProperties: false
+      required: [endpointId, expectedRevision]
+      properties:
+        endpointId: { type: string, format: uuid }
+        expectedRevision: { type: integer, minimum: 0, maximum: 2147483647 }
+    FlowTemplateImportBody:
+      type: object
+      additionalProperties: false
+      required: [version]
+      properties:
+        version: { $ref: '#/components/schemas/FlowTemplateVersion' }
+        bindings:
+          type: object
+          maxProperties: 20
+          propertyNames: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+          additionalProperties: { $ref: '#/components/schemas/FlowTemplateBinding' }
+    FlowTemplateImportReceipt:
+      type: object
+      additionalProperties: false
+      required: [businessId, recipeId, packId, version, digest, status]
+      properties:
+        businessId: { type: string, format: uuid }
+        recipeId: { type: string, format: uuid }
+        packId: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+        version: { $ref: '#/components/schemas/FlowTemplateVersion' }
+        digest: { $ref: '#/components/schemas/FlowTemplateDigest' }
+        status: { type: string, const: draft }
+    FlowTemplateSummary:
+      type: object
+      additionalProperties: false
+      required: [id, version, digest, name, description, channel, dependencySlots]
+      properties:
+        id: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+        version: { $ref: '#/components/schemas/FlowTemplateVersion' }
+        digest: { $ref: '#/components/schemas/FlowTemplateDigest' }
+        name: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: string, minLength: 1, maxLength: 500 }
+        channel: { type: string, enum: [instagram, whatsapp, unified] }
+        dependencySlots:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, kind, method, required]
+            properties:
+              id: { $ref: '#/components/schemas/FlowTemplateIdentifier' }
+              kind: { type: string, const: webhook_endpoint }
+              method: { type: string, const: POST }
+              required: { type: boolean, const: true }
+    FlowTemplateCatalog:
+      type: object
+      additionalProperties: false
+      required: [businessId, templates, dependencies, page]
+      properties:
+        businessId: { type: string, format: uuid }
+        templates:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/FlowTemplateSummary' }
+        dependencies:
+          type: array
+          maxItems: 100
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, kind, name, revision]
+            properties:
+              id: { type: string, format: uuid }
+              kind: { type: string, const: webhook_endpoint }
+              name: { type: string, minLength: 1, maxLength: 120 }
+              revision: { type: integer, minimum: 0, maximum: 2147483647 }
+        page:
+          type: object
+          additionalProperties: false
+          required: [hasMore, nextCursor]
+          properties:
+            hasMore: { type: boolean }
+            nextCursor: { type: [string, 'null'], minLength: 1, maxLength: 2048, pattern: '^[A-Za-z0-9_.-]+$' }
     PublicFlowRun:
       type: object
       additionalProperties: false
@@ -3652,7 +3827,7 @@ components:
           description: Pass as `cursor` for the next page; `null` on the last page.
     PublicScope:
       type: string
-      enum: [contacts.read, contacts.write, conversations.read, messages.read, messages.send, operations.read, events.write, flows.read, templates.read, messaging.read, messaging.configuration.read, consents.write, consents.read, usage.read, orders.read, shipments.read]
+      enum: [contacts.read, contacts.write, conversations.read, messages.read, messages.send, operations.read, events.write, flows.read, flows.deploy, templates.read, messaging.read, messaging.configuration.read, consents.write, consents.read, usage.read, orders.read, shipments.read]
     PublishEventInput:
       type: object
       additionalProperties: false

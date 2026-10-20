@@ -8,6 +8,7 @@ export const PUBLIC_API_SCOPES = [
     'operations.read',
     'events.write',
     'flows.read',
+    'flows.deploy',
     'templates.read',
     'messaging.read',
     'messaging.configuration.read',

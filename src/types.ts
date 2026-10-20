@@ -30,6 +30,7 @@ export interface WriteRequestOptions extends RequestOptions {
 }
 
 export type WriteRecovery = {operation:'updateContactAttributes';contactId:string;idempotencyKey:string}
+  |{operation:'importFlowTemplate';packId:string;idempotencyKey:string}
   |{operation:'replayPlatformSubscriptionDelivery';subscriptionId:string;businessId:string;deliveryId:string;idempotencyKey:string}
   |{operation:'recoverPlatformSubscriptionReceiver';subscriptionId:string;businessId:string;idempotencyKey:string}
   |{operation:'createPlatformSubscription';idempotencyKey:string}
@@ -50,6 +51,8 @@ export type {PublicInstallation,RevokeInstallationInput,InstallationRevocationRe
 export type {PublicPartnerBusiness,PartnerBusinessListParams} from './generated/partnerPortfolio.js';
 export type {PublicPartnerApiUsage} from './generated/partnerUsage.js';
 export type { SoftwareUsageSummary, SoftwareLimits } from './generated/softwareUsage.js';
+export type { FlowTemplateImportBody, FlowTemplateImportReceipt, FlowTemplateCatalog, FlowTemplateSummary, FlowTemplateBinding } from './generated/flowTemplateDeployments.js';
+export interface FlowTemplateCatalogParams { limit?: number; cursor?: string }
 export interface SoftwareUsageInput { from: string | Date; to: string | Date }
 export type {CreatePlatformBusinessInput,RenewBusinessClaimLinkInput,PublicBusinessCreation,BusinessCreationLink} from './generated/businessCreations.js';
 export type {CreateOnboardingSessionInput,PublicOnboardingSession,CreatedOnboardingSession} from './generated/onboardingSessions.js';

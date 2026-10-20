@@ -1,5 +1,10 @@
 # Changelog
 
+- Flow template catalog and exact-version draft imports through the existing
+  builder owners, with explicit `flows.deploy`, client endpoint references,
+  bounded cursors, partner delegation and retained import recovery. Imports do
+  not publish or execute flows.
+
 - ESM and CommonJS entrypoints share one runtime implementation and identical client/error constructors. Native declarations, the Node 22 floor and the original package size budget are preserved.
 
 - `usage.getLimits()` reads native current-plan limits on the same billing GET under explicit software usage-and-limits authority. Preserves unlimited slots, soft monthly conversation allowance and exact INR paise included AI allowance; no remaining quota, feature flags or sold-version inference.

@@ -322,6 +322,39 @@ HTTP 202 means the original start was retained. Publication becomes `succeeded` 
 
 Revoking or expiring the original key, removing its scope, disabling the workspace or erasing the contact blocks fresh execution. A rotated key in the same lineage can continue only while its current grants permit it. The existing native endpoint HMAC secret remains independent. Existing governed HTTP nodes can call an n8n webhook during the flow; asynchronous external-job completion callbacks remain unavailable.
 
+## Create a flow draft from a template
+
+Use `flows.deploy` for template discovery and draft imports. `flows.read` remains
+the separate scope for this integration's flow-run progress. The same methods
+work on `platform.forBusiness(businessId)` after merchant approval.
+
+```ts
+const { data: catalog } = await insideDM.flows.templates.catalog({ limit: 25 });
+const template = catalog.templates.find(item => item.id === 'lead-capture');
+if (!template) throw new Error('Template unavailable');
+const { data: draft } = await insideDM.flows.templates.import(template.id, {
+  version: template.version,
+}, { idempotencyKey: 'client-123/lead-capture/v1' });
+console.log(draft.recipeId, draft.status); // client-owned draft
+```
+
+Templates declare required `dependencySlots`. Bind each slot with a reviewed
+client-owned endpoint reference from `catalog.dependencies`:
+`bindings: { 'followup-endpoint': { endpointId, expectedRevision } }`.
+The catalog returns IDs, display names and revisions; it never returns endpoint
+URLs or credentials. Only eligible POST endpoints appear. Dependencies paginate;
+pass `catalog.page.nextCursor` and the same limit while `hasMore` is true, including
+after an empty filtered page. Availability can change between pages and imports.
+
+Imports create drafts through the existing builder owner. Review and publish in
+InsideDM before execution. Reuse the same key and exact version/bindings after a
+lost response; matching retries return the original creation receipt without
+overwriting merchant edits. `status: 'draft'` records the creation outcome, rather
+than the flow's current publication state. Changed intent conflicts. Unsupported
+versions, missing slots, foreign endpoints and stale revisions are refused.
+Partner-owned blueprint authoring, staged updates and embedded editing are not
+part of this template import surface.
+
 ## Create or find a phone contact
 
 ```ts

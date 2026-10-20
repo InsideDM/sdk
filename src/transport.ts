@@ -11,6 +11,7 @@ import { parseContactUpdate, parseUpdatedContact } from './generated/contactUpda
 import {parseMessageSendInput} from './generated/messageSend.js';
 import { captureEventPublish } from './generated/eventPublish.js';
 import { parseFlowRunProgress } from './generated/flowRunProgress.js';
+import { parseFlowTemplateCatalogQuery, parseFlowTemplateCatalog, parseFlowTemplateImport, parseFlowTemplateImportReceipt, parseFlowTemplateId } from './generated/flowTemplateDeployments.js';
 import { parseSoftwareUsageView, parseSoftwareUsageSummary, parseSoftwareLimits } from './generated/softwareUsage.js';
 import {parseConsentWithdrawal,parseConsentStateQuery,parseContactConsentState} from './generated/consents.js';
 import { parseMarketingOptIn } from './generated/consents.js';
@@ -179,16 +180,17 @@ export class Transport {
     }
   }
 
-  async ownerOperation(operationId:'publishEvent'|'sendMessage'|'previewMessage'|'getOperation'|'lookupOperation'|'cancelOperation'|'withdrawConsent'|'recordMarketingOptIn',
+  async ownerOperation(operationId:'importFlowTemplate'|'publishEvent'|'sendMessage'|'previewMessage'|'getOperation'|'lookupOperation'|'cancelOperation'|'withdrawConsent'|'recordMarketingOptIn',
     resourceId:string|null,input:unknown,options:WriteRequestOptions={}){
     const config=settings(options,this.#defaults),deadline=performance.now()+config.timeoutMs;
     const operation=PUBLIC_OPERATIONS[operationId];
-    let idempotencyKey=operationId==='sendMessage'||operationId==='cancelOperation'||operationId==='withdrawConsent'||operationId==='recordMarketingOptIn'?options.idempotencyKey??randomUUID():undefined;
+    let idempotencyKey=operationId==='importFlowTemplate'||operationId==='sendMessage'||operationId==='cancelOperation'||operationId==='withdrawConsent'||operationId==='recordMarketingOptIn'?options.idempotencyKey??randomUUID():undefined;
     if(idempotencyKey!==undefined&&!isIdempotencyKey(idempotencyKey))throw new InsideDMConfigurationError('Idempotency keys require 1–128 visible ASCII characters.');
     if(idempotencyKey===undefined&&operationId!=='publishEvent'&&options.idempotencyKey!==undefined)throw new InsideDMConfigurationError('Read and preview requests do not take an idempotency key.');
     let body:string|undefined;
     try{
       if('operationId' in operation.pathParameters)decode(operation.pathParameters.operationId,resourceId,'path',false);
+      if(operationId==='importFlowTemplate')parseFlowTemplateId(resourceId);
       if(operation.request!==undefined){
         if((operationId==='sendMessage'||operationId==='previewMessage')&&typeof input==='object'&&input!==null&&!Array.isArray(input)){
           const message=input as {intent?:unknown};
@@ -199,6 +201,7 @@ export class Transport {
         if(operationId==='sendMessage'||operationId==='previewMessage')body=JSON.stringify(parseMessageSendInput(body));
         if(operationId==='withdrawConsent')body=JSON.stringify(parseConsentWithdrawal(body));
         if(operationId==='recordMarketingOptIn')body=JSON.stringify(parseMarketingOptIn(body));
+        if(operationId==='importFlowTemplate')body=JSON.stringify(parseFlowTemplateImport(body));
         if (operationId === 'publishEvent') {
           const { occurredAt, ...event } = captureEventPublish(input);
           if (options.idempotencyKey !== undefined && options.idempotencyKey !== event.id) throw new Error('The event ID is its retry key.');
@@ -207,7 +210,7 @@ export class Transport {
         }
         if(Buffer.byteLength(body)>65536)throw new Error('Request bound exceeded.');
       }
-    }catch{throw new InsideDMConfigurationError('Provide valid message, event, consent or operation parameters.');}
+    }catch{throw new InsideDMConfigurationError('Provide valid flow template, message, event, consent or operation parameters.');}
     try{
       if(this.#businessId===null){
         const workspace=await this.request('getWorkspace',{},{},{...options,timeoutMs:Math.max(1,Math.floor(deadline-performance.now()))});
@@ -215,10 +218,18 @@ export class Transport {
       }
       const remaining=Math.floor(deadline-performance.now());
       if(remaining<1)throw new InsideDMTransportError('timeout',{code:'request_timeout'});
-      return await this.request(operationId,{businessId:this.#businessId,...(resourceId?{operationId:resourceId}:{})},{},
+      const result=await this.request(operationId,{businessId:this.#businessId,...(resourceId?operationId==='importFlowTemplate'?{packId:resourceId}:{operationId:resourceId}:{})},{},
         {...options,timeoutMs:remaining},body===undefined?undefined:{body,...(idempotencyKey?{idempotencyKey}:{})});
+      if(operationId==='importFlowTemplate'){
+        try{
+          const data=parseFlowTemplateImportReceipt((result.body as {data:unknown}).data);
+          if(data.businessId!==this.#businessId||data.packId!==resourceId||data.version!==parseFlowTemplateImport(body!).version)throw new Error('Wrong template attribution.');
+          result.body={data};
+        }catch{throw new InsideDMProtocolError('InsideDM returned an invalid template creation receipt.',{code:'invalid_response',requestId:result.meta.requestId});}
+      }
+      return result;
     }catch(error){
-      if(error instanceof InsideDMError&&idempotencyKey)throw attachWriteRecovery(error,operationId==='sendMessage'||operationId==='publishEvent'
+      if(error instanceof InsideDMError&&idempotencyKey)throw attachWriteRecovery(error,operationId==='importFlowTemplate'?{operation:operationId,packId:resourceId!,idempotencyKey}:operationId==='sendMessage'||operationId==='publishEvent'
         ?{operation:operationId,idempotencyKey}:operationId==='withdrawConsent'||operationId==='recordMarketingOptIn'?{operation:operationId,idempotencyKey}:{operation:'cancelOperation',operationId:resourceId!,idempotencyKey});
       throw error;
     }
@@ -314,10 +325,17 @@ export class Transport {
   }
 
   /** Shared read owners use the workspace derived from the key, never caller-supplied tenant context. */
-  async requestForBusiness(operationId: 'getSoftwareUsage' | 'listTemplates' | 'getMessagingReadiness' | 'getMessagingConfiguration' | 'getConsentState' | 'getFlowRun', query: object, options: RequestOptions = {}, pathValues: Record<string,string> = {}) {
+  async requestForBusiness(operationId: 'getFlowTemplateCatalog' | 'getSoftwareUsage' | 'listTemplates' | 'getMessagingReadiness' | 'getMessagingConfiguration' | 'getConsentState' | 'getFlowRun', query: object, options: RequestOptions = {}, pathValues: Record<string,string> = {}) {
     const config = settings(options, this.#defaults), deadline = performance.now() + config.timeoutMs;
     if (!isRecord(query)) throw new InsideDMConfigurationError('Query parameters must be an object.');
     const snapshot = { ...query };
+    if (operationId === 'getFlowTemplateCatalog') {
+      try {
+        if (Object.keys(snapshot).some(key => !['limit','cursor'].includes(key)) || 'idempotencyKey' in options) throw new Error('Unsupported catalog input.');
+        const supplied = Object.fromEntries(Object.entries(snapshot).filter(([,value]) => value !== undefined));
+        Object.assign(snapshot, { view: 'flow_templates', ...parseFlowTemplateCatalogQuery('?' + new URLSearchParams({ ...supplied, view: 'flow_templates' } as Record<string,string>).toString()) });
+      } catch { throw new InsideDMConfigurationError('Provide a template catalog limit of 1–100 and an optional continuation cursor.'); }
+    }
     if (operationId === 'getSoftwareUsage') {
       try {
         const view = parseSoftwareUsageView('?' + new URLSearchParams(snapshot as Record<string, string>).toString());
@@ -337,6 +355,13 @@ export class Transport {
     const remaining = Math.floor(deadline - performance.now());
     if (remaining < 1) throw new InsideDMTransportError('timeout', { code: 'request_timeout' });
     const result = await this.request(operationId, { ...pathValues, businessId: this.#businessId }, snapshot, { ...options, timeoutMs: remaining });
+    if (operationId === 'getFlowTemplateCatalog') {
+      try {
+        const data = parseFlowTemplateCatalog((result.body as {data:unknown}).data);
+        if (data.businessId !== this.#businessId || data.dependencies.length > (snapshot as {limit:number}).limit) throw new Error('Wrong catalog attribution.');
+        result.body = {data};
+      } catch { throw new InsideDMProtocolError('InsideDM returned an invalid template catalog.', { code: 'invalid_response', requestId: result.meta.requestId }); }
+    }
     if (operationId === 'getSoftwareUsage') {
       try {
         const expected = snapshot as Record<string, unknown>, value = (result.body as { data: unknown }).data;
