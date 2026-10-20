@@ -1,5 +1,8 @@
 # Changelog
 
+- Published event-binding discovery with mapped input requirements, start-endpoint
+  setup status and bounded pagination through the existing native flow-list route.
+
 - Runnable managed-rollout worker with durable checkpoints, restart recovery
   and native human review tracking, using existing SDK methods.
 

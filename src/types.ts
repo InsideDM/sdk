@@ -126,4 +126,5 @@ export type { PublicProblem, PublicFieldError, DeveloperProblemCode } from './ge
 export type { ContactAttributeValue, UpdateContactAttributesInput, UpdatedContactAttributes } from './generated/contactAttributes.js';
 export type { PublishEventInput } from './generated/eventPublish.js';
 export type { PublicFlowRun } from './generated/flowRunProgress.js';
+export type {PublicEventBinding,EventBindingParams} from './generated/eventBindings.js';
 export type { OperationLookupInput } from './generated/messageOperations.js';

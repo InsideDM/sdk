@@ -12,6 +12,7 @@ import { parseContactUpdate, parseUpdatedContact } from './generated/contactUpda
 import {parseMessageSendInput} from './generated/messageSend.js';
 import { captureEventPublish } from './generated/eventPublish.js';
 import { parseFlowRunProgress } from './generated/flowRunProgress.js';
+import {parseEventBindingQuery,parseEventBindingPage} from './generated/eventBindings.js';
 import { parseFlowTemplateCatalogQuery, parseFlowTemplateCatalog, parseFlowTemplateImport, parseFlowTemplateImportReceipt, parseFlowTemplateId } from './generated/flowTemplateDeployments.js';
 import {parseFlowDeploymentQuery,parseFlowTemplateDeployment} from './generated/flowTemplateDeployments.js';
 import {parsePreviewBlueprintUpdate,parseApplyBlueprintUpdate,parseBlueprintUpdatePreview,parseBlueprintUpdateReceipt} from './generated/flowBlueprintUpdates.js';
@@ -353,10 +354,17 @@ export class Transport {
   }
 
   /** Shared read owners use the workspace derived from the key, never caller-supplied tenant context. */
-  async requestForBusiness(operationId: 'getFlowPublicationRequest' | 'getFlowDeployment' | 'getFlowTemplateCatalog' | 'getSoftwareUsage' | 'listTemplates' | 'getMessagingReadiness' | 'getMessagingConfiguration' | 'getConsentState' | 'getFlowRun', query: object, options: RequestOptions = {}, pathValues: Record<string,string> = {}) {
+  async requestForBusiness(operationId: 'listEventBindings' | 'getFlowPublicationRequest' | 'getFlowDeployment' | 'getFlowTemplateCatalog' | 'getSoftwareUsage' | 'listTemplates' | 'getMessagingReadiness' | 'getMessagingConfiguration' | 'getConsentState' | 'getFlowRun', query: object, options: RequestOptions = {}, pathValues: Record<string,string> = {}) {
     const config = settings(options, this.#defaults), deadline = performance.now() + config.timeoutMs;
     if (!isRecord(query)) throw new InsideDMConfigurationError('Query parameters must be an object.');
     const snapshot = { ...query };
+    if(operationId==='listEventBindings'){
+      try{
+        if(Object.keys(snapshot).some(key=>!['limit','cursor'].includes(key))||'idempotencyKey' in options)throw new Error();
+        const supplied=Object.fromEntries(Object.entries(snapshot).filter(([,value])=>value!==undefined));
+        Object.assign(snapshot,{view:'event_bindings',...parseEventBindingQuery('?'+new URLSearchParams({...supplied,view:'event_bindings'} as Record<string,string>))});
+      }catch{throw new InsideDMConfigurationError('Provide an event binding limit of 1–100 and an optional continuation cursor.');}
+    }
     if(operationId==='getFlowPublicationRequest'){
       try{if('idempotencyKey' in options)throw new Error();parseManagedPublicationQuery('?'+new URLSearchParams(snapshot as Record<string,string>).toString());}
       catch{throw new InsideDMConfigurationError('Publication request reads take flow/request IDs and normal request options.');}
@@ -418,6 +426,13 @@ export class Transport {
         if (data.businessId !== this.#businessId || 'period' in data && (data.period.from !== expected.from || data.period.to !== expected.to)) throw new Error('Wrong usage attribution.');
         result.body = { data };
       } catch { throw new InsideDMProtocolError('InsideDM returned invalid software usage.', { code: 'invalid_response', requestId: result.meta.requestId }); }
+    }
+    if(operationId==='listEventBindings'){
+      try{
+        const data=parseEventBindingPage(result.body);
+        if(data.businessId!==this.#businessId||data.data.length>Number(snapshot.limit))throw new Error();
+        result.body=data;
+      }catch{throw new InsideDMProtocolError('InsideDM returned invalid event bindings.',{code:'invalid_response',requestId:result.meta.requestId});}
     }
     if (operationId === 'getFlowRun') {
       try {

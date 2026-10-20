@@ -18,6 +18,7 @@ import type {
   UpdateContactInput, UpdatedContact,
   RecordMarketingOptInInput, MarketingOptInRegistration,
   PublishEventInput, OperationLookupInput, PublicFlowRun,
+  PublicEventBinding,EventBindingParams,
   SoftwareUsageInput, SoftwareUsageSummary, SoftwareLimits,
   FlowTemplateCatalogParams, FlowTemplateCatalog, FlowTemplateImportBody, FlowTemplateImportReceipt,FlowTemplateDeployment,
   PublicBlueprintVersion,DeployBlueprintOptions,
@@ -34,7 +35,7 @@ export function collection<T, P extends PageParams>(transport: Transport, operat
   project?: (body: unknown, requestId: string) => { data: T[]; page: { nextCursor: string | null } }) {
   const list = async (params: P = {} as P, options: RequestOptions = {}): Promise<PageResult<T>> => {
     if(options!==null&&typeof options==='object'&&'idempotencyKey' in options)throw new InsideDMConfigurationError('Collection reads do not take an idempotency key.');
-    const { body, meta } = await (operation === 'listTemplates' ? transport.requestForBusiness(operation, params, options) : transport.request(operation, path, params, options));
+    const { body, meta } = await (operation === 'listTemplates'||operation==='listEventBindings' ? transport.requestForBusiness(operation, params, options) : transport.request(operation, path, params, options));
     // Transport validates the operation's generated response schema before this type boundary.
     return { ...(project ? project(body, meta.requestId) : body as { data: T[]; page: { nextCursor: string | null } }), meta };
   };
@@ -182,6 +183,8 @@ export class BusinessClient {
       },
     } };
     this.events = {
+      /** Active published from-system flows and their mapped input requirements. */
+      bindings:collection<PublicEventBinding,EventBindingParams>(transport,'listEventBindings',{}),
       /** Publish one stable event to a published from-system flow for a known contact. The event ID is its retry key. */
       publish: async (input: PublishEventInput, options?: RequestOptions): Promise<Result<PublicOperation>> => {
         const { body, meta } = await transport.ownerOperation('publishEvent', null, input, options);

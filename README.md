@@ -454,7 +454,25 @@ Cancellation requires both scopes and the observed revision, and is allowed befo
 
 ## Start a published flow from your business system
 
-Configure and publish a **from your own system** flow in the existing flow builder. Use its flow ID as `binding` and the same published property mappings. Supply an existing contact ID, for example from `contacts.create()`. The SDK does not infer a customer from an arbitrary phone property.
+Configure, publish and activate a **from your own system** flow in the existing builder, with its start endpoint enabled. Discover its flow ID and published input requirements:
+
+```ts
+for await (const binding of insideDM.events.bindings.iterate({ limit: 25 })) {
+  console.log(binding.id, binding.name, binding.fields, binding.endpointConfigured);
+}
+```
+
+The catalog requires `events.write` and returns active published from-system flows.
+`fields` describes mapped pointers within `properties`, with type and required flag;
+customer identity fields are omitted because the SDK uses a known contact.
+`endpointConfigured: false` needs the existing builder's start setup. No endpoint
+URL, HMAC secret, graph or provider credential is returned. The publication ID is
+a snapshot: intake rechecks current mappings and authority. Each page scans at
+most ten publications and may be empty with a continuation cursor; the iterator
+handles this. Keep the same limit while following a cursor.
+
+Use the chosen flow ID as `binding` and supply an existing contact ID, for example
+from `contacts.create()`. Arbitrary phone properties cannot identify a customer.
 
 ```ts
 const { data: publication } = await insideDM.events.publish({
@@ -475,7 +493,7 @@ if (current.resource?.type === 'flow_run') {
 }
 ```
 
-This needs `events.write`; reading progress additionally needs `operations.read`. The event ID is also its retry key: persist it in your own system and reuse it only with identical intent. Retries freeze the original request. `type` defaults to `flow.triggered`; this pilot does not accept arbitrary event types. Optional `occurredAt` must be a canonical UTC timestamp within the previous 24 hours or next five minutes at first acceptance; omission uses intake time. Properties are bounded to 32 KiB with six levels of nesting and 100 entries per container. Only published mappings are retained as flow inputs. Unmapped values are discarded.
+This needs `events.write`; operation reads need `operations.read`, and run reads need `flows.read`. The event ID is also its retry key: persist it in your own system and reuse it only with identical intent. Retries freeze the original request. `type` defaults to `flow.triggered`; this pilot does not accept arbitrary event types. Optional `occurredAt` must be a canonical UTC timestamp within the previous 24 hours or next five minutes at first acceptance; omission uses intake time. Properties are bounded to 32 KiB with six levels of nesting and 100 entries per container. Only published mappings are retained as flow inputs. Unmapped values are discarded.
 
 HTTP 202 means the original start was retained. Publication becomes `succeeded` with `phase: 'flow_started'` and a `flow_run` resource when the actual worker admits that start. Later flow effects, completion and customer delivery are separate. `operation.changed` reports publication progress through the existing webhook subscription. An uncertain outcome requires recovery, not a new event ID. Revision-checked cancellation uses `operations.cancel()` and succeeds only before the retained start is claimed; it cannot stop an already started flow.
 

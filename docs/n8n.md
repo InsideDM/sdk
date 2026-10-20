@@ -20,7 +20,7 @@ POST `/api/v1/flows/{businessId}/events` using an `events.write` key:
 {"id":"orders/order-123/paid","binding":"published-flow-uuid","subject":{"contactId":"existing-contact-uuid"},"properties":{"order":{"id":"order-123","total":499}}}
 ```
 
-Use the same stable event ID as the `Idempotency-Key`. Configure a published **from your own system** flow and its property mappings first. The subject must be a known contact. This starts that published flow; it cannot resume an arbitrary paused run. Inspect the returned operation and its authorized run reference for progress.
+Use the same stable event ID as the `Idempotency-Key`. Configure, publish and activate a **from your own system** flow, including its existing start endpoint. Discover IDs and mapped fields with `GET /api/v1/flows/{businessId}/recipes?view=event_bindings&limit=25` using the same `events.write` credential. The SDK equivalent is `events.bindings.list/iterate`. Follow continuation cursors, including after an empty filtered page. `endpointConfigured` diagnoses start setup; it does not promise eligibility. The subject must be a known contact. This starts that published flow; it cannot resume an arbitrary paused run. Inspect the returned operation and its authorized run reference for progress.
 
 ## Use n8n inside a flow
 
@@ -58,7 +58,8 @@ const { data: draft } = await insideDM.flows.templates.import('governed-async-jo
 }, { idempotencyKey: 'external-job/setup/v1' });
 ```
 
-Review and publish the draft in the existing builder, then start it with
+Review, publish and activate the draft in the existing builder, enable its start
+endpoint, then start it with
 `events.publish({ id: stableEventId, binding: draft.recipeId,
 subject: { contactId }, properties: { payload: { orderId } } })`.
 The subject must already exist. The organization's WhatsApp account is resolved
