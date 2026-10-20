@@ -72,10 +72,7 @@ subject: { contactId }, properties: { payload: { orderId } } })`.
 The subject must already exist. The organization's WhatsApp account is resolved
 by the backend. This template sends no message itself.
 
-Partners can select this same template through `platform.blueprints.listTemplates()`
-and save a portable source with `pollIntervalSeconds` (5–300), `maxPollAttempts`
-(2–11) and `webhookTimeoutMs` (100–10000). Defaults are 180 seconds, 10 checks and
-10 seconds. Declare permitted client overrides before deploying the saved source.
+Polling defaults are 180 seconds, 10 checks and a 10-second HTTP timeout.
 The default waits total 30 minutes; request and scheduling time add to this,
 so it is not an exact wall-clock deadline.
 
@@ -112,10 +109,9 @@ const jobs = createAsyncJobReceiver({
 
 `authenticate` verifies the endpoint credential from your secret store and returns
 `{businessId, authorityId}`, or `null`. Derive these values from your trusted saved
-client mapping, never request JSON or a caller-supplied business header. For a
-partner use the original installation ID and authority version as `authorityId`,
-for example `${installationId}:${authorityVersion}`. For a direct business use a
-saved integration epoch. Routine secret rotation can preserve that identity;
+integration mapping, never request JSON or a caller-supplied business header.
+Use a saved integration epoch as `authorityId`.
+Routine secret rotation can preserve that identity;
 revocation/reinstallation must not. `isAuthorized` must check that exact original
 identity is still allowed. All three callbacks run only on your server.
 
@@ -168,7 +164,7 @@ The public source kit includes [`examples/n8nResourceBridge.mjs`](../examples/n8
 ```js
 const receive = createN8nResourceBridge({
   receiverId: savedEndpointOrSubscriptionId,
-  identity: { businessId: savedBusinessId }, // partner: { applicationId: savedApplicationId }
+  identity: { businessId: savedBusinessId },
   secret: signingSecretsFromYourSecretStore, // current, optionally retiring
   accept: job => durableInbox.accept(job),
 });
@@ -176,10 +172,8 @@ const receive = createN8nResourceBridge({
 
 Mount it on a dedicated POST route before any JSON body parser. Recreate the handler when signing-secret configuration changes. The adapter enforces raw-body bounds, verification, configured receiver/identity, safe responses and a deterministic event key/digest. It returns 202 only after `accept` reports durable insertion or a matching duplicate. It is not a database, dispatcher or complete deployed bridge.
 
-Your `accept` implementation must atomically insert an inbox row and dispatch intent with a unique `job.key`; bind that key to `job.digest`. Return `inserted`, `duplicate`, `conflict` or `refused`. Database outages must throw. For partners, validate the saved authenticated client mapping and exact original `job.application.installationId/authorityVersion`; signed business IDs alone do not authorize client access. Keep the immutable original context in the queued job.
+Your `accept` implementation must atomically insert an inbox row and dispatch intent with a unique `job.key`; bind that key to `job.digest`. Return `inserted`, `duplicate`, `conflict` or `refused`. Database outages must throw. Validate the saved authenticated integration mapping; signed identifiers alone do not authorize access. Keep the immutable original context in the queued job.
 
 The worker must recheck current authority for that original installation epoch before each dispatch or resource hydration, then call the configured n8n Production URL using a separate Header Auth credential, a deadline and no redirects. Do not copy the InsideDM signature to a different body or put secrets in queued item data. Use durable downstream deduplication too: crashes between n8n execution and acknowledgement can cause a repeat. Reconcile uncertain effects when the destination cannot deduplicate. Retention, erasure, logging and failure alerts remain the deploying backend's responsibilities.
-
-Keep a partner's application key on its backend. Prefer that backend performing API calls with `platform.forBusiness(savedBusinessId)` after separate merchant approval; never save the master application key in customer workflows. A fresh approval must not revive an old queued event.
 
 Official setup references: [HTTP Request](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/), [Webhook](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/), [Respond to Webhook](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/), [Code credential restriction](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/common-issues/).

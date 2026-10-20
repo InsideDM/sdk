@@ -2,8 +2,8 @@
 
 ## 0.1.0-alpha.1 (unreleased)
 
-- Rewritten npm guide with a complete WhatsApp quickstart, customer use cases,
-  partner examples and direct documentation links.
+- Rewritten npm guide with a complete WhatsApp quickstart, use cases and direct
+  documentation links.
 - Consistent insideDM branding, descriptive package metadata and product links.
 - Keep the maintainer publication guide in the source repository; npm retains
   customer guides, examples, the full API contract and MIT license.

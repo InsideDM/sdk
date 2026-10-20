@@ -1,4 +1,4 @@
-# Business SDK reference
+# SDK API reference
 
 [Start with a short task](../README.md), then use this reference for full input, permission, lifecycle and recovery details.
 
@@ -9,7 +9,8 @@ usage.getLimits() returns the current native plan/version, agent places
 (including 'all'), seats, soft monthly conversation allowance and included AI
 allowance in INR paise strings. Grace expiry follows the native Free fallback.
 These are current limits, not remaining quota, feature configuration or send
-eligibility. For observed consumption, see the [usage reference](partner-reference.md).
+eligibility. `usage.get({ from, to })` returns observed AI usage over a bounded
+time window under the same scope; observations are provisional, not invoices.
 
 | Resource | Methods |
 | --- | --- |
@@ -242,8 +243,7 @@ does not prove which source version caused publication, runtime eligibility or
 customer delivery. `different` means the published graph differs, including when
 a managed draft update awaits human publication. `unavailable` means the current
 snapshot cannot be compared; do not treat it as a match. The read uses the same
-flow owner as the builder and grants no publication authority. See [selected-client rollouts](blueprints.md#update-a-selected-group-of-clients);
-embedded editing remains a separate capability.
+flow owner as the builder and grants no publication authority.
 
 ## Create or find a phone contact
 

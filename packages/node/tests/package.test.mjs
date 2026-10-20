@@ -39,7 +39,7 @@ test('packed consumers resolve all entrypoints in ESM, CJS, NodeNext and Bundler
     writeFileSync(resolve(dir, 'package.json'), JSON.stringify({ name: 'sdk-consumer', private: true, type: 'module' }));
     run('npm', ['install', '--offline', '--ignore-scripts', '--no-audit', '--no-fund', resolve(dir, pack.filename)], dir);
     assert.ok(pack.files.some(file => file.path === 'docs/n8n.md'));
-    assert.ok(pack.files.some(file => file.path === 'docs/partner-quickstart.md'));
+    assert.equal(pack.files.some(file => /docs\/(?:partner-|client-provisioning|hosted-onboarding|blueprints)|managedRolloutWorker/.test(file.path)), false);
     writeFileSync(resolve(dir, 'n8nResourceBridge.mjs'), readFileSync(resolve(dir, 'node_modules/@insidedm/sdk/examples/n8nResourceBridge.mjs')));
     const esm = `import { InsideDM, InsideDMPlatform, InsideDMError } from '@insidedm/sdk';
 import {createRequire} from 'node:module';
@@ -216,6 +216,7 @@ test('public source export uses a fresh allowlisted directory and refuses overwr
     assert.ok(existsSync(resolve(target, 'packages/python/README.md')));
     assert.equal(existsSync(resolve(target, 'packages/python/pyproject.toml')), false);
     assert.equal(existsSync(resolve(target, 'packages/node/.github')), false);
+    for (const path of ['docs/partner-quickstart.md', 'docs/partner-reference.md', 'docs/client-provisioning.md', 'docs/hosted-onboarding.md', 'docs/partner-webhooks.md', 'docs/blueprints.md', 'examples/managedRolloutWorker.mjs']) assert.equal(existsSync(resolve(target, 'packages/node', path)), false);
     for (const path of ['.git', 'node_modules', 'dist', 'apps', 'env', 'infra', 'pnpm-lock.yaml']) assert.equal(existsSync(resolve(target, path)), false);
     assert.throws(() => run(process.execPath, ['scripts/exportKit.mjs', '--out', target], root));
     assert.ok(readdirSync(target).length < 20);

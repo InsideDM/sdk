@@ -63,11 +63,6 @@ path. A plain n8n webhook is not a durable idempotency receiver; leave POST retr
 disabled until you implement retained deduplication and result recovery before
 effects. An immediate 200 does not enable a later callback into a parked run.
 
-For partner-operated workflows, keep the application credential on your backend
-and broker approved `platform.forBusiness(savedBusinessId)` operations there.
-These direct-business templates do not store or refresh partner delegations and
-must not use the master application key as a business credential.
-
 See [the complete n8n guide](../../docs/n8n.md) for event delivery and the verified
 resource bridge. The examples do not expose an n8n editor, manage n8n credentials
 or create an asynchronous flow-resume capability.

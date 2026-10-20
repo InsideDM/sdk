@@ -6,7 +6,7 @@ Official SDKs for [insideDM](https://insidedm.io), the platform for
 [WhatsApp automation](https://insidedm.io/whatsapp) and
 [Instagram DM automation](https://insidedm.io/instagram).
 Connect your applications to supported insideDM APIs for WhatsApp notifications,
-contact synchronization, published flows and approved partner integrations.
+contact synchronization and published flows.
 
 ## Choose your SDK
 
@@ -46,10 +46,8 @@ Continue with the [WhatsApp notification quickstart](packages/node/README.md#qui
 | Send WhatsApp notifications | [Templates, sending and operation recovery](packages/node/README.md) |
 | Synchronize customer context | [Contacts, tags, custom fields and pagination](packages/node/docs/business-reference.md) |
 | Trigger an automation | [Published flow inputs and run progress](packages/node/docs/business-reference.md#start-a-published-flow-from-your-business-system) |
-| Serve client businesses | [Partner, reseller and white-label onboarding](packages/node/docs/partner-quickstart.md) |
-| Reuse automations across clients | [Blueprints, updates and publication review](packages/node/docs/blueprints.md) |
 | Connect n8n | [Integration guide and importable workflows](packages/node/docs/n8n.md) |
-| Explore all supported operations | [Business reference](packages/node/docs/business-reference.md), [partner reference](packages/node/docs/partner-reference.md), [OpenAPI](packages/node/openapi/public-v1.yaml) |
+| Explore the API | [API reference](packages/node/docs/business-reference.md), [OpenAPI](packages/node/openapi/public-v1.yaml) |
 
 Each guide explains permissions, safe retry keys and result meanings. Submitted
 work, flow completion and customer delivery remain distinct stages.
@@ -76,6 +74,6 @@ See [contributing](CONTRIBUTING.md), [security reporting](SECURITY.md),
 ## License
 
 [MIT](LICENSE) covers the SDK source, examples, documentation and bundled API
-contract. Businesses and white-label partners may use, modify and redistribute
-them commercially while retaining the copyright and license notice. The private
+contract. Use, modify and redistribute them commercially while retaining the
+copyright and license notice. The private
 backend and hosted-service access are governed separately.

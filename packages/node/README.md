@@ -1,14 +1,14 @@
 # insideDM SDK for Node.js
 
-**WhatsApp messaging, customer workflows and partner integrations in JavaScript and TypeScript.**
+**WhatsApp messaging and workflow automation in JavaScript and TypeScript.**
 
 The official SDK for [insideDM](https://insidedm.io). Connect your application to
-insideDM to send customer notifications, synchronize contact data, trigger
-automations and manage integrations for approved client businesses.
+insideDM to send notifications, synchronize contact data and trigger
+automations from your existing systems.
 
 **Node.js 22+ · TypeScript types · ESM and CommonJS · Zero runtime dependencies · MIT**
 
-[Website](https://insidedm.io) · [API reference](https://github.com/insideDM/sdk/blob/main/packages/node/docs/business-reference.md) · [Partner guide](https://github.com/insideDM/sdk/blob/main/packages/node/docs/partner-quickstart.md) · [GitHub](https://github.com/insideDM/sdk)
+[Website](https://insidedm.io) · [API reference](https://github.com/insideDM/sdk/blob/main/packages/node/docs/business-reference.md) · [GitHub](https://github.com/insideDM/sdk)
 
 ## Install
 
@@ -66,14 +66,11 @@ CommonJS uses `const { InsideDM } = require('@insidedm/sdk')`.
 | CRM synchronization | Create contacts and update names, tags and custom fields. |
 | Event-driven automation | Start published flows from your order, CRM or business events and inspect run progress. |
 | Reliable processing | Recover submissions with the original intent key, inspect operations and verify signed webhooks. |
-| White-label and reseller integrations | Connect separately approved businesses through one application credential. |
-| Reusable client automations | Deploy blueprints as drafts, inspect changes and request native human publication review. |
 | n8n integrations | Connect customer workflows using importable examples, published flows and verified events. |
 
 Configure templates and flows in the insideDM dashboard, then use them from
 your application through the SDK.
-See the [complete business reference](https://github.com/insideDM/sdk/blob/main/packages/node/docs/business-reference.md)
-and [partner reference](https://github.com/insideDM/sdk/blob/main/packages/node/docs/partner-reference.md)
+See the [complete API reference](https://github.com/insideDM/sdk/blob/main/packages/node/docs/business-reference.md)
 for methods, permissions and result meanings.
 
 ## Track a notification
@@ -113,27 +110,6 @@ const { data: status } = await insideDM.operations.get(submission.id);
 Keep the event ID stable and match `properties` to the flow's configured mappings.
 Tracking needs `operations.read`; run reads need `flows.read`. See
 [flow inputs and run progress](https://github.com/insideDM/sdk/blob/main/packages/node/docs/business-reference.md#start-a-published-flow-from-your-business-system).
-
-## Partners, white labels and resellers
-
-Keep one application key on your backend. Each client business approves an
-independent installation and its scopes. Select the business from your saved,
-authenticated client mapping; the SDK handles delegated credentials internally.
-
-```ts
-import { InsideDMPlatform } from '@insidedm/sdk';
-
-const platform = new InsideDMPlatform({
-  apiKey: process.env.INSIDEDM_APPLICATION_KEY!,
-});
-
-const business = platform.forBusiness(process.env.INSIDEDM_BUSINESS_ID!);
-const { data: contacts } = await business.contacts.list({ limit: 25 });
-```
-
-Direct and partner clients share the same business methods. Client selection
-makes no request; each operation checks current access. Start with the
-[partner onboarding guide](https://github.com/insideDM/sdk/blob/main/packages/node/docs/partner-quickstart.md).
 
 ## Errors and request tracing
 
@@ -176,8 +152,6 @@ It helps explore the interface; it does not establish live permissions or delive
 | Topic | Documentation |
 | --- | --- |
 | Business API | [Methods, scopes, pagination and webhooks](https://github.com/insideDM/sdk/blob/main/packages/node/docs/business-reference.md) |
-| Partner platform | [Approvals, client provisioning and hosted setup](https://github.com/insideDM/sdk/blob/main/packages/node/docs/partner-reference.md) |
-| Reusable automations | [Blueprints, controlled updates and human review](https://github.com/insideDM/sdk/blob/main/packages/node/docs/blueprints.md) |
 | n8n | [Integration guide and importable workflows](https://github.com/insideDM/sdk/blob/main/packages/node/docs/n8n.md) |
 | API contract | [OpenAPI specification](https://github.com/insideDM/sdk/blob/main/packages/node/openapi/public-v1.yaml) |
 | Source and releases | [Repository](https://github.com/insideDM/sdk), [changelog](https://github.com/insideDM/sdk/blob/main/packages/node/CHANGELOG.md), [contributing](https://github.com/insideDM/sdk/blob/main/CONTRIBUTING.md) |
@@ -192,6 +166,6 @@ programmatic notification and workflow integrations.
 
 ## License
 
-[MIT](https://github.com/insideDM/sdk/blob/main/LICENSE). Commercial and white-label
+[MIT](https://github.com/insideDM/sdk/blob/main/LICENSE). Commercial use and
 redistribution are permitted with the license notice retained. The private
 backend and hosted-service access are governed separately.
