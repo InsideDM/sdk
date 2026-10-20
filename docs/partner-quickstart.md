@@ -20,6 +20,11 @@ or installation. Use `client.flows.blueprints.deploy(savedVersion, config)` afte
 merchant approval. Later use `flows.deployments.previewUpdate()` and
 `applyUpdate(preview)` to preserve declared client overrides and avoid overwriting
 manual edits. These operations prepare drafts; human publication stays separate.
+Read `flows.deployments.get(flowId)` to observe `flowStatus`, the current
+`publication.versionId` and whether its graph matches the latest managed source.
+After a draft update, a differing publication is expected until the merchant
+reviews and publishes it. Matching graph content does not establish execution
+eligibility or customer delivery.
 
 ## 1. Register the application once
 

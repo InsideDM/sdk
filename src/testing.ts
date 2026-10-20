@@ -54,7 +54,7 @@ export function createTestClient(options: TestClientOptions = {}): InsideDM {
       : operation===PUBLIC_OPERATIONS.applyBlueprintUpdate
       ? {data:{businessId:TEST_ID,recipeId:url.pathname.split('/').at(-2),deploymentRevision:updateInput!.expectedDeploymentRevision,draftRevision:updateInput!.expectedDraftRevision,status:'unchanged',target:updateInput!.target}}
       : operation === PUBLIC_OPERATIONS.getFlowDeployment
-      ? { data: {businessId:TEST_ID,recipeId:url.pathname.split('/').at(-2),revision:1,source:{kind:'internal_template',packId:'lead-capture',version:'1',digest:'sha256:'+'0'.repeat(64)},bindings:{},overrides:{},createdAt:AT,draft:{state:'unchanged',revision:1}} }
+      ? { data: {businessId:TEST_ID,recipeId:url.pathname.split('/').at(-2),revision:1,flowStatus:'draft',publication:{versionId:null,state:'not_published'},source:{kind:'internal_template',packId:'lead-capture',version:'1',digest:'sha256:'+'0'.repeat(64)},bindings:{},overrides:{},createdAt:AT,draft:{state:'unchanged',revision:1}} }
       : operation === PUBLIC_OPERATIONS.getFlowTemplateCatalog
       ? { data: { businessId: TEST_ID, templates: [], dependencies: [], page: {hasMore:false,nextCursor:null} } }
       : operation === PUBLIC_OPERATIONS.importFlowTemplate

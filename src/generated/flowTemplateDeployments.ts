@@ -72,6 +72,11 @@ export interface FlowTemplateDeployment {
     businessId: string;
     recipeId: string;
     revision: number;
+    flowStatus: 'draft' | 'shadow' | 'active' | 'paused' | 'retired';
+    publication: {
+        versionId: string | null;
+        state: 'not_published' | 'matches_managed_source' | 'different' | 'unavailable';
+    };
     source: {
         kind: 'internal_template';
         packId: string;
@@ -131,7 +136,7 @@ export function parseFlowDeploymentQuery(route: string): void {
 export function parseFlowTemplateDeployment(v: unknown): FlowTemplateDeployment {
     if (!record(v))
         fail();
-    exact(v, ['businessId', 'recipeId', 'revision', 'source', 'bindings', 'overrides', 'createdAt', 'draft']);
+    exact(v, ['businessId', 'recipeId', 'revision', 'flowStatus', 'publication', 'source', 'bindings', 'overrides', 'createdAt', 'draft']);
     if (!uuid(v.businessId) || !uuid(v.recipeId) || !revision(v.revision) || v.revision === 0 || !record(v.source) || !record(v.draft) || typeof v.createdAt !== 'string'
         || !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(v.createdAt) || !Number.isFinite(Date.parse(v.createdAt)) || new Date(v.createdAt).toISOString() !== v.createdAt)
         fail();
@@ -155,6 +160,13 @@ export function parseFlowTemplateDeployment(v: unknown): FlowTemplateDeployment 
     const bindings = parseFlowTemplateImport(JSON.stringify({ version: v.source.version, bindings: v.bindings })).bindings!;
     const overrides = overridesOf(v.overrides);
     if (v.source.kind === 'internal_template' && Object.keys(overrides).length)
+        fail();
+    if (!['draft', 'shadow', 'active', 'paused', 'retired'].includes(String(v.flowStatus)) || !record(v.publication))
+        fail();
+    exact(v.publication, ['versionId', 'state']);
+    if (!['not_published', 'matches_managed_source', 'different', 'unavailable'].includes(String(v.publication.state))
+        || (v.publication.state === 'not_published' ? v.publication.versionId !== null : !uuid(v.publication.versionId))
+        || ['active', 'shadow'].includes(String(v.flowStatus)) && v.publication.versionId === null)
         fail();
     exact(v.draft, ['state', 'revision']);
     if (!['unchanged', 'modified', 'missing', 'unavailable'].includes(String(v.draft.state)) || v.draft.revision !== null && (!revision(v.draft.revision) || v.draft.revision === 0)

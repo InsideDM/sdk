@@ -4069,7 +4069,7 @@ components:
     FlowTemplateDeployment:
       type: object
       additionalProperties: false
-      required: [businessId, recipeId, revision, source, bindings, overrides, createdAt, draft]
+      required: [businessId, recipeId, revision, flowStatus, publication, source, bindings, overrides, createdAt, draft]
       properties:
         businessId: { type: string, format: uuid }
         recipeId: { type: string, format: uuid }
@@ -4101,6 +4101,14 @@ components:
                     version: { $ref: '#/components/schemas/FlowTemplateVersion' }
                     digest: { $ref: '#/components/schemas/FlowTemplateDigest' }
         revision: { type: integer, minimum: 1, maximum: 2147483647 }
+        flowStatus: { type: string, enum: [draft, shadow, active, paused, retired] }
+        publication:
+          type: object
+          additionalProperties: false
+          required: [versionId, state]
+          properties:
+            versionId: { type: [string, 'null'], format: uuid }
+            state: { type: string, enum: [not_published, matches_managed_source, different, unavailable] }
         bindings:
           type: object
           maxProperties: 20

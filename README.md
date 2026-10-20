@@ -428,14 +428,23 @@ Read the original source and current client edits after import:
 const { data: deployment } = await insideDM.flows.deployments.get(draft.recipeId);
 console.log(deployment.source.version, deployment.draft.state);
 // unchanged, modified, missing or unavailable
+console.log(deployment.flowStatus, deployment.publication.state);
+// not_published, matches_managed_source, different or unavailable
 ```
 
 Source metadata remains immutable when editable flow settings change. The read
 compares actual graph content and does not return the graph or private endpoint
 settings. Machines can read only their integration's imports; human business
 editors retain ownership. A drift observation does not authorize an overwrite.
-Partner-owned blueprint authoring, staged updates and embedded editing remain
-separate capabilities.
+`flowStatus` reports the native lifecycle status. `publication.versionId` identifies
+the current immutable publication, or is null when none exists. A publication
+match means its normalized graph content matches the latest managed source; it
+does not prove which source version caused publication, runtime eligibility or
+customer delivery. `different` means the published graph differs, including when
+a managed draft update awaits human publication. `unavailable` means the current
+snapshot cannot be compared; do not treat it as a match. The read uses the same
+flow owner as the builder and grants no publication authority. Staged portfolio
+rollouts and embedded editing remain separate capabilities.
 
 ## Create or find a phone contact
 
