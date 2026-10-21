@@ -76,7 +76,11 @@ async def test_bounded_sync_async_pagination_has_same_public_result_shape():
         contacts = list(client.contacts.iter_items(limit=25, max_items=1))
         assert len(contacts) == 1
         assert contacts[0].id == TEST_ID
+        consent = client.consents.get(contact_id=TEST_ID)
+        assert consent.data.contact_id == TEST_ID and consent.data.identities == []
     async with create_async_test_client() as client:
         contacts = [c async for c in client.contacts.iter_items(limit=25, max_items=1)]
         assert len(contacts) == 1
         assert contacts[0].id == TEST_ID
+        consent = await client.consents.get(contact_id=TEST_ID)
+        assert consent.data.contact_id == TEST_ID and consent.data.identities == []

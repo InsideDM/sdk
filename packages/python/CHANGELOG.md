@@ -11,6 +11,8 @@
   accept canonical dates and aware datetimes, and correlate the returned window.
 - Evict every rejected delegation and isolate new async callers from abandoned
   exchange cancellation and cleanup. Preserve valid comma-containing lookup keys.
+- Keep synthetic consent and software-usage fixtures consistent with the stricter
+  identity/window checks, including both usage projections.
 - Native synchronous and asyncio resource clients generated from the shared
   public contract, with typed requests and responses.
 - Managed API origin, credential-derived workspace discovery, bounded pagination,

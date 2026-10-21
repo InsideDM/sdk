@@ -9,7 +9,7 @@ from typing import Callable
 import httpx2
 
 from ._client import AsyncInsideDM, InsideDM
-from ._codec import OPERATIONS, resolve
+from ._codec import OPERATIONS, SCHEMAS, resolve
 from ._version import API_ORIGIN
 
 TEST_ID = "00000000-0000-4000-8000-000000000001"
@@ -96,14 +96,21 @@ def _sample(schema, name=""):
 def _default_response(request: httpx2.Request) -> httpx2.Response:
     if str(request.url.copy_with(path="/", query=None)).rstrip("/") != API_ORIGIN:
         raise AssertionError("Offline transport refuses unexpected API origins.")
-    for operation in OPERATIONS.values():
+    for operation_id, operation in OPERATIONS.items():
         match = re.fullmatch(re.sub(r"\{([^}]+)\}", r"(?P<\1>[^/]+)", operation["path"]), request.url.path)
         if operation["method"] != request.method or not match:
             continue
         body = _sample(operation["response"])
+        if operation_id == "getSoftwareUsage":
+            view = "SoftwareUsageSummary" if request.url.params["view"] == "software_usage" else "SoftwareLimits"
+            body = {"data": _sample(SCHEMAS[view])}
         data = body.get("data")
         if isinstance(data, dict):
             params = match.groupdict()
+            if operation_id == "getConsentState":
+                data.update(contactId=request.url.params["contactId"], identities=[])
+            if operation_id == "getSoftwareUsage" and "period" in data:
+                data["period"] = {name: request.url.params[name] for name in ["from", "to"]}
             for key in ["businessId", "subscriptionId", "contactId", "recipeId", "packId"]:
                 if key in params and key in data:
                     data[key] = params[key]
