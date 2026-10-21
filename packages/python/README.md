@@ -165,7 +165,7 @@ reads to the remaining budget. An operating-system DNS call or custom sync
 transport cannot be forcibly interrupted; the sync timeout is not an absolute
 wall-clock guarantee. There are no hidden request threads.
 
-`list()` reads one page. `iter_pages()` and `iter_items()` fetch lazily; use
+For paginated collections, `list()` reads one page. `iter_pages()` and `iter_items()` fetch lazily; use
 `max_pages`/`max_items` or stop iteration to bound work. Empty continuation pages
 are valid. Expired or repeated cursors are errors rather than silent restarts.
 

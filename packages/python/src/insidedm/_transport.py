@@ -132,6 +132,10 @@ class ResponsePolicy:
             invalid()
         if "subscriptionId" in prepared.paths and isinstance(data.get("subscription"), dict) and data["subscription"]["id"] != prepared.paths["subscriptionId"]:
             invalid()
+        if prepared.operation == "getPlatformSubscriptionDelivery" and data["delivery"]["id"] != prepared.paths["deliveryId"]:
+            invalid()
+        if prepared.operation == "createPlatformBusiness" and data["externalId"] != requested["externalId"]:
+            invalid()
         if prepared.body is not None:
             requested = json.loads(prepared.body)
             if prepared.operation == "importFlowTemplate":
