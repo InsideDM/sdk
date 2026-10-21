@@ -63,7 +63,8 @@ class ResponsePolicy:
 
     def _length(self, response, meta):
         value = response.headers.get("content-length")
-        if value is not None and (not re.fullmatch(r"\d+", value) or int(value) > MAX_BODY_BYTES):
+        digits = (value.lstrip("0") or "0") if value is not None else "0"
+        if value is not None and (not re.fullmatch(r"[0-9]+", value) or len(digits) > len(str(MAX_BODY_BYTES)) or int(digits) > MAX_BODY_BYTES):
             raise InsideDMProtocolError("InsideDM returned an oversized response.", code="response_too_large", meta=meta)
         content_type = response.headers.get("content-type", "").split(";", 1)[0].strip().lower()
         if content_type not in {"application/json", "application/problem+json"}:
@@ -136,6 +137,11 @@ class ResponsePolicy:
             invalid()
         if prepared.operation == "createPlatformBusiness" and data["externalId"] != requested["externalId"]:
             invalid()
+        if prepared.operation == "getConsentState" and data["contactId"] != prepared.query["contactId"]:
+            invalid()
+        if prepared.operation == "getSoftwareUsage" and prepared.query["view"] == "software_usage":
+            if data["period"]["from"] != prepared.query["from"] or data["period"]["to"] != prepared.query["to"]:
+                invalid()
         if prepared.body is not None:
             requested = json.loads(prepared.body)
             if prepared.operation == "importFlowTemplate":
@@ -184,7 +190,7 @@ class ResponsePolicy:
         return error
 
     def _retry(self, error, prepared, retries, budget):
-        retryable = isinstance(error, InsideDMTransportError) or (
+        retryable = (isinstance(error, InsideDMTransportError) and error.retryable) or (
             isinstance(error, InsideDMAPIError) and error.status in RETRY_STATUSES and error.retryable)
         if not retryable or retries >= prepared.settings.max_retries:
             return None
@@ -192,6 +198,19 @@ class ResponsePolicy:
         if delay >= budget.remaining():
             return None
         return delay
+
+    def _http_failure(self, error, meta):
+        if isinstance(error, httpx2.TimeoutException):
+            return InsideDMTransportError("InsideDM request timed out.", code="request_timeout", meta=meta, retryable=True)
+        if isinstance(error, httpx2.DecodingError):
+            return InsideDMProtocolError("InsideDM returned an invalid encoded response.", code="invalid_response", meta=meta)
+        retryable = isinstance(error, (httpx2.NetworkError, httpx2.ProxyError, httpx2.RemoteProtocolError))
+        # Caller hooks, local protocol/configuration errors and implementation
+        # failures must never be retried as though a network connection failed.
+        return InsideDMTransportError(
+            "InsideDM network request failed." if retryable else "The HTTP client could not execute the request.",
+            code="network_error" if retryable else "http_client_error", meta=meta, retryable=retryable,
+        )
 
 
 class Transport(ResponsePolicy):
@@ -243,6 +262,7 @@ class Transport(ResponsePolicy):
             request = self._request(self.http, prepared, budget, token)
             attempt_deadline = min(budget.deadline, time.monotonic() + prepared.settings.attempt_timeout_seconds)
             response = None
+            meta = ResponseMeta(None, None, attempt)
             try:
                 response = self.http.send(request, stream=True, follow_redirects=False)
                 meta = self._meta(response, attempt, prepared)
@@ -266,17 +286,16 @@ class Transport(ResponsePolicy):
                 return self._decode(b"".join(chunks), response, meta, prepared)
             except InsideDMError as error:
                 failure = error
-            except httpx2.TimeoutException:
-                failure = InsideDMTransportError("InsideDM request timed out.", code="request_timeout", meta=ResponseMeta(None, None, attempt), retryable=True)
-            except Exception:
-                failure = InsideDMTransportError("InsideDM network request failed.", code="network_error", meta=ResponseMeta(None, None, attempt), retryable=True)
+            except Exception as error:
+                failure = self._http_failure(error, meta)
             finally:
                 if response is not None:
                     response.close()
-            if self.token_provider and isinstance(failure, InsideDMAPIError) and failure.code == "invalid_token" and not refreshed:
+            if self.token_provider and isinstance(failure, InsideDMAPIError) and failure.code == "invalid_token":
                 self.invalidate(token)
-                refreshed = True
-                continue
+                if not refreshed:
+                    refreshed = True
+                    continue
             delay = self._retry(failure, prepared, retries, budget)
             if delay is None:
                 raise failure from None

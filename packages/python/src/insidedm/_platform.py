@@ -242,10 +242,14 @@ class AsyncInsideDMPlatform(AsyncPlatformResources):
                         async with asyncio.timeout(120):
                             raw, _ = await self._transport._execute(_exchange_request(business_id, scopes, settings), shared)
                         grant = _grant(self._transport, raw, business_id, scopes)
-                        _remember(entry, grant)
+                        owner = asyncio.current_task()
+                        if owner is not None and not owner.cancelling():
+                            _remember(entry, grant)
                         return grant["token"]
                     finally:
-                        entry.flights.pop(policy, None)
+                        active = entry.flights.get(policy)
+                        if active is not None and active.task is asyncio.current_task():
+                            entry.flights.pop(policy, None)
 
                 task = asyncio.create_task(exchange())
                 flight = AsyncFlight(task)
@@ -264,6 +268,8 @@ class AsyncInsideDMPlatform(AsyncPlatformResources):
             finally:
                 flight.waiters -= 1
                 if flight.waiters == 0 and not flight.task.done():
+                    if entry.flights.get(policy) is flight:
+                        entry.flights.pop(policy, None)
                     flight.task.cancel()
 
         transport = AsyncTransport(api_key=None, business_id=business_id, settings=self._transport.settings,

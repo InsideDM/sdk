@@ -60,8 +60,9 @@ class AsyncTransport(ResponsePolicy):
             attempt += 1
             request = self._request(self.http, prepared, budget, token)
             response = None
+            meta = ResponseMeta(None, None, attempt)
             try:
-                async with asyncio.timeout(min(budget.remaining(), prepared.settings.attempt_timeout_seconds)):
+                async with asyncio.timeout(min(budget.remaining(), prepared.settings.attempt_timeout_seconds)) as attempt_timeout:
                     response = await self.http.send(request, stream=True, follow_redirects=False)
                     meta = self._meta(response, attempt, prepared)
                     self._length(response, meta)
@@ -74,17 +75,19 @@ class AsyncTransport(ResponsePolicy):
                     return self._decode(b"".join(chunks), response, meta, prepared)
             except InsideDMError as error:
                 failure = error
-            except (TimeoutError, httpx2.TimeoutException):
-                failure = InsideDMTransportError("InsideDM request timed out.", code="request_timeout", meta=ResponseMeta(None, None, attempt), retryable=True)
-            except Exception:
-                failure = InsideDMTransportError("InsideDM network request failed.", code="network_error", meta=ResponseMeta(None, None, attempt), retryable=True)
+            except Exception as error:
+                if isinstance(error, TimeoutError) and attempt_timeout.expired():
+                    failure = InsideDMTransportError("InsideDM request timed out.", code="request_timeout", meta=meta, retryable=True)
+                else:
+                    failure = self._http_failure(error, meta)
             finally:
                 if response is not None:
                     await response.aclose()
-            if self.token_provider and isinstance(failure, InsideDMAPIError) and failure.code == "invalid_token" and not refreshed:
+            if self.token_provider and isinstance(failure, InsideDMAPIError) and failure.code == "invalid_token":
                 self.invalidate(token)
-                refreshed = True
-                continue
+                if not refreshed:
+                    refreshed = True
+                    continue
             delay = self._retry(failure, prepared, retries, budget)
             if delay is None:
                 raise failure from None

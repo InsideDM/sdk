@@ -36,7 +36,7 @@ def credential(value: str, *, platform: bool) -> str:
 
 
 def bounded(value, default, minimum, maximum, field, integer=False):
-    if type(value) not in (int, float) or not math.isfinite(value) or not minimum <= value <= maximum or (integer and type(value) is not int):
+    if type(value) not in (int, float) or not minimum <= value <= maximum or not math.isfinite(value) or (integer and type(value) is not int):
         raise InsideDMConfigurationError("Use a value within the documented bounds.", field=field)
     return value
 
@@ -84,6 +84,8 @@ def validate_key(key):
 
 
 def _normalise(operation, body):
+    if operation in {"createPlatformSubscription", "updatePlatformSubscription"} and "events" in body:
+        body["events"] = [event for event in CONTRACT["schemas"]["DeveloperEventType"]["enum"] if event in body["events"]]
     if operation in {"createContact", "updateContact"}:
         field = "name" if operation == "createContact" else "displayName"
         value = body.get(field)
@@ -148,6 +150,8 @@ def prepare(key: str, paths: dict[str, str], values: dict[str, Any], defaults: S
         if set(query) != {"view", "from", "to"}:
             raise InsideDMConfigurationError("Provide from_ and to UTC instants.")
         start, end = [datetime.fromisoformat(query[n].replace("Z", "+00:00")) for n in ["from", "to"]]
+        for name, instant in [("from", start), ("to", end)]:
+            query[name] = instant.astimezone(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
         now = datetime.now(timezone.utc)
         if not 0 < (end - start).total_seconds() <= 31 * 86400 or end > now or (now - start).total_seconds() > 365 * 86400:
             raise InsideDMConfigurationError("Use a past UTC interval of at most 31 days within retained history.")

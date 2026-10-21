@@ -159,6 +159,10 @@ Optional request controls use seconds: `timeout_seconds=20`,
 the captured body and intent key. Persist your own logical key before a write
 when recovery must survive a process restart. Reads do not accept write keys.
 
+Retries apply to recognized transient network/API failures. Errors from local
+HTTP hooks or adapters are non-retryable `http_client_error` failures, with safe
+diagnostics. Inspect `error.retryable` when deciding your application's next step.
+
 The async total deadline covers discovery, HTTP I/O and retry waits. The sync
 client shares the same logical budget and caps blocking I/O timeouts and body
 reads to the remaining budget. An operating-system DNS call or custom sync

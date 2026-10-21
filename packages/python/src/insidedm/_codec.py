@@ -51,9 +51,11 @@ def decode(schema: dict[str, Any], value: Any, *, field: str = "input",
            response: bool = False, python_names: bool = False, depth: int = 0) -> Any:
     result = _decode(schema, value, field=field, response=response, python_names=python_names, depth=depth)
     if "$ref" in schema:
-        from ._semantics import validate
+        from ._semantics import DomainMismatch, validate
         try:
             validate(schema["$ref"].rsplit("/", 1)[1], result)
+        except DomainMismatch as error:
+            raise SchemaMismatch(field + "." + snake(error.field), error.hint) from None
         except (ValueError, KeyError, TypeError, OverflowError):
             raise SchemaMismatch(field, "Use a consistent documented resource state.") from None
     return result

@@ -2,6 +2,13 @@
 
 ## 0.1.0a0 (in development)
 
+- Retry only recognized transient network/API failures; local HTTP hook and
+  adapter failures now produce a safe, non-retryable `http_client_error`.
+- Reject mismatched consent contacts and software-usage intervals, enforce
+  consent uniqueness/timestamp invariants and validate subscription domain rules
+  before I/O. Extreme numeric controls produce configuration errors consistently.
+- Evict every rejected delegation and isolate new async callers from abandoned
+  exchange cancellation and cleanup. Preserve valid comma-containing lookup keys.
 - Native synchronous and asyncio resource clients generated from the shared
   public contract, with typed requests and responses.
 - Managed API origin, credential-derived workspace discovery, bounded pagination,

@@ -9,6 +9,41 @@ import re
 from datetime import datetime
 from urllib.parse import parse_qs, urlsplit
 
+import httpx2
+
+
+class DomainMismatch(ValueError):
+    def __init__(self, field: str, hint: str):
+        self.field, self.hint = field, hint
+        super().__init__("Invalid domain value.")
+
+
+def _https(value, field="url"):
+    try:
+        parsed = httpx2.URL(value)
+        valid = (parsed.scheme == "https" and bool(parsed.host) and not parsed.userinfo
+                 and not parsed.fragment and str(parsed) == value and bool(urlsplit(value).path))
+    except (httpx2.InvalidURL, ValueError):
+        valid = False
+    if not valid:
+        raise DomainMismatch(field, "Use a canonical HTTPS URL with a path and without credentials or a fragment.")
+
+
+def _revision(value, field="expectedRevision"):
+    if not 1 <= int(value) <= 2147483647:
+        raise DomainMismatch(field, "Use a positive revision no greater than 2147483647.")
+
+
+def _subscription(value):
+    if "name" in value and (value["name"] != value["name"].strip() or re.search(r"[\x00-\x1f\x7f]", value["name"])):
+        raise DomainMismatch("name", "Use a nonblank name without surrounding whitespace or control characters.")
+    if "url" in value:
+        _https(value["url"])
+    if "events" in value and len(value["events"]) != len(set(value["events"])):
+        raise DomainMismatch("events", "Select distinct subscription events.")
+    if "expectedRevision" in value:
+        _revision(value["expectedRevision"])
+
 
 def require(condition):
     if not condition:
@@ -37,7 +72,19 @@ def _link(value, path, parameters):
 def validate(name, value):
     if not isinstance(value, dict):
         return
-    if name == "BlueprintUpdatePreview":
+    if name in {"CreatePartnerSubscription", "UpdatePartnerSubscription", "PartnerSubscriptionDecision", "RotatePartnerSubscriptionSecret"}:
+        _subscription(value)
+    elif name in {"CreatePlatformBusinessInput", "CreateInstallationRequestInput", "CreateOnboardingSessionInput"}:
+        _https(value["returnUrl"], "returnUrl")
+    elif name == "RevokeInstallationInput":
+        _revision(value["expectedRevision"])
+    elif name == "ContactConsentState":
+        distinct([identity["identityId"] for identity in value["identities"]])
+        for identity in value["identities"]:
+            decisions = identity["purposes"]
+            require({decision["purpose"] for decision in decisions} == {"marketing", "utility", "service", "loyalty", "ad_measurement"})
+            require(all(decision["status"] == "unknown" or decision["changedAt"] is not None for decision in decisions))
+    elif name == "BlueprintUpdatePreview":
         require(all(value["from"][k] == value["target"][k] for k in ["applicationId", "key"]))
         distinct(value["reasons"])
         if value["state"] == "action_required":
@@ -102,9 +149,12 @@ def validate(name, value):
             distinct(items)
     elif name in {"PublicInstallation", "BusinessDelegation"}:
         distinct(value["scopes"])
-        require(1 <= int(value["authorityVersion"]) <= 2147483647)
+        _revision(value["authorityVersion"], "authorityVersion")
+        if "revision" in value:
+            _revision(value["revision"], "revision")
     elif name == "PartnerSubscription":
-        distinct(value["events"])
+        _subscription(value)
+        _revision(value["revision"], "revision")
         require(not value["ready"] or (value["status"] not in {"disabled", "unavailable"} and value["readinessValidUntil"] is not None))
     elif name == "PartnerSubscriptionSecret":
         subscription, secret = value["subscription"], value["signingSecret"]
