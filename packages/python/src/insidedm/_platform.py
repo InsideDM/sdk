@@ -18,6 +18,7 @@ from ._codec import SCHEMAS, input_value
 from ._errors import InsideDMConfigurationError, InsideDMError, InsideDMProtocolError, InsideDMTransportError
 from ._generated.async_resources import AsyncPlatformResources
 from ._generated.resources import PlatformResources
+from ._generated.inputs import PublicScope
 from ._policy import Budget, Prepared, Settings
 from ._transport import Transport
 from ._rollouts import AsyncPlatformBlueprintFacade, PlatformBlueprintFacade
@@ -87,7 +88,7 @@ def _remember(entry, grant):
     # Concurrent exchanges with different timeout policies must not replace a
     # newer installation authority epoch with a slower, older response.
     current = entry.grant
-    if current and current["installationId"] == grant["installationId"] and current["authorityVersion"] > grant["authorityVersion"]:
+    if current and current["installationId"] == grant["installationId"] and int(current["authorityVersion"]) > int(grant["authorityVersion"]):
         return
     entry.grant = grant
 
@@ -126,7 +127,7 @@ class InsideDMPlatform(PlatformResources):
         self._init_resources(self._transport)
         self.blueprints = PlatformBlueprintFacade(self)
 
-    def for_business(self, business_id: str, *, scopes: Sequence[str] | None = None) -> InsideDM:
+    def for_business(self, business_id: str, *, scopes: Sequence[PublicScope] | None = None) -> InsideDM:
         business_id, scopes, key = selection(business_id, scopes)
 
         def invalidate(token):
@@ -215,7 +216,7 @@ class AsyncInsideDMPlatform(AsyncPlatformResources):
         self._init_resources(self._transport)
         self.blueprints = AsyncPlatformBlueprintFacade(self)
 
-    def for_business(self, business_id: str, *, scopes: Sequence[str] | None = None) -> AsyncInsideDM:
+    def for_business(self, business_id: str, *, scopes: Sequence[PublicScope] | None = None) -> AsyncInsideDM:
         business_id, scopes, key = selection(business_id, scopes)
 
         def invalidate(token):

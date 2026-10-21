@@ -54,6 +54,7 @@ files only within 14 days of a release's first upload; this workflow uploads the
 wheel and source archive together. TestPyPI is optional and requires a separate
 publisher/account setup. Never mix production and test indexes as a fallback.
 
-See [PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/adding-a-publisher/),
+See [creating a project with a pending Trusted Publisher](https://docs.pypi.org/trusted-publishers/creating-a-project-through-oidc/),
+[existing-project publishers](https://docs.pypi.org/trusted-publishers/adding-a-publisher/),
 [PyPA's GitHub publishing guide](https://packaging.python.org/en/latest/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/)
 and [digital attestations](https://docs.pypi.org/attestations/).

@@ -102,6 +102,7 @@ def validate(name, value):
             distinct(items)
     elif name in {"PublicInstallation", "BusinessDelegation"}:
         distinct(value["scopes"])
+        require(1 <= int(value["authorityVersion"]) <= 2147483647)
     elif name == "PartnerSubscription":
         distinct(value["events"])
         require(not value["ready"] or (value["status"] not in {"disabled", "unavailable"} and value["readinessValidUntil"] is not None))
