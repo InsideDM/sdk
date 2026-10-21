@@ -24,8 +24,8 @@ provider-backed execution have not been verified.
    default placeholders stop execution before any HTTP request. No WhatsApp
    account selector is required; workspace discovery and backend sender resolution
    use the organization's existing account.
-3. Use your development API origin for evaluation. The bundled default is
-   `https://api.insidedm.io`; production acceptance remains a separate service
+3. The bundled workflows already target `https://api.insidedm.io`; no API-origin
+   change is required. Hosted production acceptance remains a separate service
    gate. The HTTP nodes disable redirects and set a 20-second headers timeout.
    That n8n timeout is not the SDK's end-to-end deadline.
 4. Run manually with an authorized test recipient. Replace the manual input

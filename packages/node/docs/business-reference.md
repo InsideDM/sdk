@@ -2,6 +2,10 @@
 
 [Start with a short task](../README.md), then use this reference for full input, permission, lifecycle and recovery details.
 
+The SDK connects to `https://api.insidedm.io` automatically. Configure your server
+API key when creating the client; no base URL or WhatsApp account selection is
+required. Use `@insidedm/sdk/testing` for offline exploration without service access.
+
 ## Available operations
 
 For n8n, use the [integration guide](n8n.md). With business usage.read,

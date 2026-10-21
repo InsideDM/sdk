@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0-alpha.1 (unreleased)
+## 0.1.0-alpha.1 (2026-10-21)
 
 - The SDK manages its API endpoint. Consumers configure their server key without
   a base URL; endpoint overrides are rejected before network access.
@@ -8,6 +8,8 @@
 - Rewritten npm guide with a complete WhatsApp quickstart, use cases and direct
   documentation links.
 - Consistent insideDM branding, descriptive package metadata and product links.
+- Audience-agnostic public guides; detailed integration and rollout guides are
+  retained separately for private sharing.
 - Keep the maintainer publication guide in the source repository; npm retains
   customer guides, examples, the full API contract and MIT license.
 
