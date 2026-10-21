@@ -161,6 +161,9 @@ def generate():
         properties = {k: v for k, v in body.get("properties", {}).items() if k not in fixed_body}
         required = [k for k in body.get("required", []) if k not in fixed_body]
         properties.update({k: v for k, v in operation["query_parameters"].items() if k not in fixed_query})
+        if operation_id == "getPartnerApiUsage":
+            for parameter in ["from", "to"]:
+                properties[parameter] = {"anyOf": [properties[parameter], {"type": "string", "format": "date-time"}]}
         required += [k for k in operation["required_query"] if k not in fixed_query]
         if operation["idempotency"] and operation_id != "publishEvent":
             properties["idempotencyKey"] = {"type": "string"}

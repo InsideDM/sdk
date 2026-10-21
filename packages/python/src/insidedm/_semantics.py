@@ -11,6 +11,8 @@ from urllib.parse import parse_qs, urlsplit
 
 import httpx2
 
+from ._usage import capture_partner_usage
+
 
 class DomainMismatch(ValueError):
     def __init__(self, field: str, hint: str):
@@ -84,6 +86,8 @@ def validate(name, value):
             decisions = identity["purposes"]
             require({decision["purpose"] for decision in decisions} == {"marketing", "utility", "service", "loyalty", "ad_measurement"})
             require(all(decision["status"] == "unknown" or decision["changedAt"] is not None for decision in decisions))
+    elif name == "PublicPartnerApiUsage":
+        return capture_partner_usage(value)
     elif name == "BlueprintUpdatePreview":
         require(all(value["from"][k] == value["target"][k] for k in ["applicationId", "key"]))
         distinct(value["reasons"])

@@ -142,6 +142,11 @@ class ResponsePolicy:
         if prepared.operation == "getSoftwareUsage" and prepared.query["view"] == "software_usage":
             if data["period"]["from"] != prepared.query["from"] or data["period"]["to"] != prepared.query["to"]:
                 invalid()
+        if prepared.operation == "getPartnerApiUsage":
+            if data["granularity"] != prepared.query.get("granularity", "day") or any(
+                data[key] != prepared.query[key] for key in ["from", "to"] if key in prepared.query
+            ):
+                invalid()
         if prepared.body is not None:
             requested = json.loads(prepared.body)
             if prepared.operation == "importFlowTemplate":

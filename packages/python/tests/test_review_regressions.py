@@ -188,6 +188,50 @@ async def test_every_rejected_delegation_is_evicted(asynchronous):
         await close(platform, http)
 
 
+@pytest.mark.parametrize("asynchronous", [False, True])
+@pytest.mark.asyncio
+async def test_application_usage_validates_windows_and_telemetry_before_returning(asynchronous):
+    seen = []
+    end = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    start = end - timedelta(days=1)
+    at = lambda value: value.isoformat(timespec="milliseconds").replace("+00:00", "Z")
+    sample = _sample(SCHEMAS["PublicPartnerApiUsage"])
+    sample.update(granularity="day", **{"from": at(start), "to": at(end)}, totalAdmitted=2, totalRefused=1,
+                  points=[{"bucketStart": at(start), "admitted": 2, "refused": 1}],
+                  freshness={"source": "batched_public_api_counters", "observedAt": at(end),
+                             "retainedSince": at(start - timedelta(days=30)), "latestRecordedMinute": None})
+    data = dict(sample)
+
+    def respond(request):
+        seen.append(request)
+        return reply(data)
+
+    client, http = client_pair(asynchronous, respond, platform=True, max_retries=0)
+    try:
+        for fields in [{"from_": "nonsense"}, {"from_": start, "to": end + timedelta(days=32)},
+                       {"from_": start + timedelta(minutes=1)}, {"from_": start.replace(tzinfo=None)}]:
+            with pytest.raises(InsideDMConfigurationError):
+                await call(client.usage.get, TEST_ID, **fields)
+        assert seen == []
+        result = await call(client.usage.get, TEST_ID, from_=start.date().isoformat(), to=end)
+        assert result.data.total_admitted == 2
+        assert seen[-1].url.params["from"] == at(start) and seen[-1].url.params["to"] == at(end)
+        data = {**sample, "totalAdmitted": 3}
+        with pytest.raises(InsideDMProtocolError):
+            await call(client.usage.get, TEST_ID, from_=start, to=end)
+        data = {**sample, "points": [{"bucketStart": at(start + timedelta(minutes=1)), "admitted": 2, "refused": 1}]}
+        with pytest.raises(InsideDMProtocolError):
+            await call(client.usage.get, TEST_ID, from_=start, to=end)
+        data = dict(sample)
+        with pytest.raises(InsideDMProtocolError):
+            await call(client.usage.get, TEST_ID, from_=start - timedelta(days=1), to=start)
+        data = {**sample, "freshness": {**sample["freshness"], "latestRecordedMinute": at(end)}}
+        with pytest.raises(InsideDMProtocolError):
+            await call(client.usage.get, TEST_ID, from_=start, to=end)
+    finally:
+        await close(client, http)
+
+
 @pytest.mark.asyncio
 async def test_new_waiters_get_a_new_exchange_while_abandoned_exchange_cleans_up():
     started, cleaning, cleanup, replacement, finish = [asyncio.Event() for _ in range(5)]

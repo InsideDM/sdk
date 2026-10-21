@@ -7,6 +7,8 @@
 - Reject mismatched consent contacts and software-usage intervals, enforce
   consent uniqueness/timestamp invariants and validate subscription domain rules
   before I/O. Extreme numeric controls produce configuration errors consistently.
+- Apply the existing application-usage window, bucket, total and freshness rules;
+  accept canonical dates and aware datetimes, and correlate the returned window.
 - Evict every rejected delegation and isolate new async callers from abandoned
   exchange cancellation and cleanup. Preserve valid comma-containing lookup keys.
 - Native synchronous and asyncio resource clients generated from the shared

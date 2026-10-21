@@ -53,7 +53,9 @@ def decode(schema: dict[str, Any], value: Any, *, field: str = "input",
     if "$ref" in schema:
         from ._semantics import DomainMismatch, validate
         try:
-            validate(schema["$ref"].rsplit("/", 1)[1], result)
+            captured = validate(schema["$ref"].rsplit("/", 1)[1], result)
+            if captured is not None:
+                result = captured
         except DomainMismatch as error:
             raise SchemaMismatch(field + "." + snake(error.field), error.hint) from None
         except (ValueError, KeyError, TypeError, OverflowError):

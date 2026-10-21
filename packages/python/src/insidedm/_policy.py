@@ -17,6 +17,7 @@ from uuid import uuid4
 from ._codec import CONTRACT, OPERATIONS, SchemaMismatch, decode, input_value, resolve, snake
 from ._errors import InsideDMConfigurationError, InsideDMProtocolError, InsideDMTransportError
 from ._version import API_ORIGIN
+from ._usage import capture_partner_usage_query, normalize_usage_instant
 
 CONTROLS = {"timeout_seconds", "attempt_timeout_seconds", "max_retries"}
 RETRY_STATUSES = {408, 429, 500, 502, 503, 504}
@@ -142,10 +143,21 @@ def prepare(key: str, paths: dict[str, str], values: dict[str, Any], defaults: S
     query = {**binding["query"]}
     for name in query_fields:
         if name in values:
-            query[query_fields[name]] = input_value(operation["query_parameters"][query_fields[name]], values[name], name)
+            value = values[name]
+            if operation_id == "getPartnerApiUsage" and name in {"from_", "to"}:
+                try:
+                    value = normalize_usage_instant(value)
+                except (ValueError, OverflowError):
+                    raise InsideDMConfigurationError("Use an ISO date or a timezone-aware timestamp.", field=name) from None
+            query[query_fields[name]] = input_value(operation["query_parameters"][query_fields[name]], value, name)
     missing_query = set(operation["required_query"]) - set(query)
     if missing_query:
         raise InsideDMConfigurationError("Provide this required field.", field=snake(sorted(missing_query)[0]))
+    if operation_id == "getPartnerApiUsage":
+        try:
+            query = capture_partner_usage_query(query)
+        except (ValueError, OverflowError):
+            raise InsideDMConfigurationError("Use complete UTC buckets spanning at most 31 days, or 24 hours for minute telemetry.") from None
     if operation_id == "getSoftwareUsage" and binding["query"].get("view") == "software_usage":
         if set(query) != {"view", "from", "to"}:
             raise InsideDMConfigurationError("Provide from_ and to UTC instants.")
