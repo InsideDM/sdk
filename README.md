@@ -13,7 +13,7 @@ contact synchronization and published flows.
 | Language | Package | Status | Documentation |
 | --- | --- | --- | --- |
 | JavaScript / TypeScript · Node.js 22+ | [`@insidedm/sdk`](https://www.npmjs.com/package/@insidedm/sdk) | Alpha channel: `next` | [Quickstart and examples](packages/node/README.md) |
-| Python | Planned | Not implemented or published | [Python status](packages/python/README.md) |
+| Python 3.11+ · sync / asyncio | `insidedm` | First alpha prepared; PyPI publication pending | [Quickstart and API reference](packages/python/README.md) |
 
 Each language package has independent versions, changelogs and releases.
 
@@ -53,6 +53,23 @@ Continue with the [WhatsApp notification quickstart](packages/node/README.md#qui
 Each guide explains permissions, safe retry keys and result meanings. Submitted
 work, flow completion and customer delivery remain distinct stages.
 
+## Get started with Python
+
+```python
+import os
+from insidedm import InsideDM
+
+with InsideDM(api_key=os.environ["INSIDEDM_API_KEY"]) as client:
+    workspace = client.workspace.get()
+    print(workspace.data.id)
+```
+
+Python supports the same reviewed API contract, typed snake_case inputs and results,
+native sync and asyncio clients, safe retries, pagination and signed webhooks.
+See its [installation status and notification quickstart](packages/python/README.md),
+[API reference](packages/python/docs/api-reference.md) and
+[source installation](packages/python/CONTRIBUTING.md).
+
 ## Develop from source
 
 ```sh
@@ -63,10 +80,10 @@ npm run build
 npm pack
 ```
 
-The repository groups implementations under `packages/node` and, when implemented,
-`packages/python`. Runtime-specific checks and manual releases live in
+The repository groups implementations under `packages/node` and `packages/python`.
+Runtime-specific checks and manual releases live in
 `.github/workflows`. Node releases use `node-v<version>` tags; future Python
-releases will use `python-v<version>` with their own PyPI workflow.
+releases use `python-v<version>` with their own PyPI workflow.
 
 See [contributing](CONTRIBUTING.md), [security reporting](SECURITY.md),
 [Node release notes](packages/node/CHANGELOG.md) and

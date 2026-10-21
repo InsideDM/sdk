@@ -1,0 +1,57 @@
+[build-system]
+requires = ["hatchling>=1.32.4,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "insidedm"
+dynamic = ["version"]
+description = "Official insideDM Python SDK for WhatsApp messaging, customer data and workflow automation."
+readme = {file = "README.md", content-type = "text/markdown"}
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["insidedm", "whatsapp", "messaging", "notifications", "automation", "sdk"]
+dependencies = ["httpx2>=2.16.0,<3", "pydantic>=2.14.1,<3", "typing-extensions>=4.16,<5"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
+  "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://insidedm.io"
+Documentation = "https://github.com/InsideDM/sdk/tree/main/packages/python"
+Source = "https://github.com/InsideDM/sdk"
+Issues = "https://github.com/InsideDM/sdk/issues"
+
+[dependency-groups]
+dev = ["build==1.6.1", "twine==7.0.0", "pytest==9.1.1", "pytest-asyncio==1.4.0", "mypy==2.4.0", "datamodel-code-generator==0.86.0"]
+
+[tool.hatch.version]
+path = "src/insidedm/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/insidedm"]
+
+[tool.hatch.build.targets.sdist]
+only-include = ["src", "scripts", "tests", "docs", "README.md", "CHANGELOG.md", "CONTRIBUTING.md", "PUBLICATION.md", "LICENSE", "pyproject.toml"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.11"
+check_untyped_defs = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = ["insidedm._generated.*"]
+ignore_errors = true

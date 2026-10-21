@@ -1,5 +1,5 @@
 import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
-import { dirname, resolve, relative } from 'node:path';
+import { basename, dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -19,10 +19,16 @@ copies.push(
   {source: resolve(root, 'SECURITY.md'), destination: 'SECURITY.md'},
   {source: resolve(root, '.gitignore'), destination: '.gitignore'},
   {source: github, destination: '.github'},
-  {source: existsSync(resolve(root, 'repository/python.md')) ? resolve(root, 'repository/python.md') : resolve(templates, 'packages/python/README.md'), destination: 'packages/python/README.md'},
 );
+const python = [resolve(root, '../sdk-python'), resolve(root, '../python')].find(path => existsSync(resolve(path, 'pyproject.toml')));
+if (!python) throw new Error('The implemented sibling Python SDK is required; no placeholder is exported.');
+for (const entry of ['src', 'scripts', 'tests', 'docs', '.gitignore', 'pyproject.toml', 'README.md', 'CHANGELOG.md', 'CONTRIBUTING.md', 'PUBLICATION.md', 'LICENSE']) {
+  copies.push({source: resolve(python, entry), destination: `packages/python/${entry}`});
+}
+const allowed = path => !['__pycache__', '.venv', '.pytest_cache', '.mypy_cache', 'dist', 'node_modules', '.git'].includes(basename(path)) && !/\.py[co]$/.test(path);
 const files = [];
 function inspect(path) {
+  if (!allowed(path)) return;
   const stat = lstatSync(path);
   if (stat.isSymbolicLink()) throw new Error('Export refuses symlinks.');
   if (stat.isDirectory()) { for (const child of readdirSync(path)) inspect(resolve(path, child)); return; }
@@ -35,6 +41,6 @@ mkdirSync(target);
 for (const copy of copies) {
   const destination = resolve(target, copy.destination);
   mkdirSync(dirname(destination), {recursive: true});
-  cpSync(copy.source, destination, {recursive: true, errorOnExist: true, force: false});
+  cpSync(copy.source, destination, {recursive: true, errorOnExist: true, force: false, filter: allowed});
 }
 console.log(`Public kit exported: ${target} (${files.length} allowlisted files). No Git repository, remote or publication was created.`);

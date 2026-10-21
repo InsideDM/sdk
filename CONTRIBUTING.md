@@ -17,9 +17,10 @@ Follow the [Node interface conventions](packages/node/CONTRIBUTING.md) for namin
 typed inputs, safe errors, lifecycle explanations and runnable customer tasks.
 Node release tags use `node-v<version>` and the package retains its npm version.
 
-Python is planned. Do not add a placeholder package, version or release workflow
-that implies an implemented SDK. Its eventual `pyproject.toml`, tests, changelog,
-PyPI identity and `python-v<version>` releases will be separate from Node's.
+For Python, follow [the Python contributor guide](packages/python/CONTRIBUTING.md).
+Its `pyproject.toml`, types, changelog, PyPI identity, release workflow and
+`python-v<version>` tags are separate from Node's. Shared API changes require
+regenerating both runtimes from the reviewed public OpenAPI snapshot.
 
 Shared repository documentation should accurately describe each runtime's current
 capabilities. Never copy backend services, environment files, real customer data,
