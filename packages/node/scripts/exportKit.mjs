@@ -22,7 +22,7 @@ copies.push(
 );
 const python = [resolve(root, '../sdk-python'), resolve(root, '../python')].find(path => existsSync(resolve(path, 'pyproject.toml')));
 if (!python) throw new Error('The implemented sibling Python SDK is required; no placeholder is exported.');
-for (const entry of ['src', 'scripts', 'tests', 'docs', '.gitignore', 'pyproject.toml', 'README.md', 'CHANGELOG.md', 'CONTRIBUTING.md', 'PUBLICATION.md', 'LICENSE']) {
+for (const entry of ['src', 'scripts', 'tests', 'docs', 'examples', '.gitignore', 'pyproject.toml', 'README.md', 'CHANGELOG.md', 'CONTRIBUTING.md', 'PUBLICATION.md', 'LICENSE']) {
   copies.push({source: resolve(python, entry), destination: `packages/python/${entry}`});
 }
 const allowed = path => !['__pycache__', '.venv', '.pytest_cache', '.mypy_cache', 'dist', 'node_modules', '.git'].includes(basename(path)) && !/\.py[co]$/.test(path);

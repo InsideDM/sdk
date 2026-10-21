@@ -121,7 +121,6 @@ def prepare(key: str, paths: dict[str, str], values: dict[str, Any], defaults: S
     operation = OPERATIONS[operation_id]
     if operation["platform"] != platform:
         raise InsideDMConfigurationError("Use the matching business or application client.")
-    body_schema = resolve(operation["request"]) if operation["request"] else {}
     body_fields = {snake(k): k for k in binding["body_fields"] if k not in binding["body"]}
     query_fields = {snake(k): k for k in operation["query_parameters"] if k not in binding["query"]}
     allowed = set(body_fields) | set(query_fields) | CONTROLS
@@ -133,6 +132,8 @@ def prepare(key: str, paths: dict[str, str], values: dict[str, Any], defaults: S
     captured_paths = {}
     for name, value in paths.items():
         schema = operation["path_parameters"][name]
+        if operation_id == "getBlueprintVersion" and name == "version":
+            value = str(bounded(value, None, 1, 2147483647, "version", True))
         captured_paths[name] = input_value(schema, value, snake(name))
         if schema.get("format") == "uuid":
             captured_paths[name] = captured_paths[name].lower()

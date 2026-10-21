@@ -41,7 +41,7 @@ path = "src/insidedm/_version.py"
 packages = ["src/insidedm"]
 
 [tool.hatch.build.targets.sdist]
-only-include = ["src", "scripts", "tests", "docs", "README.md", "CHANGELOG.md", "CONTRIBUTING.md", "PUBLICATION.md", "LICENSE", "pyproject.toml"]
+only-include = ["src", "scripts", "tests", "docs", "examples", "README.md", "CHANGELOG.md", "CONTRIBUTING.md", "PUBLICATION.md", "LICENSE", "pyproject.toml"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

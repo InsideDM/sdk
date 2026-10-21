@@ -853,6 +853,7 @@ class BlueprintParameterDefinition1(ResponseModel):
     id: FlowTemplateIdentifier
     type: Literal['string']
     default_value: str = Field(..., alias='defaultValue')
+    max_length: int = Field(..., alias='maxLength')
 
 
 class BlueprintParameterDefinition2(ResponseModel):
@@ -862,6 +863,8 @@ class BlueprintParameterDefinition2(ResponseModel):
     id: FlowTemplateIdentifier
     type: Literal['integer']
     default_value: int = Field(..., alias='defaultValue')
+    minimum: int
+    maximum: int
 
 
 BlueprintParameterDefinition = TypeAliasType(
@@ -1920,6 +1923,7 @@ class BusinessContactsListIteratorArguments(ResponseModel):
     attempt_timeout_seconds: float | None = Field(None, alias='attemptTimeoutSeconds')
     max_retries: int | None = Field(None, alias='maxRetries')
     max_pages: int | None = Field(None, alias='maxPages')
+    max_items: int | None = Field(None, alias='maxItems')
 
 
 class BusinessContactsGetArguments(ResponseModel):
@@ -2029,6 +2033,7 @@ class BusinessConversationsListIteratorArguments(ResponseModel):
     attempt_timeout_seconds: float | None = Field(None, alias='attemptTimeoutSeconds')
     max_retries: int | None = Field(None, alias='maxRetries')
     max_pages: int | None = Field(None, alias='maxPages')
+    max_items: int | None = Field(None, alias='maxItems')
 
 
 class BusinessConversationsGetArguments(ResponseModel):
@@ -2077,6 +2082,7 @@ class BusinessConversationsMessagesListIteratorArguments(ResponseModel):
     attempt_timeout_seconds: float | None = Field(None, alias='attemptTimeoutSeconds')
     max_retries: int | None = Field(None, alias='maxRetries')
     max_pages: int | None = Field(None, alias='maxPages')
+    max_items: int | None = Field(None, alias='maxItems')
 
 
 class BusinessMessagesGetArguments(ResponseModel):
@@ -2288,6 +2294,7 @@ class BusinessOrdersListIteratorArguments(ResponseModel):
     attempt_timeout_seconds: float | None = Field(None, alias='attemptTimeoutSeconds')
     max_retries: int | None = Field(None, alias='maxRetries')
     max_pages: int | None = Field(None, alias='maxPages')
+    max_items: int | None = Field(None, alias='maxItems')
 
 
 class BusinessOrdersGetArguments(ResponseModel):
@@ -2328,6 +2335,7 @@ class BusinessOrdersShipmentsListIteratorArguments(ResponseModel):
     attempt_timeout_seconds: float | None = Field(None, alias='attemptTimeoutSeconds')
     max_retries: int | None = Field(None, alias='maxRetries')
     max_pages: int | None = Field(None, alias='maxPages')
+    max_items: int | None = Field(None, alias='maxItems')
 
 
 class BusinessShipmentsGetArguments(ResponseModel):
@@ -2368,6 +2376,7 @@ class BusinessTemplatesListIteratorArguments(ResponseModel):
     attempt_timeout_seconds: float | None = Field(None, alias='attemptTimeoutSeconds')
     max_retries: int | None = Field(None, alias='maxRetries')
     max_pages: int | None = Field(None, alias='maxPages')
+    max_items: int | None = Field(None, alias='maxItems')
 
 
 class BusinessMessagingGetReadinessArguments(ResponseModel):
@@ -2523,6 +2532,7 @@ class BusinessEventsBindingsListIteratorArguments(ResponseModel):
     attempt_timeout_seconds: float | None = Field(None, alias='attemptTimeoutSeconds')
     max_retries: int | None = Field(None, alias='maxRetries')
     max_pages: int | None = Field(None, alias='maxPages')
+    max_items: int | None = Field(None, alias='maxItems')
 
 
 class BusinessFlowsRunsGetArguments(ResponseModel):
@@ -2674,6 +2684,7 @@ class PlatformBusinessesListIteratorArguments(ResponseModel):
     attempt_timeout_seconds: float | None = Field(None, alias='attemptTimeoutSeconds')
     max_retries: int | None = Field(None, alias='maxRetries')
     max_pages: int | None = Field(None, alias='maxPages')
+    max_items: int | None = Field(None, alias='maxItems')
 
 
 class PlatformBusinessesGetArguments(ResponseModel):
@@ -3112,6 +3123,7 @@ class PlatformSubscriptionsBusinessesDeliveriesListIteratorArguments(ResponseMod
     attempt_timeout_seconds: float | None = Field(None, alias='attemptTimeoutSeconds')
     max_retries: int | None = Field(None, alias='maxRetries')
     max_pages: int | None = Field(None, alias='maxPages')
+    max_items: int | None = Field(None, alias='maxItems')
 
 
 class PlatformSubscriptionsBusinessesDeliveriesGetArguments(ResponseModel):

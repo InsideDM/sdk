@@ -83,6 +83,15 @@ def _exchange_request(business_id, scopes, settings):
                     json.dumps(wire, separators=(",", ":")).encode(), None, settings)
 
 
+def _remember(entry, grant):
+    # Concurrent exchanges with different timeout policies must not replace a
+    # newer installation authority epoch with a slower, older response.
+    current = entry.grant
+    if current and current["installationId"] == grant["installationId"] and current["authorityVersion"] > grant["authorityVersion"]:
+        return
+    entry.grant = grant
+
+
 def _entry(entries, key):
     if key in entries:
         entries.move_to_end(key)
@@ -163,7 +172,7 @@ class InsideDMPlatform(PlatformResources):
             raw, _ = self._transport._execute(_exchange_request(business_id, scopes, settings), budget)
             grant = _grant(self._transport, raw, business_id, scopes)
             with self._lock:
-                entry.grant = grant
+                _remember(entry, grant)
                 flight.token = grant["token"]
             return grant["token"]
         except InsideDMError as error:
@@ -232,7 +241,7 @@ class AsyncInsideDMPlatform(AsyncPlatformResources):
                         async with asyncio.timeout(120):
                             raw, _ = await self._transport._execute(_exchange_request(business_id, scopes, settings), shared)
                         grant = _grant(self._transport, raw, business_id, scopes)
-                        entry.grant = grant
+                        _remember(entry, grant)
                         return grant["token"]
                     finally:
                         entry.flights.pop(policy, None)

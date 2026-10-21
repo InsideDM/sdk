@@ -192,16 +192,18 @@ def generate():
     # Constraint validation is performed by the bounded codec before constructing
     # output models. Strip formatting conversions so resource IDs and wire money
     # strings remain strings, rather than implicit UUID/decimal/datetime objects.
-    def clean(value, input_types=False):
+    def clean(value, input_types=False, property_map=False):
         if isinstance(value, list):
             return [clean(v, input_types) for v in value]
         if not isinstance(value, dict):
             return value
+        if property_map:
+            return {k: clean(v, input_types) for k, v in value.items()}
         result = {}
         for k, v in value.items():
             if k in {"format", "pattern", "minLength", "maxLength", "minimum", "maximum", "minItems", "maxItems", "uniqueItems", "minProperties", "maxProperties", "propertyNames"}:
                 continue
-            result[k] = v.replace("#/components/schemas/", "#/$defs/") if k == "$ref" else clean(v, input_types)
+            result[k] = v.replace("#/components/schemas/", "#/$defs/") if k == "$ref" else clean(v, input_types, k in {"properties", "$defs"})
         if input_types and value.get("format") == "date-time":
             result = {"anyOf": [{"type": "string"}, {"type": "string", "format": "date-time"}] + ([{"type": "null"}] if isinstance(value.get("type"), list) and "null" in value["type"] else [])}
         return result
@@ -209,7 +211,7 @@ def generate():
     with tempfile.TemporaryDirectory() as temp:
         schema = Path(temp) / "schema.json"
         for filename, model_type in [("models.py", "pydantic_v2.BaseModel"), ("inputs.py", "typing.TypedDict")]:
-            schema.write_text(json.dumps({"$defs": clean(definitions, filename == "inputs.py")}))
+            schema.write_text(json.dumps({"$defs": clean(definitions, filename == "inputs.py", True)}))
             target = Path(temp) / filename
             args = [sys.executable, "-m", "datamodel_code_generator", "--input", str(schema), "--input-file-type", "jsonschema", "--output", str(target), "--output-model-type", model_type,
                     "--target-python-version", "3.11", "--snake-case-field", "--enum-field-as-literal", "all", "--disable-timestamp", "--use-standard-collections", "--use-union-operator", "--no-collapse-root-models"]
@@ -226,6 +228,8 @@ def generate():
                 names.append(node.name)
             elif isinstance(node, ast.Assign):
                 names.extend(target.id for target in node.targets if isinstance(target, ast.Name) and not target.id.startswith("_"))
+            elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and not node.target.id.startswith("_"):
+                names.append(node.target.id)
         outputs[filename] += "\n__all__ = " + repr(sorted(names)) + "\n"
 
     for asynchronous in [False, True]:
@@ -248,7 +252,7 @@ def generate():
                         continue
                     method = key.rsplit(".", 1)[1]
                     path_names = binding["paths"]
-                    positional = "".join(f", {snake(p)}: str" for p in path_names)
+                    positional = "".join(f", {snake(p)}: {'int' if binding['operation'] == 'getBlueprintVersion' and p == 'version' else 'str'}" for p in path_names)
                     path_dict = "{" + ", ".join(repr(p) + ": " + snake(p) for p in path_names) + "}"
                     result = ("PageResult" if binding["page"] else "Result") + "[models." + binding["result"] + "]"
                     op = operations[binding["operation"]]

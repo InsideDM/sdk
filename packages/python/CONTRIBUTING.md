@@ -9,7 +9,7 @@ python -m pip install --upgrade pip
 python -m pip install --group dev
 python -m pip install -e .
 python scripts/generate.py --check
-python -m mypy src/insidedm
+python -m mypy src/insidedm examples
 python -m pytest -q
 python -m build
 python -m twine check --strict dist/*

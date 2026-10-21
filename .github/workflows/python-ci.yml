@@ -36,7 +36,7 @@ jobs:
       - if: matrix.python == '3.13' && matrix.os == 'ubuntu-latest'
         run: |
           python scripts/generate.py --check
-          python -m mypy src/insidedm
+          python -m mypy src/insidedm examples
   distribution:
     runs-on: ubuntu-latest
     steps:

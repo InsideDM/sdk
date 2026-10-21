@@ -336,7 +336,7 @@ class PlatformBlueprints(SyncResource):
         "List this application's immutable versions for a blueprint key"
         return self._invoke('platform.blueprints.list_versions', {'blueprintKey': blueprint_key}, kwargs)
 
-    def get_version(self, blueprint_key: str, version: str, **kwargs: Unpack[inputs.PlatformBlueprintsGetVersionArguments]) -> Result[models.PlatformBlueprintsGetVersionData]:
+    def get_version(self, blueprint_key: str, version: int, **kwargs: Unpack[inputs.PlatformBlueprintsGetVersionArguments]) -> Result[models.PlatformBlueprintsGetVersionData]:
         'Read one exact application-owned portable version'
         return self._invoke('platform.blueprints.get_version', {'blueprintKey': blueprint_key, 'version': version}, kwargs)
 class PlatformBusinessCreations(SyncResource):

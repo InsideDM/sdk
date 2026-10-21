@@ -83,7 +83,7 @@ customer evidence; they cannot manufacture consent.
 ```python
 with InsideDM(api_key=os.environ["INSIDEDM_API_KEY"]) as client:
     customer = client.contacts.create(name="Asha", phone="+919800000099")
-    client.contacts.tags.replace(customer.data.id, tags=["vip", "repeat-buyer"])
+    client.contacts.tags.replace(customer.data.contact_id, tags=["vip", "repeat-buyer"])
 
     for contact in client.contacts.iter_items(limit=50, max_items=100):
         print(contact.id)
@@ -184,6 +184,10 @@ Ordinary customers do not need to construct response models.
 See [webhook verification](docs/webhooks.md), the [API reference](docs/api-reference.md),
 [release notes](CHANGELOG.md), [contributing](CONTRIBUTING.md) and
 [publishing](PUBLICATION.md).
+
+Copyable [sync/async notifications](examples/notifications.py) and
+[customer synchronization and flow events](examples/customer_context.py) show the
+same typed interface in ordinary server functions.
 
 ## About insideDM
 

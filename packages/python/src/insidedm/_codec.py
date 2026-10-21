@@ -67,6 +67,10 @@ def _decode(schema: dict[str, Any], value: Any, *, field: str,
     if depth > 40:
         refuse()
     schema = resolve(schema)
+    # Sibling object constraints apply to composed schemas too (e.g. a nonempty
+    # custom-field patch). Enforce them before resolving allOf branches.
+    if isinstance(value, dict) and not schema.get("minProperties", 0) <= len(value) <= schema.get("maxProperties", math.inf):
+        refuse("Use the documented number of entries.")
     if "allOf" in schema:
         merged = {}
         for part in schema["allOf"]:
