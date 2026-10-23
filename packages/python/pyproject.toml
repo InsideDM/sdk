@@ -32,7 +32,8 @@ Source = "https://github.com/InsideDM/sdk"
 Issues = "https://github.com/InsideDM/sdk/issues"
 
 [dependency-groups]
-dev = ["build==1.6.1", "twine==7.0.0", "pytest==9.1.1", "pytest-asyncio==1.4.0", "mypy==2.4.0", "datamodel-code-generator==0.86.0"]
+dev = ["build==1.6.1", "twine==7.0.0", "pytest==9.1.1", "pytest-asyncio==1.4.0", "mypy==2.4.0",
+       "datamodel-code-generator==0.86.0", "inflect==7.5.0", "black==26.10.1", "isort==8.0.1", "jinja2==3.1.6"]
 
 [tool.hatch.version]
 path = "src/insidedm/_version.py"

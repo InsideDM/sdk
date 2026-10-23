@@ -22,6 +22,12 @@ code generation is needed to install it. Regeneration alone reads the reviewed
 sibling `packages/node/openapi/public-v1.yaml`. Run `scripts/generate.py` after
 reviewing shared contract changes and commit the generated files and reference.
 
+Install the full `dev` group before regenerating. Model naming and formatting
+also depend on the pinned inflection, formatter and template tools; installing
+only `datamodel-code-generator` can produce a different public typing surface.
+Review toolchain upgrades together with their generated diff. These tools are
+maintainer dependencies and are not required by SDK consumers.
+
 Keep sync and async behavior aligned through shared policy. Async code must use
 native I/O and propagate caller cancellation. Keep endpoints fixed, validate
 before requests and preserve intent keys and bodies across retries. Name public
