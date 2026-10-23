@@ -31,6 +31,19 @@ def _https(value, field="url"):
         raise DomainMismatch(field, "Use a canonical HTTPS URL with a path and without credentials or a fragment.")
 
 
+def _website_import_url(value):
+    try:
+        parsed = httpx2.URL(value)
+        valid = parsed.scheme in {"http", "https"} and bool(parsed.host) and not parsed.userinfo \
+            and parsed.port in (None, 80 if parsed.scheme == "http" else 443)
+        normalized = str(parsed.copy_with(fragment=None))
+    except (httpx2.InvalidURL, ValueError):
+        valid, normalized = False, ""
+    if not valid:
+        raise DomainMismatch("url", "Use a public HTTP(S) website without credentials or a nondefault port.")
+    return normalized
+
+
 def _revision(value, field="expectedRevision"):
     if not 1 <= int(value) <= 2147483647:
         raise DomainMismatch(field, "Use a positive revision no greater than 2147483647.")
@@ -80,6 +93,72 @@ def validate(name, value):
         _https(value["returnUrl"], "returnUrl")
     elif name == "RevokeInstallationInput":
         _revision(value["expectedRevision"])
+    elif name in {"ImportWebsiteKnowledgeInput", "RemoveWebsiteKnowledgeInput"}:
+        return {**value, "url": _website_import_url(value["url"])}
+    elif name == "WebsiteKnowledgeImportReceipt":
+        require(_website_import_url(value["url"]) == value["url"])
+    elif name == "SetKnowledgeSectionOverrideInput":
+        text = value["overrideMd"]
+        if text is not None:
+            require("\x00" not in text and len(text.encode("utf-8")) <= 65_536)
+    elif name == "KnowledgeSectionContent":
+        parent = value["stableKey"].split("/")[0] if "/" in value["stableKey"] else None
+        require(value["parentKey"] == parent)
+        require(value["manualOverrideMd"] is not None or not (value["overrideStale"] or value["overrideOrphaned"]))
+    elif name == "KnowledgeSectionContentPage":
+        rows = value["data"]
+        require(value["page"]["hasMore"] == (value["page"]["nextCursor"] is not None))
+        require(not value["page"]["hasMore"] or len(rows) > 0)
+        require(len({row["id"] for row in rows}) == len(rows))
+        require(len({row["stableKey"] for row in rows}) == len(rows))
+        require(all(row["businessId"] == value["businessId"] and row["documentId"] == rows[0]["documentId"]
+                    and row["documentVersion"] == rows[0]["documentVersion"] for row in rows))
+    elif name == "KnowledgeDocumentMetadata":
+        require(value["id"] is not None or value["version"] == value["sectionCount"] == 0)
+    elif name == "LoyaltyMembership":
+        require(not (value["enrolled"] and value["preMember"]))
+        require(value["enrolled"] or value["tier"] is None)
+        require(len({wallet["wallet"] for wallet in value["wallets"]}) == len(value["wallets"]))
+    elif name == "KnowledgeSourceRemovalReceipt":
+        require(value["sectionsRequiringRefresh"] <= value["sectionsHidden"])
+    elif name == "WebsiteKnowledgeRemovalReceipt":
+        require(_website_import_url(value["url"]) == value["url"])
+        require(value["sectionsRequiringRefresh"] <= value["sectionsHidden"])
+        require(value["sourceId"] is not None or value["sectionsDropped"] == value["sectionsHidden"] == 0)
+        require(value["outcome"] != "already_removed" or value["cancelledImports"] == value["sectionsDropped"] == value["sectionsHidden"] == 0)
+    elif name == "ConversationControlState":
+        require(value["owner"]["kind"] == "human" or value["owner"]["userId"] is None)
+        require(value["owner"]["kind"] != "human" or value["owner"]["userId"] is not None)
+        require(value["owner"]["kind"] != "human" or value["automation"]["paused"])
+        require(value["automation"]["pausedAt"] is None or value["automation"]["paused"])
+    elif name in {"ConversationControlReceipt", "ConversationTakeoverReceipt", "ConversationAssignmentReceipt"}:
+        require(value["action"] != "take_over" or value["assigneeUserId"] is not None)
+    elif name == "ConversationAssigneePage":
+        require(value["page"]["hasMore"] == (value["page"]["nextCursor"] is not None))
+        distinct([member["userId"] for member in value["data"]])
+        require(sum(member["isCurrentUser"] for member in value["data"]) <= 1)
+        require(all(member["displayName"].strip() and not re.search(r"[\x00-\x1f\x7f-\x9f]", member["displayName"]) for member in value["data"]))
+    elif name == "PreparedMessagingConfiguration":
+        created, updated, expires = [_instant(value[k]) for k in ["createdAt", "updatedAt", "expiresAt"]]
+        state, reviewed = value["state"], value["reviewedAt"]
+        require(updated >= created and 0 < (expires - created).total_seconds() <= 900)
+        require((state == "applied") == (value["result"] is not None))
+        require(state not in {"ready", "applied", "rejected"} or reviewed is not None)
+        require(state != "awaiting_review" or reviewed is None)
+        require((state == "awaiting_review") == (value["review"] is not None))
+        require(value["reasonCode"] is None if state in {"awaiting_review", "ready", "applied"}
+                else state == "unknown" or value["reasonCode"] is not None)
+        require(state != "rejected" or value["reasonCode"] == "user_rejected")
+        require(state != "expired" or value["reasonCode"] == "preparation_expired")
+        require(state != "stale" or value["reasonCode"] in {"configuration_changed", "eligibility_changed"})
+        if reviewed is not None:
+            require(created <= _instant(reviewed) <= updated)
+        if value["review"] is not None:
+            review = value["review"]
+            _https(review["url"])
+            url = urlsplit(review["url"])
+            require(not url.query and url.path == f'/approve/settings/{value["businessId"]}/{value["id"]}'
+                    and review["expiresAt"] == value["expiresAt"])
     elif name == "ContactConsentState":
         distinct([identity["identityId"] for identity in value["identities"]])
         for identity in value["identities"]:
@@ -112,6 +191,24 @@ def validate(name, value):
         require(value["flowStatus"] not in {"active", "shadow"} or publication["versionId"] is not None)
         require(draft["state"] != "missing" or draft["revision"] is None)
         require(draft["state"] not in {"unchanged", "modified"} or draft["revision"] is not None)
+    elif name == "ManagedFlowDraftSaveReceipt":
+        require(re.fullmatch(r"sha256:[a-f0-9]{64}", value["fingerprint"]) is not None)
+    elif name == "ManagedFlowDraftSaveInput":
+        import json
+        require(len(json.dumps(value["definition"], ensure_ascii=False, separators=(",", ":")).encode()) <= 512000)
+    elif name == "FlowDraftSnapshot":
+        distinct(value["reasons"])
+        require(value["fingerprint"] is None or re.fullmatch(r"sha256:[a-f0-9]{64}", value["fingerprint"]) is not None)
+        if value["state"] == "available":
+            require(value["revision"] is not None and value["fingerprint"] is not None and not value["reasons"] and value["definition"] is not None)
+            require(value["definition"]["id"] == value["recipeId"] and value["definition"]["businessId"] == value["businessId"])
+        else:
+            require(value["definition"] is None and bool(value["reasons"]))
+    elif name == "FlowRunPage":
+        rows = value["data"]
+        require(value["page"]["hasMore"] == (value["page"]["nextCursor"] is not None))
+        require(len({row["id"] for row in rows}) == len(rows))
+        require(all(rows[index - 1]["startedAt"] >= row["startedAt"] for index, row in enumerate(rows) if index > 0))
     elif name == "PublicFlowRun":
         require((value["status"] in {"running", "waiting"}) == (value["completedAt"] is None))
     elif name == "ManagedPublicationRequest":

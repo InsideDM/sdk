@@ -85,6 +85,12 @@ def validate_key(key):
 
 
 def _normalise(operation, body):
+    if operation in {"updateMessagingConfiguration", "prepareMessagingConfiguration"}:
+        configuration = body["configuration"]
+        default = configuration["defaultTextPurposeBinding"]
+        if default is not None and default not in configuration["textPurposeBindings"]:
+            raise InsideDMConfigurationError("The default purpose binding must exist in text_purpose_bindings.", field="configuration.default_text_purpose_binding")
+        configuration["templateAliases"] = {alias: value.lower() for alias, value in configuration["templateAliases"].items()}
     if operation in {"createPlatformSubscription", "updatePlatformSubscription"} and "events" in body:
         body["events"] = [event for event in CONTRACT["schemas"]["DeveloperEventType"]["enum"] if event in body["events"]]
     if operation in {"createContact", "updateContact"}:
@@ -153,6 +159,14 @@ def prepare(key: str, paths: dict[str, str], values: dict[str, Any], defaults: S
     missing_query = set(operation["required_query"]) - set(query)
     if missing_query:
         raise InsideDMConfigurationError("Provide this required field.", field=snake(sorted(missing_query)[0]))
+    if operation_id == "getBusinessAnalytics":
+        query.setdefault("channel", "all")
+        query.setdefault("range", "month")
+        if query["range"] == "custom":
+            if not {"start", "end"} <= set(query) or query["start"] > query["end"]:
+                raise InsideDMConfigurationError("Custom analytics ranges require start and end calendar dates in order.")
+        elif {"start", "end"} & set(query):
+            raise InsideDMConfigurationError("Calendar dates are accepted only with range='custom'.")
     if operation_id == "getPartnerApiUsage":
         try:
             query = capture_partner_usage_query(query)
@@ -183,7 +197,7 @@ def prepare(key: str, paths: dict[str, str], values: dict[str, Any], defaults: S
             body = json.dumps(decoded, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode("utf-8")
         except (ValueError, TypeError, UnicodeError, RecursionError):
             raise InsideDMConfigurationError("Use finite, bounded JSON values.") from None
-        limit = 65536 if operation_id in {"sendMessage", "previewMessage", "createContact", "updateContact", "replaceContactTags", "updateContactAttributes", "publishEvent"} else MAX_BODY_BYTES
+        limit = operation.get("body_limit") or (65536 if operation_id in {"sendMessage", "previewMessage", "createContact", "updateContact", "replaceContactTags", "updateContactAttributes", "publishEvent"} else MAX_BODY_BYTES)
         if len(body) > limit:
             raise InsideDMConfigurationError("The input exceeds the operation's JSON size limit.")
     if operation["idempotency"]:

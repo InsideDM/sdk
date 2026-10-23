@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import time
 
 import httpx2
@@ -11,13 +12,14 @@ from ._errors import InsideDMAPIError, InsideDMConfigurationError, InsideDMError
 from ._models import ResponseMeta
 from ._policy import Budget, MAX_BODY_BYTES, Settings, prepare
 from ._transport import ResponsePolicy
+from ._credentials import access_credential
 
 
 class AsyncTransport(ResponsePolicy):
     def __init__(self, *, api_key, platform=False, settings=Settings(), http_client=None,
-                 business_id=None, token_provider=None, invalidate=None):
+                 business_id=None, token_provider=None, invalidate=None, access_token=None):
         super().__init__(api_key=api_key, platform=platform, settings=settings,
-                         business_id=business_id, token_provider=token_provider, invalidate=invalidate)
+                         business_id=business_id, token_provider=token_provider, invalidate=invalidate, access_token=access_token)
         if http_client is not None and not isinstance(http_client, httpx2.AsyncClient):
             raise InsideDMConfigurationError("Use an asynchronous HTTPX2 AsyncClient.", field="http_client")
         self.http = http_client or httpx2.AsyncClient(follow_redirects=False)
@@ -35,7 +37,8 @@ class AsyncTransport(ResponsePolicy):
         budget = Budget(time.monotonic() + prepared.settings.timeout_seconds)
         try:
             async with asyncio.timeout(prepared.settings.timeout_seconds):
-                if not self.platform and "businessId" in OPERATIONS[prepared.operation]["path_parameters"] and self.business_id is None:
+                if not self.platform and self.business_id is None and ("businessId" in OPERATIONS[prepared.operation]["path_parameters"]
+                        or self._access_token is not None and prepared.operation != "getWorkspace"):
                     async with self._workspace_lock:
                         if self.business_id is None:
                             discovery = prepare("business.workspace.get", {}, {}, prepared.settings, platform=False)
@@ -56,7 +59,23 @@ class AsyncTransport(ResponsePolicy):
             if self.closed:
                 raise InsideDMConfigurationError("Create a new client after closing this one.", field="client")
             budget.remaining()
-            token = await self.token_provider(budget, prepared.settings) if self.token_provider else self._api_key
+            token: str | None
+            if self._access_token is not None:
+                try:
+                    if callable(self._access_token):
+                        pending = self._access_token(self._access_token_request(prepared, budget))
+                        if not inspect.isawaitable(pending):
+                            raise InsideDMConfigurationError("Use an async access_token provider with AsyncInsideDM.", field="access_token")
+                        provided = await pending
+                    else:
+                        provided = self._access_token
+                except Exception:
+                    budget.remaining()
+                    raise InsideDMConfigurationError("The access_token provider failed. Use an async token manager with AsyncInsideDM.", field="access_token") from None
+                token = access_credential(provided)
+                budget.remaining()
+            else:
+                token = await self.token_provider(budget, prepared.settings) if self.token_provider else self._api_key
             attempt += 1
             request = self._request(self.http, prepared, budget, token)
             response = None

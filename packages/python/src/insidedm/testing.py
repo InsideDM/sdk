@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Callable
@@ -52,6 +53,8 @@ def _sample(schema, name=""):
         return value
     if "oneOf" in schema:
         return _sample(schema["oneOf"][0], name)
+    if "anyOf" in schema:
+        return _sample(schema["anyOf"][0], name)
     kinds = schema.get("type", "string")
     if isinstance(kinds, list):
         if "null" in kinds:
@@ -80,6 +83,8 @@ def _sample(schema, name=""):
         return "2026-10-21"
     if name == "requestId":
         return TEST_REQUEST_ID
+    if schema.get("pattern") == "^cc1_[a-f0-9]{64}$":
+        return "cc1_" + "0" * 64
     candidates = ["fixture", "test", "a", "1", "0", "", "whatsapp", "+919800000099",
                   "op1_" + "A" * 43, "sha256:" + "a" * 64, "a" * 64,
                   "whsec_" + "A" * 43, "https://example.invalid/callback",
@@ -93,17 +98,61 @@ def _sample(schema, name=""):
     raise ValueError("This operation needs an explicit offline response fixture.")
 
 
+# Concrete OpenAPI routes precede templates regardless of declaration order.
+# A fixed discovery word must not become a synthetic conversation ID.
+_OPERATIONS_BY_SPECIFICITY = sorted(OPERATIONS.items(), key=lambda item: tuple(segment.startswith("{") for segment in item[1]["path"].split("/")))
+
+
 def _default_response(request: httpx2.Request) -> httpx2.Response:
     if str(request.url.copy_with(path="/", query=None)).rstrip("/") != API_ORIGIN:
         raise AssertionError("Offline transport refuses unexpected API origins.")
-    for operation_id, operation in OPERATIONS.items():
+    for operation_id, operation in _OPERATIONS_BY_SPECIFICITY:
         match = re.fullmatch(re.sub(r"\{([^}]+)\}", r"(?P<\1>[^/]+)", operation["path"]), request.url.path)
         if operation["method"] != request.method or not match:
             continue
         body = _sample(operation["response"])
+        if operation_id == "updateConversationControl":
+            submitted = json.loads(request.content)
+            assignee = TEST_ID if submitted["action"] == "take_over" else submitted["assigneeUserId"]
+            body = {"data": {"businessId": TEST_ID, "conversationId": match.groupdict()["conversationId"], "auditId": TEST_ID,
+                             "requestId": TEST_REQUEST_ID, "action": submitted["action"], "assigneeUserId": assignee.lower() if assignee is not None else None,
+                             "changed": True, "appliedRevision": "cc1_" + "1" * 64}}
+        if operation_id == "getConversationControl":
+            body = {"data": {"businessId": TEST_ID, "conversationId": match.groupdict()["conversationId"], "revision": "cc1_" + "0" * 64,
+                             "channel": "whatsapp", "lifecycle": "open", "owner": {"kind": "unassigned", "userId": None},
+                             "automation": {"paused": False, "pausedAt": None}, "snoozedUntil": None, "handoff": None,
+                             "updatedAt": "2026-01-01T00:00:00.000Z"}}
+        if operation_id in {"prepareMessagingConfiguration", "getPreparedMessagingConfiguration", "applyPreparedMessagingConfiguration"}:
+            preparation_id = match.groupdict().get("preparationId", TEST_ID)
+            body = {"data": {"businessId": TEST_ID, "id": preparation_id, "kind": "messaging_configuration",
+                             "state": "awaiting_review", "revision": 1, "intentDigest": "0" * 64,
+                             "createdAt": "2026-01-01T00:00:00.000Z", "updatedAt": "2026-01-01T00:00:00.000Z",
+                             "expiresAt": "2026-01-01T00:15:00.000Z", "reviewedAt": None, "reasonCode": None, "result": None,
+                             "review": {"url": f"https://insidedm.io/approve/settings/{TEST_ID}/{preparation_id}",
+                                        "expiresAt": "2026-01-01T00:15:00.000Z"}}}
+        if operation_id == "getFlowDeployment" and request.url.params.get("view") == "draft":
+            body = {"data": {"businessId": TEST_ID, "recipeId": match.groupdict()["recipeId"], "deploymentRevision": 1, "revision": None,
+                             "fingerprint": None, "state": "unavailable", "reasons": ["missing_draft"], "definition": None, "sideEffects": False}}
+        if operation_id == "getFlowTemplateCatalog" and request.url.params.get("view") == "flow_deployments":
+            body = {"data": {"businessId": TEST_ID, "deployments": [], "page": {"hasMore": False, "nextCursor": None}}}
+        if operation_id == "saveFlowDraft":
+            submitted = json.loads(request.content)
+            body = {"data": {"businessId": TEST_ID, "recipeId": match.groupdict()["recipeId"],
+                             "deploymentRevision": submitted["expectedDeploymentRevision"], "draftRevision": submitted["expectedDraftRevision"], "status": "unchanged",
+                             **({"kind": "managed_draft", "fingerprint": "sha256:" + "0" * 64, "sideEffects": False} if submitted["kind"] == "managed_draft" else {"target": submitted["target"]})}}
+        if operation_id == "updateMessagingConfiguration":
+            submitted = json.loads(request.content)
+            body = {"configuration": {"value": submitted["configuration"], "version": (submitted["expectedVersion"] or 0) + 1}}
+        if operation_id == "getBusinessAnalytics":
+            body.update(channel=request.url.params.get("channel", "all"), range=request.url.params.get("range", "month"))
         if operation_id == "getSoftwareUsage":
             view = "SoftwareUsageSummary" if request.url.params["view"] == "software_usage" else "SoftwareLimits"
             body = {"data": _sample(SCHEMAS[view])}
+        if operation_id == "getLoyaltyMembership":
+            body = {"data": {"businessId": TEST_ID, "contactId": match.groupdict()["contactId"],
+                             "observedAt": "2026-01-01T00:00:00.000Z", "enrolled": False,
+                             "preMember": False, "joinedAt": None, "tier": None,
+                             "wallets": [], "openHoldCount": 0}}
         data = body.get("data")
         if isinstance(data, dict):
             params = match.groupdict()

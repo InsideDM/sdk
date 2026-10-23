@@ -9,6 +9,7 @@ from ._generated.resources import BusinessResources
 from ._flow_facades import AsyncFlows, Flows
 from ._policy import Settings
 from ._transport import Transport
+from ._credentials import AccessTokenProvider, AsyncAccessTokenProvider
 
 
 class InsideDM(BusinessResources):
@@ -21,10 +22,10 @@ class InsideDM(BusinessResources):
 
     flows: Flows
 
-    def __init__(self, *, api_key: str, timeout_seconds: float = 20,
+    def __init__(self, *, api_key: str | None = None, access_token: str | AccessTokenProvider | None = None, timeout_seconds: float = 20,
                  attempt_timeout_seconds: float = 10, max_retries: int = 2,
                  http_client: httpx2.Client | None = None):
-        self._transport = Transport(api_key=api_key, http_client=http_client,
+        self._transport = Transport(api_key=api_key, access_token=access_token, http_client=http_client,
                                     settings=Settings(timeout_seconds, attempt_timeout_seconds, max_retries))
         self._init_resources(self._transport)
         self.flows = Flows(self._transport)
@@ -52,10 +53,10 @@ class AsyncInsideDM(AsyncBusinessResources):
 
     flows: AsyncFlows
 
-    def __init__(self, *, api_key: str, timeout_seconds: float = 20,
+    def __init__(self, *, api_key: str | None = None, access_token: str | AsyncAccessTokenProvider | None = None, timeout_seconds: float = 20,
                  attempt_timeout_seconds: float = 10, max_retries: int = 2,
                  http_client: httpx2.AsyncClient | None = None):
-        self._transport = AsyncTransport(api_key=api_key, http_client=http_client,
+        self._transport = AsyncTransport(api_key=api_key, access_token=access_token, http_client=http_client,
                                          settings=Settings(timeout_seconds, attempt_timeout_seconds, max_retries))
         self._init_resources(self._transport)
         self.flows = AsyncFlows(self._transport)

@@ -20,12 +20,40 @@ Collection iterators fetch lazily and accept `max_pages` and `max_items`.
 | `contacts.update(contact_id, **kwargs)` | [`BusinessContactsUpdateArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessContactsUpdateData`](../src/insidedm/_generated/models.py) |
 | `contacts.tags.replace(contact_id, **kwargs)` | [`BusinessContactsTagsReplaceArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessContactsTagsReplaceData`](../src/insidedm/_generated/models.py) |
 | `contacts.attributes.update(contact_id, **kwargs)` | [`BusinessContactsAttributesUpdateArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessContactsAttributesUpdateData`](../src/insidedm/_generated/models.py) |
+| `contacts.fields.list(**kwargs)` | [`BusinessContactsFieldsListArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessContactsFieldsListData`](../src/insidedm/_generated/models.py) |
+| `flows.steps.list(**kwargs)` | [`BusinessFlowsStepsListArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessFlowsStepsListData`](../src/insidedm/_generated/models.py) |
+| `flows.blocks.list(**kwargs)` | [`BusinessFlowsBlocksListArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessFlowsBlocksListData`](../src/insidedm/_generated/models.py) |
+| `flows.blocks.get(flow_id, **kwargs)` | [`BusinessFlowsBlocksGetArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessFlowsBlocksGetData`](../src/insidedm/_generated/models.py) |
+| `knowledge.runs.get(run_id, **kwargs)` | [`BusinessKnowledgeRunsGetArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessKnowledgeRunsGetData`](../src/insidedm/_generated/models.py) |
+| `knowledge.runs.list(**kwargs)` | [`BusinessKnowledgeRunsListArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessKnowledgeRunsListData`](../src/insidedm/_generated/models.py) |
+| `knowledge.sources.list(**kwargs)` | [`BusinessKnowledgeSourcesListArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessKnowledgeSourcesListData`](../src/insidedm/_generated/models.py) |
+| `knowledge.sections.list(**kwargs)` | [`BusinessKnowledgeSectionsListArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessKnowledgeSectionsListData`](../src/insidedm/_generated/models.py) |
+| `knowledge.sections.set_override(section_id, **kwargs)` | [`BusinessKnowledgeSectionsSetOverrideArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessKnowledgeSectionsSetOverrideData`](../src/insidedm/_generated/models.py) |
+| `knowledge.sections.acknowledge_override(section_id, **kwargs)` | [`BusinessKnowledgeSectionsAcknowledgeOverrideArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessKnowledgeSectionsAcknowledgeOverrideData`](../src/insidedm/_generated/models.py) |
+| `knowledge.sources.import_website(**kwargs)` | [`BusinessKnowledgeSourcesImportWebsiteArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessKnowledgeSourcesImportWebsiteData`](../src/insidedm/_generated/models.py) |
+| `knowledge.sources.remove_website(**kwargs)` | [`BusinessKnowledgeSourcesRemoveWebsiteArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessKnowledgeSourcesRemoveWebsiteData`](../src/insidedm/_generated/models.py) |
+| `knowledge.sources.remove(source_id, **kwargs)` | [`BusinessKnowledgeSourcesRemoveArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessKnowledgeSourcesRemoveData`](../src/insidedm/_generated/models.py) |
+| `knowledge.get(**kwargs)` | [`BusinessKnowledgeGetArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessKnowledgeGetData`](../src/insidedm/_generated/models.py) |
+| `loyalty.members.get(contact_id, **kwargs)` | [`BusinessLoyaltyMembersGetArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessLoyaltyMembersGetData`](../src/insidedm/_generated/models.py) |
+| `contacts.fields.create(**kwargs)` | [`BusinessContactsFieldsCreateArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessContactsFieldsCreateData`](../src/insidedm/_generated/models.py) |
+| `contacts.fields.archive(definition_id, **kwargs)` | [`BusinessContactsFieldsArchiveArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessContactsFieldsArchiveData`](../src/insidedm/_generated/models.py) |
+| `contacts.fields.configure_memory(definition_id, **kwargs)` | [`BusinessContactsFieldsConfigureMemoryArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessContactsFieldsConfigureMemoryData`](../src/insidedm/_generated/models.py) |
 | `conversations.list(**kwargs)` | [`BusinessConversationsListArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessConversationsListData`](../src/insidedm/_generated/models.py) |
 | `conversations.get(conversation_id, **kwargs)` | [`BusinessConversationsGetArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessConversationsGetData`](../src/insidedm/_generated/models.py) |
 | `conversations.messages.list(conversation_id, **kwargs)` | [`BusinessConversationsMessagesListArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessConversationsMessagesListData`](../src/insidedm/_generated/models.py) |
+| `conversations.controls.get(conversation_id, **kwargs)` | [`BusinessConversationsControlsGetArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessConversationsControlsGetData`](../src/insidedm/_generated/models.py) |
+| `conversations.controls.history(conversation_id, **kwargs)` | [`BusinessConversationsControlsHistoryArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessConversationsControlsHistoryData`](../src/insidedm/_generated/models.py) |
+| `conversations.controls.take_over(conversation_id, **kwargs)` | [`BusinessConversationsControlsTakeOverArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessConversationsControlsTakeOverData`](../src/insidedm/_generated/models.py) |
+| `conversations.controls.assign(conversation_id, **kwargs)` | [`BusinessConversationsControlsAssignArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessConversationsControlsAssignData`](../src/insidedm/_generated/models.py) |
+| `conversations.controls.snooze(conversation_id, **kwargs)` | [`BusinessConversationsControlsSnoozeArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessConversationsControlsSnoozeData`](../src/insidedm/_generated/models.py) |
+| `conversations.controls.clear_snooze(conversation_id, **kwargs)` | [`BusinessConversationsControlsClearSnoozeArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessConversationsControlsClearSnoozeData`](../src/insidedm/_generated/models.py) |
+| `conversations.assignees.list(**kwargs)` | [`BusinessConversationsAssigneesListArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessConversationsAssigneesListData`](../src/insidedm/_generated/models.py) |
 | `messages.get(message_id, **kwargs)` | [`BusinessMessagesGetArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessMessagesGetData`](../src/insidedm/_generated/models.py) |
 | `messages.send(**kwargs)` | [`BusinessMessagesSendArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessMessagesSendData`](../src/insidedm/_generated/models.py) |
 | `messages.preview(**kwargs)` | [`BusinessMessagesPreviewArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessMessagesPreviewData`](../src/insidedm/_generated/models.py) |
+| `messages.prepare(**kwargs)` | [`BusinessMessagesPrepareArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessMessagesPrepareData`](../src/insidedm/_generated/models.py) |
+| `messages.preparations.get(preparation_id, **kwargs)` | [`BusinessMessagesPreparationsGetArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessMessagesPreparationsGetData`](../src/insidedm/_generated/models.py) |
+| `messages.preparations.apply(preparation_id, **kwargs)` | [`BusinessMessagesPreparationsApplyArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessMessagesPreparationsApplyData`](../src/insidedm/_generated/models.py) |
 | `orders.list(**kwargs)` | [`BusinessOrdersListArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessOrdersListData`](../src/insidedm/_generated/models.py) |
 | `orders.get(order_id, **kwargs)` | [`BusinessOrdersGetArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessOrdersGetData`](../src/insidedm/_generated/models.py) |
 | `orders.shipments.list(order_id, **kwargs)` | [`BusinessOrdersShipmentsListArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessOrdersShipmentsListData`](../src/insidedm/_generated/models.py) |
@@ -33,6 +61,10 @@ Collection iterators fetch lazily and accept `max_pages` and `max_items`.
 | `templates.list(**kwargs)` | [`BusinessTemplatesListArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessTemplatesListData`](../src/insidedm/_generated/models.py) |
 | `messaging.get_readiness(**kwargs)` | [`BusinessMessagingGetReadinessArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessMessagingGetReadinessData`](../src/insidedm/_generated/models.py) |
 | `messaging.get_configuration(**kwargs)` | [`BusinessMessagingGetConfigurationArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessMessagingGetConfigurationData`](../src/insidedm/_generated/models.py) |
+| `messaging.update_configuration(**kwargs)` | [`BusinessMessagingUpdateConfigurationArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessMessagingUpdateConfigurationData`](../src/insidedm/_generated/models.py) |
+| `messaging.preparations.create(**kwargs)` | [`BusinessMessagingPreparationsCreateArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessMessagingPreparationsCreateData`](../src/insidedm/_generated/models.py) |
+| `messaging.preparations.get(preparation_id, **kwargs)` | [`BusinessMessagingPreparationsGetArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessMessagingPreparationsGetData`](../src/insidedm/_generated/models.py) |
+| `messaging.preparations.apply(preparation_id, **kwargs)` | [`BusinessMessagingPreparationsApplyArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessMessagingPreparationsApplyData`](../src/insidedm/_generated/models.py) |
 | `consents.get(**kwargs)` | [`BusinessConsentsGetArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessConsentsGetData`](../src/insidedm/_generated/models.py) |
 | `consents.withdraw(**kwargs)` | [`BusinessConsentsWithdrawArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessConsentsWithdrawData`](../src/insidedm/_generated/models.py) |
 | `consents.record_marketing_opt_in(**kwargs)` | [`BusinessConsentsRecordMarketingOptInArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessConsentsRecordMarketingOptInData`](../src/insidedm/_generated/models.py) |
@@ -42,10 +74,21 @@ Collection iterators fetch lazily and accept `max_pages` and `max_items`.
 | `events.publish(**kwargs)` | [`BusinessEventsPublishArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessEventsPublishData`](../src/insidedm/_generated/models.py) |
 | `events.bindings.list(**kwargs)` | [`BusinessEventsBindingsListArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessEventsBindingsListData`](../src/insidedm/_generated/models.py) |
 | `flows.runs.get(run_id, **kwargs)` | [`BusinessFlowsRunsGetArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessFlowsRunsGetData`](../src/insidedm/_generated/models.py) |
+| `flows.runs.list(**kwargs)` | [`BusinessFlowsRunsListArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessFlowsRunsListData`](../src/insidedm/_generated/models.py) |
+| `flows.regressions.list_suites(recipe_id, **kwargs)` | [`BusinessFlowsRegressionsListSuitesArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessFlowsRegressionsListSuitesData`](../src/insidedm/_generated/models.py) |
+| `flows.governance.get(recipe_id, **kwargs)` | [`BusinessFlowsGovernanceGetArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessFlowsGovernanceGetData`](../src/insidedm/_generated/models.py) |
+| `flows.regressions.get_configuration(recipe_id, **kwargs)` | [`BusinessFlowsRegressionsGetConfigurationArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessFlowsRegressionsGetConfigurationData`](../src/insidedm/_generated/models.py) |
+| `flows.regressions.get_suite(recipe_id, **kwargs)` | [`BusinessFlowsRegressionsGetSuiteArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessFlowsRegressionsGetSuiteData`](../src/insidedm/_generated/models.py) |
+| `flows.regressions.run(recipe_id, **kwargs)` | [`BusinessFlowsRegressionsRunArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessFlowsRegressionsRunData`](../src/insidedm/_generated/models.py) |
+| `flows.regressions.get(recipe_id, run_id, **kwargs)` | [`BusinessFlowsRegressionsGetArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessFlowsRegressionsGetData`](../src/insidedm/_generated/models.py) |
 | `flows.templates.catalog(**kwargs)` | [`BusinessFlowsTemplatesCatalogArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessFlowsTemplatesCatalogData`](../src/insidedm/_generated/models.py) |
 | `flows.templates.import_(pack_id, **kwargs)` | [`BusinessFlowsTemplatesImportArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessFlowsTemplatesImportData`](../src/insidedm/_generated/models.py) |
 | `flows.deployments.get(recipe_id, **kwargs)` | [`BusinessFlowsDeploymentsGetArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessFlowsDeploymentsGetData`](../src/insidedm/_generated/models.py) |
+| `flows.drafts.get(recipe_id, **kwargs)` | [`BusinessFlowsDraftsGetArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessFlowsDraftsGetData`](../src/insidedm/_generated/models.py) |
+| `flows.deployments.list(**kwargs)` | [`BusinessFlowsDeploymentsListArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessFlowsDeploymentsListData`](../src/insidedm/_generated/models.py) |
 | `flows.deployments.get_publication_request(recipe_id, release_request_id, **kwargs)` | [`BusinessFlowsDeploymentsGetPublicationRequestArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessFlowsDeploymentsGetPublicationRequestData`](../src/insidedm/_generated/models.py) |
+| `flows.deployments.withdraw_publication(recipe_id, release_request_id, **kwargs)` | [`BusinessFlowsDeploymentsWithdrawPublicationArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessFlowsDeploymentsWithdrawPublicationData`](../src/insidedm/_generated/models.py) |
+| `analytics.get(**kwargs)` | [`BusinessAnalyticsGetArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessAnalyticsGetData`](../src/insidedm/_generated/models.py) |
 | `usage.get(**kwargs)` | [`BusinessUsageGetArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessUsageGetData`](../src/insidedm/_generated/models.py) |
 | `usage.get_limits(**kwargs)` | [`BusinessUsageGetLimitsArguments`](../src/insidedm/_generated/inputs.py) | [`BusinessUsageGetLimitsData`](../src/insidedm/_generated/models.py) |
 
@@ -91,10 +134,16 @@ These helpers capture saved typed models, then call the same existing flow APIs:
 
 | Method | Behavior |
 | --- | --- |
+| `client.flows.drafts.save(draft, definition, **kwargs)` | Save a complete native definition using both pins from an available saved draft. No hidden refresh or merge. |
+| `client.flows.drafts.save(recipe_id, definition, expected_deployment_revision=revision, expected_draft_revision=revision, **kwargs)` | Save with explicitly observed pins. Matching retries recover the original receipt; read again for current state. |
 | `client.flows.blueprints.deploy(blueprint, **kwargs)` | Import saved version into a business-owned draft. |
-| `client.flows.deployments.preview_update(recipe_id, blueprint, **kwargs)` | Read drift and proposed changes. |
+| `client.flows.deployments.preview_update(recipe_id, blueprint, **kwargs)` | Read drift and proposed changes from a saved version or exact application/key/version/digest reference. |
 | `client.flows.deployments.apply_update(preview, **kwargs)` | Apply the saved revision-pinned preview to its own business draft. |
-| `client.flows.deployments.request_publication(deployment, **kwargs)` | Request native human review of an unchanged deployment. |
+| `client.flows.deployments.request_publication(deployment, **kwargs)` | Request native human review of the exact observed draft, including customizations. |
+| `client.flows.simulate(deployment, **kwargs)` | Evaluate the saved draft with native readiness rules and record successful path coverage without provider actions. |
+| `client.flows.simulate(recipe_id, expected_revision=revision, **kwargs)` | Evaluate an explicitly observed draft revision with optional variables and path selection. |
+| `client.flows.regressions.save_suite(suite, **changes)` | Edit a saved suite with its own business, flow and revision; preserve fields not changed. |
+| `client.flows.regressions.save_suite(recipe_id, **kwargs)` | Create with null suite ID/revision or replace an explicitly observed revision. |
 | `platform.for_business(business_id, scopes=None)` | Select a merchant-approved business client; exchange credentials lazily. |
 | `platform.blueprints.rollouts.preview(blueprint, clients, **kwargs)` | Read up to 25 explicit business/flow pairs into a saved plan. |
 | `platform.blueprints.rollouts.apply(plan, **kwargs)` | Lazily yield serial draft outcomes with stable restart keys. |
@@ -102,6 +151,8 @@ These helpers capture saved typed models, then call the same existing flow APIs:
 Draft creation and update never publish a flow. Persist source and plans with
 `model_dump_json(by_alias=True, exclude_unset=True)`. Apply validates saved identity
 and revision pins before writing; obtain a new preview after a revision conflict.
+
+An unavailable native draft can be explicitly repaired with known valid replacement content and its positive pins. The saved-draft helper requires an available model. Unsupported builder formats are never converted implicitly.
 
 See `insidedm.types.inputs`, `insidedm.types.responses` and rollout types in
 `insidedm.types`. Platform access requires approved application permissions and

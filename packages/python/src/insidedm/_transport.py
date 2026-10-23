@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import json
+import inspect
 import re
 import threading
 import time
 from types import GenericAlias
 from typing import Any, cast
 from typing_extensions import TypeForm
+from urllib.parse import urlsplit
 
 import httpx2
 from pydantic import TypeAdapter, ValidationError
@@ -20,12 +22,18 @@ from ._models import Page, PageResult, ResponseMeta, Result
 from ._policy import (Budget, MAX_BODY_BYTES, RETRY_STATUSES, Prepared, Settings,
                       credential, prepare, retry_after, retry_delay, url_for)
 from ._version import __version__
+from ._credentials import AccessTokenRequest, access_credential
 
 
 class ResponsePolicy:
     def __init__(self, *, api_key: str | None, platform: bool, settings: Settings,
-                 business_id: str | None = None, token_provider=None, invalidate=None):
-        if api_key is None and token_provider is None:
+                 business_id: str | None = None, token_provider=None, invalidate=None, access_token=None):
+        if access_token is not None:
+            if api_key is not None or platform or token_provider is not None or not isinstance(access_token, str) and not callable(access_token):
+                raise InsideDMConfigurationError("Provide access_token separately from api_key.", field="access_token")
+            if isinstance(access_token, str):
+                access_credential(access_token)
+        if api_key is None and token_provider is None and access_token is None:
             raise InsideDMConfigurationError("Provide a server credential.", field="api_key")
         self._api_key = credential(api_key, platform=platform) if api_key is not None else None
         self.platform = platform
@@ -34,6 +42,8 @@ class ResponsePolicy:
         self.application_id: str | None = None
         self.token_provider = token_provider
         self.invalidate = invalidate
+        self._access_token = access_token
+        self.oauth_grant_id: str | None = None
         self.closed = False
         self._adapters: dict[str, TypeAdapter] = {}
 
@@ -50,6 +60,9 @@ class ResponsePolicy:
             headers["content-type"] = "application/json"
         if prepared.idempotency_key:
             headers["idempotency-key"] = prepared.idempotency_key
+        if self._access_token is not None and self.business_id is not None and self.oauth_grant_id is not None:
+            headers["x-insidedm-business-id"] = self.business_id
+            headers["x-insidedm-grant-id"] = self.oauth_grant_id
         return http.build_request(OPERATIONS[prepared.operation]["method"], url_for(prepared, self.business_id),
                                   headers=headers, content=prepared.body, timeout=httpx2.Timeout(seconds))
 
@@ -89,16 +102,51 @@ class ResponsePolicy:
             raise error
         try:
             decoded = decode(OPERATIONS[prepared.operation]["response"], raw, response=True)
-            self._identity(prepared, decoded, meta)
+            context = self._oauth_context(response, meta) if self._access_token is not None else None
+            self._identity(prepared, decoded, meta, oauth_business_id=context[0] if context else None)
+            if context:
+                self.business_id, self.oauth_grant_id = context
             return decoded, meta
         except SchemaMismatch:
             raise InsideDMProtocolError("InsideDM returned data outside the public contract.", code="invalid_response", meta=meta) from None
 
-    def _identity(self, prepared, decoded, meta):
+    def _access_token_request(self, prepared, budget):
+        url = urlsplit(url_for(prepared, self.business_id))
+        return AccessTokenRequest(operation=prepared.operation, method=OPERATIONS[prepared.operation]["method"],
+                                  route=url.path + ("?" + url.query if url.query else ""), body=prepared.body,
+                                  idempotency_key=prepared.idempotency_key, business_id=self.business_id,
+                                  grant_id=self.oauth_grant_id, timeout_seconds=budget.remaining())
+
+    def _oauth_context(self, response, meta):
+        business = response.headers.get("x-insidedm-business-id")
+        grant = response.headers.get("x-insidedm-grant-id")
+        uuid = r"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+        if not business or not grant or not re.fullmatch(uuid, business) or not re.fullmatch(uuid, grant) \
+                or self.business_id is not None and self.business_id != business \
+                or self.oauth_grant_id is not None and self.oauth_grant_id != grant:
+            raise InsideDMProtocolError("The authorized connection changed. Create a separate client for each connection.",
+                                        code="credential_context_changed", meta=meta)
+        return business, grant
+
+    def _identity(self, prepared, decoded, meta, *, oauth_business_id=None):
         def invalid():
             raise InsideDMProtocolError("InsideDM returned a different resource identity.", code="invalid_response", meta=meta)
-        data = decoded["data"]
+        data = decoded.get("data", decoded)
+        if prepared.operation == "getBusinessAnalytics" and any(data[key] != prepared.query[key] for key in ["channel", "range"]):
+            invalid()
         requested = json.loads(prepared.body) if prepared.body is not None else {}
+        if prepared.operation == "importWebsiteKnowledge":
+            if data["url"] != requested["url"] or data["maxPages"] != requested.get("maxPages", 100):
+                invalid()
+        if prepared.operation == "removeWebsiteKnowledge" and data["url"] != requested["url"]:
+            invalid()
+        if prepared.operation == "removeKnowledgeSource" and (data["sourceId"] != prepared.paths["sourceId"].lower()
+                or data["documentVersion"] < requested["expectedVersion"]):
+            invalid()
+        if prepared.operation in {"setKnowledgeSectionOverride", "acknowledgeKnowledgeSectionOverride"}:
+            action = "acknowledge_override" if prepared.operation == "acknowledgeKnowledgeSectionOverride" else "clear_override" if requested["overrideMd"] is None else "set_override"
+            if data["sectionId"] != prepared.paths["sectionId"].lower() or data["action"] != action or data["documentVersion"] != requested["expectedVersion"] + 1:
+                invalid()
         expected_business = prepared.paths.get("businessId") or self.business_id or requested.get("businessId")
         for key, value in identities(OPERATIONS[prepared.operation]["response"], decoded):
             if key == "businessId" and expected_business and value != expected_business:
@@ -107,18 +155,67 @@ class ResponsePolicy:
                 if self.application_id is not None and value != self.application_id:
                     invalid()
                 self.application_id = value
+        list_identity_fields = {
+            "listFlowRuns": "id",
+            "listKnowledgeRuns": "id", "listKnowledgeSources": "id", "listKnowledgeSections": "id", "listSavedFlowBlocks": "flowId",
+        }
+        list_id = list_identity_fields.get(prepared.operation)
+        if list_id is not None:
+            if len({item[list_id] for item in data}) != len(data) or len(data) > prepared.query.get("limit", 25) \
+                    or decoded["page"]["hasMore"] != (decoded["page"]["nextCursor"] is not None):
+                invalid()
+            filters = ("flowId", "status") if prepared.operation == "listFlowRuns" else \
+                ("kind", "status") if prepared.operation == "listKnowledgeSources" else \
+                ("status",) if prepared.operation == "listKnowledgeRuns" else ()
+            if any(key in prepared.query and any(item[key] != prepared.query[key] for item in data) for key in filters):
+                invalid()
+            return
         if not isinstance(data, dict):
             return
         if prepared.operation == "getWorkspace":
-            if self.business_id is not None and data["id"] != self.business_id:
+            if self.business_id is not None and data["id"] != self.business_id or oauth_business_id is not None and data["id"] != oauth_business_id:
                 invalid()
             self.business_id = data["id"]
-        for path_name, result_name in [("contactId", "contactId"), ("subscriptionId", "subscriptionId"), ("installationId", "id"), ("operationId", "id"), ("recipeId", "recipeId")]:
+        for path_name, result_name in [("contactId", "contactId"), ("conversationId", "conversationId"), ("subscriptionId", "subscriptionId"), ("installationId", "id"), ("operationId", "id"), ("recipeId", "recipeId"), ("preparationId", "id")]:
             if path_name in prepared.paths and result_name in data and prepared.paths[path_name] != data[result_name]:
+                invalid()
+        if prepared.operation == "updateConversationControl":
+            if data["action"] != requested["action"]:
+                invalid()
+            if requested["action"] == "assign":
+                expected_assignee = requested["assigneeUserId"]
+                if data["assigneeUserId"] != (expected_assignee.lower() if expected_assignee is not None else None):
+                    invalid()
+        if prepared.operation == "listFlowSteps":
+            if len({step["type"] for step in data["steps"]}) != len(data["steps"]):
+                invalid()
+        if prepared.operation == "getSavedFlowBlockInterface":
+            if data["flowId"] != prepared.paths["flowId"] or data["versionId"] != prepared.query["versionId"].lower() \
+                    or any(len({port["variableId"] for port in data[kind]}) != len(data[kind])
+                           or len({port["key"] for port in data[kind]}) != len(data[kind]) for kind in ("inputs", "outputs")):
+                invalid()
+        if prepared.operation == "createContactField":
+            definition = data["definition"]
+            if definition["label"] != requested["label"].strip() or definition["type"] != requested.get("type", "text"):
+                invalid()
+            if requested.get("key") is not None and definition["key"] != requested["key"]:
+                invalid()
+            if definition["agentMayRemember"] or definition["agentHint"] is not None:
+                invalid()
+        if prepared.operation == "archiveContactField":
+            if data["definitionId"] != prepared.paths["definitionId"] or data["appliedVersion"] != requested["expectedVersion"] + 1:
+                invalid()
+        if prepared.operation == "configureContactFieldMemory":
+            definition = data["definition"]
+            if definition["id"] != prepared.paths["definitionId"] or definition["agentMayRemember"] != requested["agentMayRemember"] \
+                    or data["appliedVersion"] != requested["expectedVersion"] + int(data["changed"]):
+                invalid()
+            if "agentHint" in requested and requested["agentHint"] is None and definition["agentHint"] is not None:
                 invalid()
         if prepared.operation == "getPlatformBusiness" and data.get("id") != prepared.paths["businessId"]:
             invalid()
         id_operations = {
+            "getKnowledgeRun": "runId",
             "getContact": "contactId", "getConversation": "conversationId",
             "getMessage": "messageId", "getOrder": "orderId", "getShipment": "shipmentId",
             "getFlowRun": "runId", "getBusinessCreation": "creationId", "renewBusinessClaimLink": "creationId",
@@ -152,12 +249,16 @@ class ResponsePolicy:
             if prepared.operation == "importFlowTemplate":
                 if data["packId"] != prepared.paths["packId"] or data["version"] != requested["version"] or ("blueprint" in requested and data["digest"] != requested["blueprint"]["digest"]):
                     invalid()
-            if prepared.operation in {"previewBlueprintUpdate", "applyBlueprintUpdate"}:
+            if prepared.operation == "saveFlowDraft" and requested["kind"] == "managed_draft":
+                if (data.get("kind") != "managed_draft" or data["deploymentRevision"] != requested["expectedDeploymentRevision"]
+                    or data["draftRevision"] != requested["expectedDraftRevision"] + int(data["status"] == "draft_updated")):
+                    invalid()
+            elif prepared.operation in {"previewBlueprintUpdate", "saveFlowDraft"}:
                 if data["target"] != requested["target"]:
                     invalid()
                 if prepared.operation == "previewBlueprintUpdate" and "bindings" in requested and data["bindings"] != requested["bindings"]:
                     invalid()
-                if prepared.operation == "applyBlueprintUpdate":
+                if prepared.operation == "saveFlowDraft":
                     updated = data["status"] == "draft_updated"
                     if (data["deploymentRevision"] != requested["expectedDeploymentRevision"] + int(updated)
                         or data["draftRevision"] not in [requested["expectedDraftRevision"], *([requested["expectedDraftRevision"] + 1] if updated else [])]):
@@ -171,7 +272,7 @@ class ResponsePolicy:
     def _result(self, prepared, raw, meta):
         binding = CONTRACT["bindings"][prepared.key]
         page_type = binding["page"]
-        data = raw["data"]
+        data = raw if binding["bare"] else raw[binding["result_property"]]
         if page_type == "nested_page":
             data, cursor = data["data"], data["page"]["nextCursor"]
         elif page_type == "deliveries":
@@ -220,9 +321,9 @@ class ResponsePolicy:
 
 class Transport(ResponsePolicy):
     def __init__(self, *, api_key, platform=False, settings=Settings(), http_client=None,
-                 business_id=None, token_provider=None, invalidate=None):
+                 business_id=None, token_provider=None, invalidate=None, access_token=None):
         super().__init__(api_key=api_key, platform=platform, settings=settings,
-                         business_id=business_id, token_provider=token_provider, invalidate=invalidate)
+                         business_id=business_id, token_provider=token_provider, invalidate=invalidate, access_token=access_token)
         if http_client is not None and not isinstance(http_client, httpx2.Client):
             raise InsideDMConfigurationError("Use a synchronous HTTPX2 Client.", field="http_client")
         self.http = http_client or httpx2.Client(follow_redirects=False)
@@ -239,7 +340,8 @@ class Transport(ResponsePolicy):
         prepared = self._prepare(key, paths, values)
         budget = Budget(time.monotonic() + prepared.settings.timeout_seconds)
         try:
-            if not self.platform and "businessId" in OPERATIONS[prepared.operation]["path_parameters"] and self.business_id is None:
+            if not self.platform and self.business_id is None and ("businessId" in OPERATIONS[prepared.operation]["path_parameters"]
+                    or self._access_token is not None and prepared.operation != "getWorkspace"):
                 if not self._workspace_lock.acquire(timeout=budget.remaining()):
                     budget.remaining()
                     raise InsideDMTransportError("InsideDM workspace discovery timed out.", code="request_timeout")
@@ -262,7 +364,21 @@ class Transport(ResponsePolicy):
             if self.closed:
                 raise InsideDMConfigurationError("Create a new client after closing this one.", field="client")
             budget.remaining()
-            token = self.token_provider(budget, prepared.settings) if self.token_provider else self._api_key
+            token: str | None
+            if self._access_token is not None:
+                try:
+                    provided = self._access_token(self._access_token_request(prepared, budget)) if callable(self._access_token) else self._access_token
+                except Exception:
+                    budget.remaining()
+                    raise InsideDMConfigurationError("The access_token provider failed. Check your token manager.", field="access_token") from None
+                if inspect.isawaitable(provided):
+                    if inspect.iscoroutine(provided):
+                        provided.close()
+                    raise InsideDMConfigurationError("Use an asynchronous token provider with AsyncInsideDM.", field="access_token")
+                token = access_credential(provided)
+                budget.remaining()
+            else:
+                token = self.token_provider(budget, prepared.settings) if self.token_provider else self._api_key
             attempt += 1
             request = self._request(self.http, prepared, budget, token)
             attempt_deadline = min(budget.deadline, time.monotonic() + prepared.settings.attempt_timeout_seconds)

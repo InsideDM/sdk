@@ -1,6 +1,23 @@
 # Changelog
 
-## 0.1.0a0 (in development)
+## 0.1.0a0
+
+- Add typed sync/async `flows.runs.list()`, `iter_pages()` and `iter_items()` with
+  flow/status filters, bounded pagination and caller-derived run visibility.
+
+- Connected-user `flows.runs.get(run_id)` can read native workspace execution
+  status. Current native permissions apply; server integrations remain producer scoped.
+
+- Add typed sync/async `loyalty.members.get(contact_id)` with the separate
+  `loyalty.read` grant, native wallet balances, membership, tier and expiry.
+
+- Blueprint preview accepts snake_case exact source-reference dictionaries and
+  saved typed targets, as well as complete saved source versions.
+
+- Native managed draft reads and `flows.drafts.save(draft, definition, ...)` for
+  sync/async clients, with saved revision pins and original-intent retry recovery.
+- Blueprint draft updates retain their method syntax while sharing the canonical
+  `saveFlowDraft` operation and its generated request-byte budget.
 
 - Retry only recognized transient network/API failures; local HTTP hook and
   adapter failures now produce a safe, non-retryable `http_client_error`.

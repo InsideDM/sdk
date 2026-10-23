@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal, NotRequired, TypeAlias
+from typing import Any, Literal, NotRequired, Optional, TypeAlias, Union
 
 from typing_extensions import TypedDict
 
@@ -657,23 +657,43 @@ class ManagedPublicationInput(TypedDict, closed=True):
     note: NotRequired[str]
 
 
-class ManagedPublicationRequest(TypedDict, closed=True):
-    business_id: str
-    recipe_id: str
-    id: str
-    deployment_revision: int
-    draft_revision: int
-    status: Literal[
-        'pending',
-        'pending_evidence',
-        'approved',
-        'rejected',
-        'published',
-        'superseded',
-        'dismissed',
+class ManagedPublicationWithdrawal(TypedDict, closed=True):
+    kind: Literal['managed_deployment']
+    expected_decision_revision: int
+
+
+class Evidence(TypedDict, closed=True):
+    required: bool
+    missing_suites: int
+    stale_suites: int
+    invalid_suites: int
+
+
+class FlowPublicationChecks(TypedDict, closed=True):
+    state: Literal[
+        'awaiting_review',
+        'awaiting_evidence',
+        'ready_to_publish',
+        'blocked',
+        'terminal',
     ]
-    requested_at: str
-    published_version_id: str | None
+    checked_at: str
+    blocking_reasons: list[
+        Literal[
+            'draft_changed',
+            'policy_changed',
+            'published_version_changed',
+            'candidate_invalid',
+            'runtime_changed',
+            'prerequisites_changed',
+            'path_failed',
+            'regression_evidence_missing',
+            'regression_evidence_stale',
+            'regression_evidence_invalid',
+            'review_required',
+        ]
+    ]
+    evidence: Evidence
 
 
 class Publication(TypedDict, closed=True):
@@ -841,6 +861,39 @@ class PageInfo(TypedDict, closed=True):
 
 
 PublicScope: TypeAlias = Literal[
+    'analytics.read',
+    'contacts.read',
+    'contacts.write',
+    'conversations.read',
+    'conversations.takeover',
+    'conversations.assign',
+    'conversations.snooze',
+    'messages.read',
+    'messages.send',
+    'operations.read',
+    'events.write',
+    'flows.read',
+    'flows.deploy',
+    'flows.test',
+    'knowledge.read',
+    'knowledge.content.read',
+    'knowledge.content.write',
+    'knowledge.write',
+    'loyalty.read',
+    'templates.read',
+    'messaging.read',
+    'messaging.configuration.read',
+    'messaging.configuration.write',
+    'consents.write',
+    'consents.read',
+    'usage.read',
+    'orders.read',
+    'shipments.read',
+]
+
+
+MachinePublicScope: TypeAlias = Literal[
+    'analytics.read',
     'contacts.read',
     'contacts.write',
     'conversations.read',
@@ -850,9 +903,16 @@ PublicScope: TypeAlias = Literal[
     'events.write',
     'flows.read',
     'flows.deploy',
+    'flows.test',
+    'knowledge.read',
+    'knowledge.content.read',
+    'knowledge.content.write',
+    'knowledge.write',
+    'loyalty.read',
     'templates.read',
     'messaging.read',
     'messaging.configuration.read',
+    'messaging.configuration.write',
     'consents.write',
     'consents.read',
     'usage.read',
@@ -956,15 +1016,10 @@ class TextPurposeBindings(TypedDict, closed=True):
     purpose: Literal['service', 'marketing']
 
 
-class Value(TypedDict, closed=True):
+class MessagingConfiguration(TypedDict, closed=True):
     default_text_purpose_binding: str | None
     template_aliases: dict[str, str]
     text_purpose_bindings: dict[str, TextPurposeBindings]
-
-
-class PublicMessagingConfiguration(TypedDict, closed=True):
-    version: int | None
-    value: Value
 
 
 class Variable(TypedDict, closed=True):
@@ -1027,7 +1082,7 @@ PublicChannel: TypeAlias = Literal['instagram', 'whatsapp', 'unknown']
 class Key(TypedDict, closed=True):
     id: str
     label: str
-    scopes: list[PublicScope]
+    scopes: list[MachinePublicScope]
     state: Literal['active', 'rotating']
     created_at: str
     expires_at: str
@@ -1377,6 +1432,1110 @@ class WebhookVerificationProof(TypedDict, closed=True):
     proof: str
 
 
+AnalyticsChannel: TypeAlias = Literal['all', 'instagram', 'whatsapp']
+
+
+AnalyticsRange: TypeAlias = Literal['week', 'month', 'quarter', 'custom']
+
+
+AnalyticsOrigin: TypeAlias = Literal[
+    'comment', 'ads', 'campaign', 'story', 'post', 'direct'
+]
+
+
+class BusinessAnalyticsQuery(TypedDict, closed=True):
+    channel: NotRequired[AnalyticsChannel]
+    range: NotRequired[AnalyticsRange]
+    start: NotRequired[str]
+    end: NotRequired[str]
+
+
+BusinessComparisonBasis: TypeAlias = Literal[
+    'conversation_activity_cohort_current_state',
+    'order_timestamp_cohort_current_net',
+    'standing_state',
+]
+
+
+class BusinessSeriesPoint(TypedDict, closed=True):
+    label: str
+    all: float
+    instagram: float
+    whatsapp: float
+
+
+class BusinessRevenueDriver(TypedDict, closed=True):
+    id: str
+    label: str
+    value: float
+    amount: str
+
+
+class BusinessEntryPoint(TypedDict, closed=True):
+    id: str
+    origin: AnalyticsOrigin
+    label: str
+    channel: Literal['instagram', 'whatsapp']
+    conversations: float
+    revenue: str | None
+
+
+BusinessOutcomeStatus: TypeAlias = Literal[
+    'paid', 'pending', 'cod', 'cancelled', 'with_team'
+]
+
+
+class Href(TypedDict, closed=True):
+    screen: Literal['inbox', 'orders']
+    id: str
+
+
+class BusinessOutcome(TypedDict, closed=True):
+    id: str
+    kind: Literal['order', 'handoff']
+    label: str
+    channel: Literal['instagram', 'whatsapp']
+    status: BusinessOutcomeStatus
+    result: str
+    revenue: str | None
+    occurred_at: str
+    href: Href | None
+
+
+class IntentBreakdownItem(TypedDict, closed=True):
+    label: str
+    value: float
+
+
+class Window(TypedDict, closed=True):
+    start: str
+    end: str
+    label: str
+    timezone: str
+    partial: bool
+
+
+class Comparison(TypedDict, closed=True):
+    start: str
+    end: str
+    label: str
+
+
+class BusinessReplyTimeGroup(TypedDict, closed=True):
+    replies: float
+    measured: float
+    median_seconds: float | None
+    p90_seconds: float | None
+
+
+class Sentiment(TypedDict, closed=True):
+    conversations: float
+    positive: float
+    neutral: float
+    negative: float
+    unknown: float
+
+
+class Row(TypedDict, closed=True):
+    reason: Literal['price', 'cod', 'delivery', 'sizing', 'trust', 'unknown']
+    conversations: float
+    confidence_samples: float
+    average_confidence: float | None
+
+
+class Objections(TypedDict, closed=True):
+    conversations: float
+    rows: list[Row]
+
+
+class BusinessCustomerSignals(TypedDict, closed=True):
+    sentiment: Sentiment
+    objections: Objections
+
+
+class Review(TypedDict, closed=True):
+    url: str
+    expires_at: str
+
+
+class ApplyPreparedNotificationInput(TypedDict, closed=True):
+    expected_revision: int
+
+
+class Result(TypedDict, closed=True):
+    audit_id: str
+    applied_version: int
+    request_id: str
+    changed: bool
+
+
+class PreparedMessagingConfiguration(TypedDict, closed=True):
+    id: str
+    business_id: str
+    revision: int
+    intent_digest: str
+    created_at: str
+    updated_at: str
+    expires_at: str
+    reviewed_at: str | None
+    review: Review | None
+    kind: Literal['messaging_configuration']
+    state: Literal[
+        'awaiting_review', 'ready', 'applied', 'rejected', 'expired', 'stale', 'unknown'
+    ]
+    reason_code: (
+        Literal[
+            'user_rejected',
+            'preparation_expired',
+            'configuration_changed',
+            'eligibility_changed',
+            'unknown',
+        ]
+        | None
+    )
+    result: Result | None
+
+
+class ApplyPreparedMessagingConfigurationInput(TypedDict, closed=True):
+    expected_revision: int
+
+
+class ContactFieldDefinition(TypedDict, closed=True):
+    id: str
+    key: str
+    label: str
+    type: Literal['text', 'number', 'boolean', 'date']
+    created_at: str
+    agent_may_remember: bool
+    agent_hint: str | None
+
+
+class CreateContactFieldInput(TypedDict, closed=True):
+    label: str
+    key: NotRequired[str | None]
+    type: NotRequired[Literal['text', 'number', 'boolean', 'date']]
+
+
+class CreatedContactField(TypedDict, closed=True):
+    business_id: str
+    definition: ContactFieldDefinition
+    applied_version: int
+    audit_id: str
+    request_id: str
+
+
+class ArchiveContactFieldInput(TypedDict, closed=True):
+    expected_version: int
+
+
+class ArchivedContactField(TypedDict, closed=True):
+    business_id: str
+    definition_id: str
+    archived: Literal[True]
+    applied_version: int
+    audit_id: str
+    request_id: str
+
+
+class ConfigureContactFieldMemoryInput(TypedDict, closed=True):
+    expected_version: int
+    agent_may_remember: bool
+    agent_hint: NotRequired[str | None]
+
+
+class ConfiguredContactFieldMemory(TypedDict, closed=True):
+    business_id: str
+    definition: ContactFieldDefinition
+    applied_version: int
+    audit_id: str
+    request_id: str
+    changed: bool
+
+
+FlowRegressionId: TypeAlias = str
+
+
+FlowRegressionRevision: TypeAlias = int
+
+
+FlowRegressionCount: TypeAlias = int
+
+
+class Path(TypedDict, closed=True):
+    id: str
+    outcome_id: str
+
+
+class Draft1(TypedDict, closed=True):
+    revision: FlowRegressionRevision | None
+    fingerprint: str | None
+    state: Literal['available', 'unavailable']
+    reasons: list[str]
+    paths: list[Path]
+    side_effects: Literal[False]
+
+
+class Suite1(TypedDict, closed=True):
+    id: FlowRegressionId
+    revision: FlowRegressionRevision
+    name: str
+    required: bool
+    status: Literal['active', 'archived']
+    case_count: FlowRegressionCount
+
+
+class FlowRegressionConfiguration(TypedDict, closed=True):
+    business_id: FlowRegressionId
+    recipe_id: FlowRegressionId
+    draft: Draft1
+    suites: list[Suite1]
+
+
+JsonValue: TypeAlias = Optional[
+    Union[str, bool, float, list["JsonValue"], dict[str, "JsonValue"]]
+]
+
+
+class Counts(TypedDict, closed=True):
+    total: FlowRegressionCount
+    passed: FlowRegressionCount
+    failed: FlowRegressionCount
+    skipped: FlowRegressionCount
+
+
+FlowRegressionTimestamp: TypeAlias = str
+
+
+class ManagedFlowRegressionInput(TypedDict, closed=True):
+    release_request_id: FlowRegressionId
+    suite_id: FlowRegressionId
+    expected_suite_revision: FlowRegressionRevision
+    kind: Literal['managed_deployment']
+
+
+class SelectedPath(TypedDict, closed=True):
+    id: str
+    outcome_id: str
+    outcome_kind: Literal['success', 'handoff', 'stopped', 'failed']
+
+
+FlowSimulationId: TypeAlias = str
+
+
+FlowSimulationRevision: TypeAlias = int
+
+
+FlowSimulationCode: TypeAlias = str
+
+
+FlowSimulationVariable: TypeAlias = str
+
+
+FlowGovernanceId: TypeAlias = str
+
+
+FlowGovernanceRevision: TypeAlias = int
+
+
+FlowDeploymentCatalogId: TypeAlias = str
+
+
+FlowDeploymentCatalogRevision: TypeAlias = int
+
+
+FlowDraftId: TypeAlias = str
+
+
+FlowDraftRevision: TypeAlias = int
+
+
+FlowRecipeKindV1: TypeAlias = Literal[
+    'product_finder',
+    'quote_request',
+    'booking_request',
+    'handoff',
+    'comment_to_dm',
+    'whatsapp_template',
+    'whatsapp_flow',
+    'instagram_ice_breaker',
+]
+
+
+FlowRecipeStatusV1: TypeAlias = Literal['draft', 'active', 'disabled', 'archived']
+
+
+FlowChannelV1: TypeAlias = Literal['instagram', 'whatsapp', 'unified']
+
+
+FlowValueTypeV1: TypeAlias = Literal[
+    'string', 'number', 'boolean', 'datetime', 'json', 'string_list'
+]
+
+
+class FlowTriggerConfigV12(TypedDict, closed=True):
+    type: Literal['inbound_message']
+    channel: NotRequired[FlowChannelV1]
+    keywords: NotRequired[list[str]]
+    intents: NotRequired[list[str]]
+
+
+class FlowTriggerConfigV14(TypedDict, closed=True):
+    type: Literal['postback']
+    channel: NotRequired[FlowChannelV1]
+    payloads: NotRequired[list[str]]
+
+
+class FlowTriggerConfigV110(TypedDict, closed=True):
+    type: Literal['called']
+    channel: NotRequired[FlowChannelV1]
+
+
+FlowConcreteChannelV1: TypeAlias = Literal['instagram', 'whatsapp']
+
+
+FlowEndpointPurposeV1: TypeAlias = Literal['transactional', 'marketing']
+
+
+class FlowEndpointFieldV1(TypedDict, closed=True):
+    pointer: str
+    value_type: FlowValueTypeV1
+
+
+FlowContactIdentityKindV1: TypeAlias = Literal[
+    'phone', 'email', 'ig_username', 'bsuid', 'external_id'
+]
+
+
+class FlowEndpointMappingV1(TypedDict, closed=True):
+    pointer: str
+    variable_id: str
+    required: bool
+
+
+FlowCommentIntentV1: TypeAlias = Literal[
+    'product_interest', 'product_question', 'guide_request'
+]
+
+
+FlowCommentPostsV1: TypeAlias = Literal['all'] | list[str]
+
+
+class FlowResponseFieldMatchV1(TypedDict, closed=True):
+    field: str
+    exists: NotRequired[bool]
+    equals: NotRequired[str | list[str]]
+    contains: NotRequired[str | list[str]]
+
+
+class FlowScheduleV11(TypedDict, closed=True):
+    kind: Literal['once']
+    at: str
+
+
+FlowTimeOfDayV1: TypeAlias = str
+
+
+class FlowAgentCallInputV1(TypedDict, closed=True):
+    variable_id: str
+    description: str
+    required: bool
+
+
+FlowHandoffFromAgentKeyV1: TypeAlias = Literal[
+    'sales', 'support', 'booking', 'feedback'
+]
+
+
+class FlowActionConfigV13(TypedDict, closed=True):
+    type: Literal['start_order']
+
+
+class FlowActionConfigV14(TypedDict, closed=True):
+    type: Literal['handoff']
+    reason: NotRequired[str]
+
+
+class FlowActionConfigV16(TypedDict, closed=True):
+    type: Literal['send_whatsapp_flow']
+    flow_id: str
+    flow_cta: str
+    flow_action: NotRequired[Literal['navigate', 'data_exchange']]
+    flow_screen: NotRequired[str]
+    flow_token: NotRequired[str]
+    flow_data: NotRequired[dict[str, Any] | None]
+    body: NotRequired[str]
+    footer: NotRequired[str]
+    purpose: NotRequired[str]
+
+
+class FlowActionConfigV17(TypedDict, closed=True):
+    type: Literal['reply_comment']
+
+
+class FlowActionConfigV18(TypedDict, closed=True):
+    type: Literal['move_to_dm']
+    text: NotRequired[str]
+
+
+class FlowActionConfigV112(TypedDict, closed=True):
+    type: Literal['delay']
+    duration_seconds: float
+    status_variable_id: NotRequired[str]
+
+
+class FlowActionConfigV114(TypedDict, closed=True):
+    type: Literal['jump']
+    target_node_id: str
+    max_times: float
+
+
+class FlowActionConfigV115(TypedDict, closed=True):
+    type: Literal['send_products']
+    text: str
+    product_ids: list[str]
+
+
+class FlowActionConfigV116(TypedDict, closed=True):
+    type: Literal['send_link']
+    text: str
+    button_text: str
+    url: str
+
+
+class FlowActionConfigV117(TypedDict, closed=True):
+    type: Literal['request_location']
+    prompt: str
+    variable_id: str
+    status_variable_id: str
+    timeout_seconds: NotRequired[float]
+
+
+class FlowActionConfigV118(TypedDict, closed=True):
+    type: Literal['ask_photo']
+    prompt: str
+    variable_id: str
+    status_variable_id: str
+    timeout_seconds: NotRequired[float]
+
+
+class FlowActionConfigV119(TypedDict, closed=True):
+    type: Literal['tag']
+    tag_id: str
+
+
+class FlowActionConfigV120(TypedDict, closed=True):
+    type: Literal['untag']
+    tag_id: str
+
+
+class FlowActionConfigV121(TypedDict, closed=True):
+    type: Literal['note']
+    text: str
+
+
+class FlowActionConfigV122(TypedDict, closed=True):
+    type: Literal['calculate']
+    expression: str
+    variable_id: str
+
+
+class FlowActionConfigV126(TypedDict, closed=True):
+    type: Literal['open_closed']
+    status_variable_id: str
+
+
+class FlowActionConfigV127(TypedDict, closed=True):
+    type: Literal['collect_address']
+    prompt: str
+    variable_id: str
+    status_variable_id: str
+    timeout_seconds: NotRequired[float]
+
+
+class FlowActionConfigV128(TypedDict, closed=True):
+    type: Literal['request_payment']
+    order_variable_id: str
+    timeout_seconds: float
+    status_variable_id: str
+
+
+class FlowReplyOptionV1(TypedDict, closed=True):
+    id: str
+    title: str
+
+
+FlowSpecialistKnowledgeSourceTypeV1: TypeAlias = Literal[
+    'website', 'pdf', 'manual', 'faq', 'shopify_product'
+]
+
+
+FlowSpecialistLowConfidenceModeV1: TypeAlias = Literal['handoff', 'safe_reply']
+
+
+FlowSpecialistApprovalModeV1: TypeAlias = Literal['auto', 'manual_on_low_confidence']
+
+
+class WhatsAppTemplateFlowButtonConfigV1(TypedDict, closed=True):
+    index: NotRequired[str]
+    flow_token: NotRequired[str]
+    flow_data: NotRequired[dict[str, Any] | None]
+
+
+class FlowInputValidationV1(TypedDict, closed=True):
+    value_type: Literal['string', 'number', 'boolean', 'datetime', 'string_list']
+    trim: NotRequired[bool]
+    min_length: NotRequired[float]
+    max_length: NotRequired[float]
+    minimum: NotRequired[float]
+    maximum: NotRequired[float]
+    pattern: NotRequired[str]
+    allowed_values: NotRequired[list[str]]
+
+
+class FlowValueBindingV12(TypedDict, closed=True):
+    source: Literal['variable']
+    variable_id: str
+
+
+class FlowLiteralV11(TypedDict, closed=True):
+    type: Literal['string']
+    value: str
+
+
+class FlowLiteralV12(TypedDict, closed=True):
+    type: Literal['number']
+    value: float
+
+
+class FlowLiteralV13(TypedDict, closed=True):
+    type: Literal['boolean']
+    value: bool
+
+
+class FlowLiteralV14(TypedDict, closed=True):
+    type: Literal['datetime']
+    value: str
+
+
+class FlowLiteralV15(TypedDict, closed=True):
+    type: Literal['json']
+    value: Any
+
+
+class FlowLiteralV16(TypedDict, closed=True):
+    type: Literal['string_list']
+    value: list[str]
+
+
+FlowLiteralV1: TypeAlias = (
+    FlowLiteralV11
+    | FlowLiteralV12
+    | FlowLiteralV13
+    | FlowLiteralV14
+    | FlowLiteralV15
+    | FlowLiteralV16
+)
+
+
+class FlowRetryPolicyV1(TypedDict, closed=True):
+    max_attempts: float
+    backoff_ms: float
+
+
+class FlowWebhookResponseMappingV1(TypedDict, closed=True):
+    json_pointer: str
+    variable_id: str
+    required: bool
+
+
+class FlowSubflowOutputMappingV1(TypedDict, closed=True):
+    source_variable_id: str
+    target_variable_id: str
+    required: bool
+
+
+FlowConversionEventV1: TypeAlias = Literal['purchase', 'lead']
+
+
+class FlowWaitUntilV11(TypedDict, closed=True):
+    kind: Literal['variable']
+    variable_id: str
+
+
+class FlowWaitUntilV12(TypedDict, closed=True):
+    kind: Literal['weekday']
+    weekday: float
+    time: FlowTimeOfDayV1
+
+
+class FlowWaitUntilV13(TypedDict, closed=True):
+    kind: Literal['open']
+
+
+FlowWaitUntilV1: TypeAlias = FlowWaitUntilV11 | FlowWaitUntilV12 | FlowWaitUntilV13
+
+
+FlowWaitEventV1: TypeAlias = Literal['paid', 'ordered', 'form_filled']
+
+
+FlowMcpToolEffectV1: TypeAlias = Literal['read', 'write']
+
+
+class FlowPredicateV11(TypedDict, closed=True):
+    op: Literal['exists']
+    variable_id: str
+
+
+class FlowPredicateV12(TypedDict, closed=True):
+    op: Literal['equals', 'contains']
+    variable_id: str
+    value: FlowLiteralV1
+
+
+class Value(TypedDict, closed=True):
+    type: Literal['number']
+    value: float
+
+
+FlowComparisonOpV1: TypeAlias = Literal['gt', 'gte', 'lt', 'lte']
+
+
+class Config1(TypedDict, closed=True):
+    outcome_id: str
+
+
+class Source2(TypedDict, closed=True):
+    node_id: str
+    port_id: str
+
+
+class Target(TypedDict, closed=True):
+    node_id: str
+    port_id: str
+
+
+class FlowEdgeV1(TypedDict, closed=True):
+    id: str
+    kind: Literal['control', 'value']
+    source: Source2
+    target: Target
+
+
+FlowVariableScopeV1: TypeAlias = Literal[
+    'system', 'contact', 'run', 'business', 'business_secret'
+]
+
+
+class FlowOutcomeV1(TypedDict, closed=True):
+    id: str
+    kind: Literal['success', 'handoff', 'stopped', 'failed']
+    label: str
+
+
+class OnUnhandledError(TypedDict, closed=True):
+    mode: Literal['stop', 'handoff']
+    outcome_id: str
+
+
+class Limits1(TypedDict, closed=True):
+    max_node_executions: float
+    max_billable_messages: NotRequired[float]
+
+
+class Prerequisites(TypedDict, closed=True):
+    tools: list[str]
+    providers: list[str]
+    templates: list[str]
+
+
+FlowApprovalModeV1: TypeAlias = Literal['auto', 'manual']
+
+
+class FlowInterfaceFieldV1(TypedDict, closed=True):
+    variable_id: str
+    required: bool
+
+
+FlowDraftUnavailableReason: TypeAlias = Literal[
+    'missing_draft',
+    'unsupported_draft_format',
+    'invalid_draft',
+    'draft_identity_mismatch',
+    'draft_fingerprint_mismatch',
+]
+
+
+class ManagedFlowDraftSaveReceipt(TypedDict, closed=True):
+    kind: Literal['managed_draft']
+    business_id: FlowDraftId
+    recipe_id: FlowDraftId
+    deployment_revision: FlowDraftRevision
+    draft_revision: FlowDraftRevision
+    fingerprint: str
+    status: Literal['draft_updated', 'unchanged']
+    side_effects: Literal[False]
+
+
+class Owner(TypedDict, closed=True):
+    kind: Literal['agent', 'human', 'unassigned', 'unknown']
+    user_id: str | None
+
+
+class Automation(TypedDict, closed=True):
+    paused: bool
+    paused_at: str | None
+
+
+ConversationHandoffReasonCode: TypeAlias = Literal[
+    'TOOL_GAP',
+    'LOW_CONFIDENCE',
+    'RETRY_EXHAUSTED',
+    'MANUAL_APPROVAL',
+    'SCAM',
+    'SPAM',
+    'SAFETY',
+    'SENTIMENT',
+    'USER_REQUESTED',
+    'AGENT_PAUSED',
+    'HANDOVER_RULE',
+    'UNKNOWN',
+]
+
+
+class ConversationTakeoverInput(TypedDict, closed=True):
+    expected_revision: str
+
+
+class ConversationAssignmentInput(TypedDict, closed=True):
+    expected_revision: str
+    assignee_user_id: str | None
+
+
+ConversationSnoozeInput: TypeAlias = ConversationTakeoverInput
+
+
+class ConversationTakeoverCommand(TypedDict, closed=True):
+    expected_revision: str
+    action: Literal['take_over']
+
+
+class ConversationAssignmentCommand(TypedDict, closed=True):
+    expected_revision: str
+    assignee_user_id: str | None
+    action: Literal['assign']
+
+
+class ConversationSnoozeCommand(TypedDict, closed=True):
+    expected_revision: str
+    action: Literal['snooze']
+
+
+class ConversationClearSnoozeCommand(TypedDict, closed=True):
+    expected_revision: str
+    action: Literal['clear_snooze']
+
+
+ConversationControlCommand: TypeAlias = (
+    ConversationTakeoverCommand
+    | ConversationAssignmentCommand
+    | ConversationSnoozeCommand
+    | ConversationClearSnoozeCommand
+)
+
+
+class ConversationControlReceipt(TypedDict, closed=True):
+    business_id: str
+    conversation_id: str
+    audit_id: str
+    request_id: str
+    action: Literal['take_over', 'assign', 'snooze', 'clear_snooze']
+    assignee_user_id: str | None
+    snoozed_until: str | None
+    changed: bool
+    applied_revision: str
+
+
+class ConversationTakeoverReceipt(TypedDict, closed=True):
+    business_id: str
+    conversation_id: str
+    audit_id: str
+    request_id: str
+    snoozed_until: str | None
+    changed: bool
+    applied_revision: str
+    action: Literal['take_over']
+    assignee_user_id: str
+
+
+class ConversationAssignmentReceipt(TypedDict, closed=True):
+    business_id: str
+    conversation_id: str
+    audit_id: str
+    request_id: str
+    assignee_user_id: str | None
+    snoozed_until: str | None
+    changed: bool
+    applied_revision: str
+    action: Literal['assign']
+
+
+class ConversationSnoozeReceipt(TypedDict, closed=True):
+    business_id: str
+    conversation_id: str
+    audit_id: str
+    request_id: str
+    assignee_user_id: str | None
+    changed: bool
+    applied_revision: str
+    action: Literal['snooze']
+    snoozed_until: str
+
+
+class ConversationClearSnoozeReceipt(TypedDict, closed=True):
+    business_id: str
+    conversation_id: str
+    audit_id: str
+    request_id: str
+    assignee_user_id: str | None
+    changed: bool
+    applied_revision: str
+    action: Literal['clear_snooze']
+    snoozed_until: None
+
+
+class ConversationAssignee(TypedDict, closed=True):
+    user_id: str
+    display_name: str
+    is_current_user: bool
+    can_reply: bool
+
+
+class ConversationControlHistoryEvent(TypedDict, closed=True):
+    id: str
+    occurred_at: str
+    action: Literal[
+        'handoff_requested',
+        'assigned',
+        'unassigned',
+        'handed_back',
+        'held_reply_dismissed',
+        'snoozed',
+        'snooze_cleared',
+    ]
+    actor_kind: Literal['user', 'integration', 'system', 'agent', 'unknown']
+    reason_code: ConversationHandoffReasonCode | None
+    via: Literal[
+        'take_over',
+        'typing',
+        'pause',
+        'assign',
+        'native_app',
+        'routing',
+        'hand_back',
+        'dismiss_hold',
+        'expiry',
+        'snooze',
+        'clear_snooze',
+        'unknown',
+    ]
+
+
+class Channels(TypedDict, closed=True):
+    whatsapp: Literal['full', 'template_only', 'none']
+    instagram: Literal['full', 'template_only', 'none']
+
+
+class FlowStep(TypedDict, closed=True):
+    type: str
+    version: int
+    name: str
+    description: str
+    tier: Literal['steps', 'bundles']
+    effect: Literal['message', 'read', 'write', 'money_in']
+    channels: Channels
+    billable_messages: Literal[0, 1, 'per_item']
+    ready: bool
+
+
+class FlowStepCatalog(TypedDict, closed=True):
+    business_id: str
+    schema_version: Literal[1]
+    steps: list[FlowStep]
+
+
+class SavedFlowBlockReference(TypedDict, closed=True):
+    flow_id: str
+    version_id: str
+    version: int
+    name: str
+    type: Literal['call', 'mcp']
+
+
+class SavedFlowBlockPage(TypedDict, closed=True):
+    business_id: str
+    data: list[SavedFlowBlockReference]
+    page: Page2
+
+
+class SavedFlowBlockField(TypedDict, closed=True):
+    variable_id: str
+    key: str
+    type: Literal['string', 'number', 'boolean', 'datetime', 'json', 'string_list']
+    required: bool
+
+
+KnowledgeRunStatus: TypeAlias = Literal[
+    'queued',
+    'running',
+    'waiting',
+    'succeeded',
+    'failed',
+    'cancelled',
+    'expired',
+    'uncertain',
+    'unknown',
+]
+
+
+KnowledgeRunCounter: TypeAlias = int
+
+
+KnowledgeSourceKind: TypeAlias = Literal['website', 'text', 'document', 'unknown']
+
+
+KnowledgeSourceStatus: TypeAlias = Literal[
+    'active', 'pending_deletion', 'deleted', 'unknown'
+]
+
+
+class ImportWebsiteKnowledgeInput(TypedDict, closed=True):
+    url: str
+    max_pages: NotRequired[int]
+
+
+class WebsiteKnowledgeImportReceipt(TypedDict, closed=True):
+    business_id: str
+    ingestion_run_id: str
+    url: str
+    max_pages: int
+    status: Literal['accepted']
+    audit_id: str
+    request_id: str
+
+
+class RemoveWebsiteKnowledgeInput(TypedDict, closed=True):
+    url: str
+
+
+class WebsiteKnowledgeRemovalReceipt(TypedDict, closed=True):
+    business_id: str
+    url: str
+    source_id: str | None
+    outcome: Literal['removed', 'already_removed']
+    document_version: int
+    sections_dropped: int
+    sections_hidden: int
+    sections_requiring_refresh: int
+    cancelled_imports: int
+    audit_id: str
+    request_id: str
+
+
+class KnowledgeSectionContent(TypedDict, closed=True):
+    id: str
+    business_id: str
+    document_id: str
+    document_version: int
+    stable_key: str
+    parent_key: str | None
+    title: str
+    ordinal: int
+    generated_md: str
+    manual_override_md: str | None
+    override_stale: bool
+    override_orphaned: bool
+    effective_hash: str | None
+    updated_at: str
+
+
+class KnowledgeSectionContentPage(TypedDict, closed=True):
+    business_id: str
+    data: list[KnowledgeSectionContent]
+    page: Page2
+
+
+class SetKnowledgeSectionOverrideInput(TypedDict, closed=True):
+    expected_version: int
+    override_md: str | None
+
+
+class AcknowledgeKnowledgeSectionOverrideInput(TypedDict, closed=True):
+    expected_version: int
+
+
+class KnowledgeSectionEditReceipt(TypedDict, closed=True):
+    business_id: str
+    document_id: str
+    section_id: str
+    stable_key: str
+    action: Literal['set_override', 'clear_override', 'acknowledge_override']
+    document_version: int
+    audit_id: str
+    request_id: str
+
+
+class RemoveKnowledgeSourceInput(TypedDict, closed=True):
+    expected_version: int
+
+
+class KnowledgeSourceRemovalReceipt(TypedDict, closed=True):
+    business_id: str
+    source_id: str
+    document_version: int
+    sections_dropped: int
+    sections_hidden: int
+    sections_requiring_refresh: int
+    audit_id: str
+    request_id: str
+
+
+class KnowledgeDocumentMetadata(TypedDict, closed=True):
+    business_id: str
+    id: str | None
+    version: int
+    section_count: int
+
+
+class Next(TypedDict, closed=True):
+    id: str
+    label: str
+
+
+class LoyaltyMembershipTier(TypedDict, closed=True):
+    id: str
+    label: str
+    next: Next | None
+
+
+class NextExpiry(TypedDict, closed=True):
+    at: str
+    amount: int
+
+
+class LoyaltyWallet(TypedDict, closed=True):
+    wallet: Literal['points', 'stamps']
+    spendable: int
+    pending: int
+    held: int
+    next_expiry: NextExpiry | None
+
+
+class FlowRunPage(TypedDict, closed=True):
+    business_id: str
+    data: list[PublicFlowRun]
+    page: Page2
+
+
 class BusinessWorkspaceGetArguments(TypedDict, closed=True):
     timeout_seconds: NotRequired[float]
     attempt_timeout_seconds: NotRequired[float]
@@ -1463,6 +2622,229 @@ class BusinessContactsAttributesUpdateArguments(TypedDict, closed=True):
 BusinessContactsAttributesUpdateData: TypeAlias = UpdatedContactAttributes
 
 
+class BusinessContactsFieldsListArguments(TypedDict, closed=True):
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+class BusinessFlowsStepsListArguments(TypedDict, closed=True):
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+BusinessFlowsStepsListData: TypeAlias = FlowStepCatalog
+
+
+class BusinessFlowsBlocksListArguments(TypedDict, closed=True):
+    limit: NotRequired[int]
+    cursor: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+BusinessFlowsBlocksListData: TypeAlias = SavedFlowBlockReference
+
+
+class BusinessFlowsBlocksListIteratorArguments(TypedDict, closed=True):
+    limit: NotRequired[int]
+    cursor: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+    max_pages: NotRequired[int]
+    max_items: NotRequired[int]
+
+
+class BusinessFlowsBlocksGetArguments(TypedDict, closed=True):
+    version_id: str
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+class BusinessKnowledgeRunsGetArguments(TypedDict, closed=True):
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+class BusinessKnowledgeRunsListArguments(TypedDict, closed=True):
+    limit: NotRequired[int]
+    cursor: NotRequired[str]
+    status: NotRequired[KnowledgeRunStatus]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+class BusinessKnowledgeRunsListIteratorArguments(TypedDict, closed=True):
+    limit: NotRequired[int]
+    cursor: NotRequired[str]
+    status: NotRequired[KnowledgeRunStatus]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+    max_pages: NotRequired[int]
+    max_items: NotRequired[int]
+
+
+class BusinessKnowledgeSourcesListArguments(TypedDict, closed=True):
+    limit: NotRequired[int]
+    cursor: NotRequired[str]
+    kind: NotRequired[KnowledgeSourceKind]
+    status: NotRequired[KnowledgeSourceStatus]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+class BusinessKnowledgeSourcesListIteratorArguments(TypedDict, closed=True):
+    limit: NotRequired[int]
+    cursor: NotRequired[str]
+    kind: NotRequired[KnowledgeSourceKind]
+    status: NotRequired[KnowledgeSourceStatus]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+    max_pages: NotRequired[int]
+    max_items: NotRequired[int]
+
+
+class BusinessKnowledgeSectionsListArguments(TypedDict, closed=True):
+    limit: NotRequired[int]
+    cursor: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+BusinessKnowledgeSectionsListData: TypeAlias = KnowledgeSectionContent
+
+
+class BusinessKnowledgeSectionsListIteratorArguments(TypedDict, closed=True):
+    limit: NotRequired[int]
+    cursor: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+    max_pages: NotRequired[int]
+    max_items: NotRequired[int]
+
+
+class BusinessKnowledgeSectionsSetOverrideArguments(TypedDict, closed=True):
+    expected_version: int
+    override_md: str | None
+    idempotency_key: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+BusinessKnowledgeSectionsSetOverrideData: TypeAlias = KnowledgeSectionEditReceipt
+
+
+class BusinessKnowledgeSectionsAcknowledgeOverrideArguments(TypedDict, closed=True):
+    expected_version: int
+    idempotency_key: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+BusinessKnowledgeSectionsAcknowledgeOverrideData: TypeAlias = (
+    KnowledgeSectionEditReceipt
+)
+
+
+class BusinessKnowledgeSourcesImportWebsiteArguments(TypedDict, closed=True):
+    url: str
+    max_pages: NotRequired[int]
+    idempotency_key: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+BusinessKnowledgeSourcesImportWebsiteData: TypeAlias = WebsiteKnowledgeImportReceipt
+
+
+class BusinessKnowledgeSourcesRemoveWebsiteArguments(TypedDict, closed=True):
+    url: str
+    idempotency_key: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+BusinessKnowledgeSourcesRemoveWebsiteData: TypeAlias = WebsiteKnowledgeRemovalReceipt
+
+
+class BusinessKnowledgeSourcesRemoveArguments(TypedDict, closed=True):
+    expected_version: int
+    idempotency_key: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+BusinessKnowledgeSourcesRemoveData: TypeAlias = KnowledgeSourceRemovalReceipt
+
+
+class BusinessKnowledgeGetArguments(TypedDict, closed=True):
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+BusinessKnowledgeGetData: TypeAlias = KnowledgeDocumentMetadata
+
+
+class BusinessLoyaltyMembersGetArguments(TypedDict, closed=True):
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+class BusinessContactsFieldsCreateArguments(TypedDict, closed=True):
+    label: str
+    key: NotRequired[str | None]
+    type: NotRequired[Literal['text', 'number', 'boolean', 'date']]
+    idempotency_key: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+BusinessContactsFieldsCreateData: TypeAlias = CreatedContactField
+
+
+class BusinessContactsFieldsArchiveArguments(TypedDict, closed=True):
+    expected_version: int
+    idempotency_key: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+BusinessContactsFieldsArchiveData: TypeAlias = ArchivedContactField
+
+
+class BusinessContactsFieldsConfigureMemoryArguments(TypedDict, closed=True):
+    expected_version: int
+    agent_may_remember: bool
+    agent_hint: NotRequired[str | None]
+    idempotency_key: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+BusinessContactsFieldsConfigureMemoryData: TypeAlias = ConfiguredContactFieldMemory
+
+
 class BusinessConversationsListArguments(TypedDict, closed=True):
     limit: NotRequired[int]
     cursor: NotRequired[str]
@@ -1519,6 +2901,86 @@ class BusinessConversationsMessagesListIteratorArguments(TypedDict, closed=True)
     direction: NotRequired[Literal['inbound', 'outbound']]
     before: NotRequired[str]
     after: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+    max_pages: NotRequired[int]
+    max_items: NotRequired[int]
+
+
+class BusinessConversationsControlsGetArguments(TypedDict, closed=True):
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+class BusinessConversationsControlsHistoryArguments(TypedDict, closed=True):
+    limit: NotRequired[int]
+    cursor: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+class BusinessConversationsControlsTakeOverArguments(TypedDict, closed=True):
+    expected_revision: str
+    idempotency_key: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+BusinessConversationsControlsTakeOverData: TypeAlias = ConversationTakeoverReceipt
+
+
+class BusinessConversationsControlsAssignArguments(TypedDict, closed=True):
+    expected_revision: str
+    assignee_user_id: str | None
+    idempotency_key: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+BusinessConversationsControlsAssignData: TypeAlias = ConversationAssignmentReceipt
+
+
+class BusinessConversationsControlsSnoozeArguments(TypedDict, closed=True):
+    expected_revision: str
+    idempotency_key: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+BusinessConversationsControlsSnoozeData: TypeAlias = ConversationSnoozeReceipt
+
+
+class BusinessConversationsControlsClearSnoozeArguments(TypedDict, closed=True):
+    expected_revision: str
+    idempotency_key: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+BusinessConversationsControlsClearSnoozeData: TypeAlias = ConversationClearSnoozeReceipt
+
+
+class BusinessConversationsAssigneesListArguments(TypedDict, closed=True):
+    limit: NotRequired[int]
+    cursor: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+BusinessConversationsAssigneesListData: TypeAlias = ConversationAssignee
+
+
+class BusinessConversationsAssigneesListIteratorArguments(TypedDict, closed=True):
+    limit: NotRequired[int]
+    cursor: NotRequired[str]
     timeout_seconds: NotRequired[float]
     attempt_timeout_seconds: NotRequired[float]
     max_retries: NotRequired[int]
@@ -1619,6 +3081,63 @@ class BusinessMessagesPreviewArguments(TypedDict, closed=True):
 
 
 BusinessMessagesPreviewData: TypeAlias = MessagePreview
+
+
+class To10(TypedDict, closed=True):
+    phone: str
+
+
+class To11(TypedDict, closed=True):
+    contact_id: str
+
+
+class To12(TypedDict, closed=True):
+    conversation_id: str
+
+
+class Content6(TypedDict, closed=True):
+    type: Literal['text']
+    text: str
+
+
+class Template7(TypedDict, closed=True):
+    id: str
+
+
+class Template8(TypedDict, closed=True):
+    alias: str
+
+
+class Content7(TypedDict, closed=True):
+    type: Literal['template']
+    template: Template7 | Template8
+    variables: NotRequired[dict[str, str]]
+    locale: NotRequired[str]
+
+
+class BusinessMessagesPrepareArguments(TypedDict, closed=True):
+    to: To10 | To11 | To12
+    content: Content6 | Content7
+    purpose_binding: NotRequired[str]
+    expires_at: NotRequired[str]
+    client_reference: NotRequired[str]
+    idempotency_key: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+class BusinessMessagesPreparationsGetArguments(TypedDict, closed=True):
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+class BusinessMessagesPreparationsApplyArguments(TypedDict, closed=True):
+    expected_revision: int
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
 
 
 class BusinessOrdersListArguments(TypedDict, closed=True):
@@ -1755,7 +3274,44 @@ class BusinessMessagingGetConfigurationArguments(TypedDict, closed=True):
     max_retries: NotRequired[int]
 
 
-BusinessMessagingGetConfigurationData: TypeAlias = PublicMessagingConfiguration
+class BusinessMessagingUpdateConfigurationArguments(TypedDict, closed=True):
+    configuration: MessagingConfiguration
+    expected_version: int | None
+    idempotency_key: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+class BusinessMessagingPreparationsCreateArguments(TypedDict, closed=True):
+    configuration: MessagingConfiguration
+    expected_version: int | None
+    idempotency_key: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+BusinessMessagingPreparationsCreateData: TypeAlias = PreparedMessagingConfiguration
+
+
+class BusinessMessagingPreparationsGetArguments(TypedDict, closed=True):
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+BusinessMessagingPreparationsGetData: TypeAlias = PreparedMessagingConfiguration
+
+
+class BusinessMessagingPreparationsApplyArguments(TypedDict, closed=True):
+    expected_revision: int
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+BusinessMessagingPreparationsApplyData: TypeAlias = PreparedMessagingConfiguration
 
 
 class BusinessConsentsGetArguments(TypedDict, closed=True):
@@ -1768,12 +3324,12 @@ class BusinessConsentsGetArguments(TypedDict, closed=True):
 BusinessConsentsGetData: TypeAlias = ContactConsentState
 
 
-class To10(TypedDict, closed=True):
+class To13(TypedDict, closed=True):
     phone: str
 
 
 class BusinessConsentsWithdrawArguments(TypedDict, closed=True):
-    to: To10
+    to: To13
     purpose: Literal['marketing', 'utility', 'service', 'loyalty', 'ad_measurement']
     idempotency_key: NotRequired[str]
     timeout_seconds: NotRequired[float]
@@ -1859,6 +3415,90 @@ class BusinessFlowsRunsGetArguments(TypedDict, closed=True):
 BusinessFlowsRunsGetData: TypeAlias = PublicFlowRun
 
 
+class BusinessFlowsRunsListArguments(TypedDict, closed=True):
+    flow_id: NotRequired[str]
+    status: NotRequired[
+        Literal['running', 'waiting', 'completed', 'failed', 'cancelled']
+    ]
+    limit: NotRequired[int]
+    cursor: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+BusinessFlowsRunsListData: TypeAlias = PublicFlowRun
+
+
+class BusinessFlowsRunsListIteratorArguments(TypedDict, closed=True):
+    flow_id: NotRequired[str]
+    status: NotRequired[
+        Literal['running', 'waiting', 'completed', 'failed', 'cancelled']
+    ]
+    limit: NotRequired[int]
+    cursor: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+    max_pages: NotRequired[int]
+    max_items: NotRequired[int]
+
+
+class BusinessFlowsSimulateArguments(TypedDict, closed=True):
+    expected_revision: FlowSimulationRevision
+    variables: NotRequired[dict[str, FlowSimulationVariable]]
+    path_id: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+class BusinessFlowsRegressionsListSuitesArguments(TypedDict, closed=True):
+    release_request_id: str
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+class BusinessFlowsGovernanceGetArguments(TypedDict, closed=True):
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+class BusinessFlowsRegressionsGetConfigurationArguments(TypedDict, closed=True):
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+BusinessFlowsRegressionsGetConfigurationData: TypeAlias = FlowRegressionConfiguration
+
+
+class BusinessFlowsRegressionsGetSuiteArguments(TypedDict, closed=True):
+    suite_id: str
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+class BusinessFlowsRegressionsRunArguments(TypedDict, closed=True):
+    release_request_id: FlowRegressionId
+    suite_id: FlowRegressionId
+    expected_suite_revision: FlowRegressionRevision
+    idempotency_key: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+class BusinessFlowsRegressionsGetArguments(TypedDict, closed=True):
+    release_request_id: str
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
 class BusinessFlowsTemplatesCatalogArguments(TypedDict, closed=True):
     limit: NotRequired[int]
     cursor: NotRequired[str]
@@ -1890,6 +3530,23 @@ class BusinessFlowsDeploymentsGetArguments(TypedDict, closed=True):
     max_retries: NotRequired[int]
 
 
+class BusinessFlowsDraftsGetArguments(TypedDict, closed=True):
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+BusinessFlowsDraftsSaveData: TypeAlias = ManagedFlowDraftSaveReceipt
+
+
+class BusinessFlowsDeploymentsListArguments(TypedDict, closed=True):
+    limit: NotRequired[int]
+    cursor: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
 class BusinessFlowsDeploymentsRequestPublicationArguments(TypedDict, closed=True):
     expected_deployment_revision: int
     expected_draft_revision: int
@@ -1901,16 +3558,28 @@ class BusinessFlowsDeploymentsRequestPublicationArguments(TypedDict, closed=True
     max_retries: NotRequired[int]
 
 
-BusinessFlowsDeploymentsRequestPublicationData: TypeAlias = ManagedPublicationRequest
-
-
 class BusinessFlowsDeploymentsGetPublicationRequestArguments(TypedDict, closed=True):
     timeout_seconds: NotRequired[float]
     attempt_timeout_seconds: NotRequired[float]
     max_retries: NotRequired[int]
 
 
-BusinessFlowsDeploymentsGetPublicationRequestData: TypeAlias = ManagedPublicationRequest
+class BusinessFlowsDeploymentsWithdrawPublicationArguments(TypedDict, closed=True):
+    expected_decision_revision: int
+    idempotency_key: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+class BusinessAnalyticsGetArguments(TypedDict, closed=True):
+    channel: NotRequired[Literal['all', 'instagram', 'whatsapp']]
+    range: NotRequired[Literal['week', 'month', 'quarter', 'custom']]
+    start: NotRequired[str]
+    end: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
 
 
 BusinessUsageGetArguments = TypedDict(
@@ -2010,7 +3679,7 @@ PlatformBusinessCreationsRenewClaimLinkData: TypeAlias = BusinessCreationLink
 
 
 class PlatformInstallationRequestsCreateArguments(TypedDict, closed=True):
-    scopes: list[PublicScope]
+    scopes: list[MachinePublicScope]
     return_url: str
     idempotency_key: NotRequired[str]
     timeout_seconds: NotRequired[float]
@@ -2333,7 +4002,7 @@ class PublicInstallation(TypedDict, closed=True):
     business_id: str
     application_id: str
     status: Literal['active', 'revoked', 'suspended']
-    scopes: list[PublicScope]
+    scopes: list[MachinePublicScope]
     authority_version: str
     revision: str
 
@@ -2356,13 +4025,13 @@ class PublicApplicationSelf(TypedDict, closed=True):
             'platform.branding.manage',
         ]
     ]
-    maximum_business_scopes: list[PublicScope]
+    maximum_business_scopes: list[MachinePublicScope]
     return_urls: list[str]
     credential_expires_at: str
 
 
 class CreateInstallationRequestInput(TypedDict, closed=True):
-    scopes: list[PublicScope]
+    scopes: list[MachinePublicScope]
     return_url: str
 
 
@@ -2370,7 +4039,7 @@ class PublicInstallationRequest(TypedDict, closed=True):
     id: str
     application_id: str
     status: Literal['pending', 'approved', 'cancelled', 'expired', 'unavailable']
-    scopes: list[PublicScope]
+    scopes: list[MachinePublicScope]
     expires_at: str
     result: InstallationRequestResult
 
@@ -2379,7 +4048,7 @@ class CreatedInstallationRequest(TypedDict, closed=True):
     id: str
     application_id: str
     status: Literal['pending', 'approved', 'cancelled', 'expired', 'unavailable']
-    scopes: list[PublicScope]
+    scopes: list[MachinePublicScope]
     expires_at: str
     result: InstallationRequestResult
     authorization_url: str | None
@@ -2387,7 +4056,7 @@ class CreatedInstallationRequest(TypedDict, closed=True):
 
 class DelegationExchangeInput(TypedDict, closed=True):
     business_id: str
-    scopes: NotRequired[list[PublicScope]]
+    scopes: NotRequired[list[MachinePublicScope]]
 
 
 class BusinessDelegation(TypedDict, closed=True):
@@ -2396,7 +4065,7 @@ class BusinessDelegation(TypedDict, closed=True):
     application_id: str
     installation_id: str
     authority_version: str
-    scopes: list[PublicScope]
+    scopes: list[MachinePublicScope]
     expires_at: str
 
 
@@ -2526,6 +4195,28 @@ class PublicBlueprintTemplate(TypedDict, closed=True):
     capabilities: BlueprintCapabilities
 
 
+class ManagedPublicationRequest(TypedDict, closed=True):
+    business_id: str
+    recipe_id: str
+    id: str
+    deployment_revision: int
+    draft_revision: int
+    decision_revision: int
+    status: Literal[
+        'pending',
+        'pending_evidence',
+        'approved',
+        'rejected',
+        'published',
+        'superseded',
+        'dismissed',
+    ]
+    requested_at: str
+    published_version_id: str | None
+    review_url: str | None
+    checks: FlowPublicationChecks | None
+
+
 class Source(TypedDict, closed=True):
     kind: Literal['internal_template']
     pack_id: FlowTemplateIdentifier
@@ -2564,6 +4255,11 @@ class FlowTemplateDeployment(TypedDict, closed=True):
 FlowTemplateImportBody: TypeAlias = InternalTemplateImportBody | BlueprintImportBody
 
 
+class PublicMessagingConfiguration(TypedDict, closed=True):
+    version: int | None
+    value: MessagingConfiguration
+
+
 class OperationChangedEventEnvelope(TypedDict, closed=True):
     id: str
     type: Literal['operation.changed']
@@ -2576,7 +4272,538 @@ class OperationChangedEventEnvelope(TypedDict, closed=True):
     resource: Resource6
 
 
+class BusinessMetricComparison1(TypedDict, closed=True):
+    value: float
+    unit: Literal['relative_change', 'percentage_points']
+    reason: None
+    basis: BusinessComparisonBasis
+
+
+class BusinessMetricComparison2(TypedDict, closed=True):
+    value: None
+    unit: Literal['relative_change', 'percentage_points']
+    reason: Literal[
+        'no_previous_window',
+        'previous_zero',
+        'current_denominator_zero',
+        'previous_denominator_zero',
+        'noncomparable_currency',
+    ]
+    basis: BusinessComparisonBasis
+
+
+class BusinessMetricComparison3(TypedDict, closed=True):
+    value: None
+    unit: None
+    reason: Literal['current_state_only', 'not_applicable']
+    basis: BusinessComparisonBasis
+
+
+BusinessMetricComparison: TypeAlias = (
+    BusinessMetricComparison1 | BusinessMetricComparison2 | BusinessMetricComparison3
+)
+
+
+class BusinessMetric(TypedDict, closed=True):
+    value: str | None
+    label: str
+    sub: str
+    comparison: BusinessMetricComparison
+
+
+class ChannelMetrics(TypedDict, closed=True):
+    instagram: list[BusinessMetric]
+    whatsapp: list[BusinessMetric]
+
+
+class BusinessReplyTimes(TypedDict, closed=True):
+    conversations: float
+    unanswered: float
+    unmeasurable: float
+    all: BusinessReplyTimeGroup
+    agent: BusinessReplyTimeGroup
+    team: BusinessReplyTimeGroup
+
+
+class PreparedNotification(TypedDict, closed=True):
+    id: str
+    business_id: str
+    kind: Literal['notification']
+    state: Literal[
+        'awaiting_review',
+        'ready',
+        'submitted',
+        'rejected',
+        'expired',
+        'stale',
+        'unknown',
+    ]
+    revision: int
+    intent_digest: str
+    created_at: str
+    updated_at: str
+    expires_at: str
+    reviewed_at: str | None
+    reason_code: (
+        Literal[
+            'user_rejected',
+            'preparation_expired',
+            'configuration_changed',
+            'eligibility_changed',
+            'recipient_changed',
+            'unknown',
+        ]
+        | None
+    )
+    review: Review | None
+    operation: PublicOperation | None
+
+
+class NotificationPreparationResult(TypedDict, closed=True):
+    preview: MessagePreview | None
+    preparation: PreparedNotification | None
+
+
+class ContactFieldCatalog(TypedDict, closed=True):
+    definitions: list[ContactFieldDefinition]
+    limit: int
+    version: int
+
+
+class Suite(TypedDict, closed=True):
+    id: FlowRegressionId
+    name: str
+    revision: FlowRegressionRevision
+    current: bool
+    case_count: FlowRegressionCount | None
+    evidence: Literal['passed', 'missing', 'stale', 'invalid']
+
+
+class FlowRegressionSuites(TypedDict, closed=True):
+    business_id: FlowRegressionId
+    recipe_id: FlowRegressionId
+    release_request_id: FlowRegressionId
+    suites: list[Suite]
+
+
+class FlowRegressionCase(TypedDict, closed=True):
+    id: str
+    name: str
+    bindings: dict[str, JsonValue]
+    expected_path_id: str
+    expected_outcome_id: str
+    expected_specialist_node: NotRequired[str | None]
+    forbidden_action_types: NotRequired[list[str]]
+
+
+class FlowRegressionRun(TypedDict, closed=True):
+    business_id: FlowRegressionId
+    recipe_id: FlowRegressionId
+    release_request_id: FlowRegressionId
+    id: FlowRegressionId
+    suite_id: FlowRegressionId
+    suite_revision: FlowRegressionRevision
+    status: Literal['running', 'passed', 'failed', 'error']
+    counts: Counts
+    started_at: FlowRegressionTimestamp
+    completed_at: FlowRegressionTimestamp | None
+    error_code: Literal['evaluation_failed'] | None
+    side_effects: Literal[False]
+
+
+class ManagedFlowRegressionSuiteInput(TypedDict, closed=True):
+    suite_id: FlowRegressionId | None
+    expected_revision: FlowRegressionRevision | None
+    name: str
+    required: bool
+    status: Literal['active', 'archived']
+    cases: list[FlowRegressionCase]
+    kind: Literal['managed_deployment']
+
+
+class Issue(TypedDict, closed=True):
+    code: FlowSimulationCode
+    node_id: str | None
+
+
+class Readines(TypedDict, closed=True):
+    node_id: str | None
+    action_type: str | None
+    ready: bool
+    blocked_reasons: list[FlowSimulationCode]
+    review_reasons: list[FlowSimulationCode]
+
+
+class FlowDraftSimulation(TypedDict, closed=True):
+    business_id: FlowSimulationId
+    recipe_id: FlowSimulationId
+    draft_revision: FlowSimulationRevision
+    graph_fingerprint: str
+    status: Literal['passed', 'blocked']
+    selected_path: SelectedPath | None
+    issues: list[Issue]
+    issue_count: int
+    readiness: list[Readines]
+    coverage_recorded: bool
+    side_effects: Literal[False]
+
+
+class ManagedFlowSimulationInput(TypedDict, closed=True):
+    expected_revision: FlowSimulationRevision
+    variables: NotRequired[dict[str, FlowSimulationVariable]]
+    path_id: NotRequired[str]
+    kind: Literal['managed_draft']
+
+
+class FlowGovernanceConfiguration(TypedDict, closed=True):
+    business_id: FlowGovernanceId
+    recipe_id: FlowGovernanceId
+    revision: FlowGovernanceRevision
+    approval_mode: Literal['none', 'single_reviewer']
+    regression_mode: Literal['off', 'required']
+    current_release_request_id: FlowGovernanceId | None
+
+
+class FlowDeploymentSummary(TypedDict, closed=True):
+    recipe_id: FlowDeploymentCatalogId
+    name: str
+    revision: FlowDeploymentCatalogRevision
+    flow_status: Literal['draft', 'shadow', 'active', 'paused', 'retired']
+
+
+class FlowPortV1(TypedDict, closed=True):
+    id: str
+    direction: Literal['input', 'output']
+    kind: Literal['control', 'value']
+    value_type: NotRequired[FlowValueTypeV1]
+    cardinality: Literal['one', 'many']
+    required: bool
+    outcome: NotRequired[str]
+    is_default: NotRequired[bool]
+
+
+class FlowTriggerConfigV13(TypedDict, closed=True):
+    type: Literal['comment']
+    channel: NotRequired[Literal['instagram']]
+    keywords: NotRequired[list[str]]
+    intents: NotRequired[list[FlowCommentIntentV1]]
+    media_ids: NotRequired[list[str]]
+    posts: NotRequired[FlowCommentPostsV1]
+
+
+class FlowTriggerConfigV15(TypedDict, closed=True):
+    type: Literal['flow_response']
+    channel: NotRequired[Literal['whatsapp']]
+    flow_tokens: NotRequired[list[str]]
+    required_fields: NotRequired[list[str]]
+    field_matches: NotRequired[list[FlowResponseFieldMatchV1]]
+
+
+class FlowTriggerConfigV16(TypedDict, closed=True):
+    type: Literal['connector_event']
+    channel: FlowConcreteChannelV1
+    connector_id: str
+    event_id: str
+
+
+class FlowTriggerConfigV18(TypedDict, closed=True):
+    type: Literal['agent_call']
+    channel: NotRequired[FlowChannelV1]
+    use_when: str
+    inputs: list[FlowAgentCallInputV1]
+
+
+class FlowTriggerConfigV19(TypedDict, closed=True):
+    type: Literal['agent_handoff']
+    channel: NotRequired[FlowChannelV1]
+    from_agent_keys: list[FlowHandoffFromAgentKeyV1]
+    use_when: str
+    bulk: NotRequired[bool]
+
+
+class FlowEndpointContactIdentityV1(TypedDict, closed=True):
+    pointer: str
+    kind: FlowContactIdentityKindV1
+
+
+class FlowScheduleV12(TypedDict, closed=True):
+    kind: Literal['weekly']
+    weekdays: list[float]
+    time: FlowTimeOfDayV1
+
+
+class FlowScheduleV13(TypedDict, closed=True):
+    kind: Literal['contact_date']
+    variable_id: str
+    offset_days: float
+    time: FlowTimeOfDayV1
+    yearly: bool
+
+
+FlowScheduleV1: TypeAlias = FlowScheduleV11 | FlowScheduleV12 | FlowScheduleV13
+
+
+class FlowActionConfigV11(TypedDict, closed=True):
+    type: Literal['send_reply']
+    text: str
+    options: NotRequired[list[FlowReplyOptionV1]]
+
+
+class FlowActionConfigV15(TypedDict, closed=True):
+    type: Literal['send_template']
+    template_id: str
+    language: NotRequired[str]
+    purpose: NotRequired[str]
+    components: NotRequired[list[Any] | None]
+    flow_button: NotRequired[WhatsAppTemplateFlowButtonConfigV1 | None]
+
+
+class FlowActionConfigV19(TypedDict, closed=True):
+    type: Literal['collect_input']
+    variable_id: str
+    status_variable_id: str
+    prompt: str
+    retry_prompt: str
+    exhausted_reply: NotRequired[str]
+    max_attempts: float
+    timeout_seconds: NotRequired[float]
+    validation: FlowInputValidationV1
+    options: NotRequired[list[FlowReplyOptionV1]]
+    ask_via: NotRequired[Literal['prompt', 'previous_message']]
+
+
+class FlowActionConfigV124(TypedDict, closed=True):
+    type: Literal['wait_until']
+    until: FlowWaitUntilV1
+    status_variable_id: NotRequired[str]
+
+
+class FlowActionConfigV125(TypedDict, closed=True):
+    type: Literal['wait_for_event']
+    event: FlowWaitEventV1
+    timeout_seconds: float
+    status_variable_id: str
+    result_variable_id: NotRequired[str]
+    order_variable_id: NotRequired[str]
+
+
+class FlowSpecialistPolicyV1(TypedDict, closed=True):
+    business_goal: str
+    allowed_tools: list[str]
+    knowledge_source_types: list[FlowSpecialistKnowledgeSourceTypeV1]
+    minimum_confidence: NotRequired[float]
+    on_low_confidence: FlowSpecialistLowConfidenceModeV1
+    approval_mode: FlowSpecialistApprovalModeV1
+    max_customer_visible_actions: Literal[1]
+
+
+class FlowValueBindingV11(TypedDict, closed=True):
+    source: Literal['literal']
+    value: FlowLiteralV1
+
+
+FlowValueBindingV1: TypeAlias = FlowValueBindingV11 | FlowValueBindingV12
+
+
+class FlowWebhookBodyFieldV1(TypedDict, closed=True):
+    field: str
+    value: FlowValueBindingV1
+    required: NotRequired[bool]
+
+
+class FlowSubflowInputMappingV1(TypedDict, closed=True):
+    target_variable_id: str
+    value: FlowValueBindingV1
+
+
+class FlowPredicateV13(TypedDict, closed=True):
+    op: FlowComparisonOpV1
+    variable_id: str
+    value: Value
+
+
+class FlowTerminalNodeV1(TypedDict, closed=True):
+    id: str
+    label: str
+    ports: list[FlowPortV1]
+    kind: Literal['terminal']
+    config: Config1
+
+
+class FlowVariableDefinitionV1(TypedDict, closed=True):
+    id: str
+    key: str
+    label: str
+    type: FlowValueTypeV1
+    scope: FlowVariableScopeV1
+    required: bool
+    mutable: bool
+    default_value: NotRequired[FlowLiteralV1]
+
+
+class FlowPolicyV1(TypedDict, closed=True):
+    approval_mode: FlowApprovalModeV1
+    allowed_channels: list[FlowConcreteChannelV1]
+    cross_channel: Literal['forbid', 'require_explicit_opt_in']
+    whatsapp_outside_window: Literal['block', 'approved_template_only']
+    on_unhandled_error: OnUnhandledError
+    limits: Limits1
+    prerequisites: Prerequisites
+
+
+class FlowInterfaceV1(TypedDict, closed=True):
+    inputs: list[FlowInterfaceFieldV1]
+    outputs: list[FlowInterfaceFieldV1]
+
+
+class UnavailableFlowDraft(TypedDict, closed=True):
+    business_id: FlowDraftId
+    recipe_id: FlowDraftId
+    deployment_revision: FlowDraftRevision
+    side_effects: Literal[False]
+    revision: FlowDraftRevision | None
+    fingerprint: str | None
+    state: Literal['unavailable']
+    reasons: list[FlowDraftUnavailableReason]
+    definition: None
+
+
+class Handoff(TypedDict, closed=True):
+    status: Literal['pending', 'assigned', 'unknown']
+    reason_code: ConversationHandoffReasonCode
+    requested_at: str | None
+    assigned_to_user_id: str | None
+
+
+class ConversationControlState(TypedDict, closed=True):
+    business_id: str
+    conversation_id: str
+    revision: str
+    channel: Literal['whatsapp', 'instagram', 'unknown']
+    lifecycle: Literal[
+        'open', 'waiting_customer', 'resolved', 'archived', 'spam', 'unknown'
+    ]
+    owner: Owner
+    automation: Automation
+    snoozed_until: str | None
+    handoff: Handoff | None
+    updated_at: str
+
+
+class ConversationAssigneePage(TypedDict, closed=True):
+    business_id: str
+    data: list[ConversationAssignee]
+    page: Page2
+
+
+class ConversationControlHistoryPage(TypedDict, closed=True):
+    business_id: str
+    conversation_id: str
+    events: list[ConversationControlHistoryEvent]
+    page: Page2
+
+
+class SavedFlowBlockInterface(TypedDict, closed=True):
+    business_id: str
+    flow_id: str
+    version_id: str
+    version: int
+    name: str
+    inputs: list[SavedFlowBlockField]
+    outputs: list[SavedFlowBlockField]
+
+
+class KnowledgeRunProgress(TypedDict, closed=True):
+    id: str
+    business_id: str
+    status: KnowledgeRunStatus
+    source_type: Literal['website', 'unknown']
+    attempts: int
+    pages_crawled: KnowledgeRunCounter | None
+    document_section_count: KnowledgeRunCounter | None
+    sections_embedded: KnowledgeRunCounter | None
+    sections_embedding_skipped: KnowledgeRunCounter | None
+    knowledge_version: KnowledgeRunCounter | None
+    created_at: str
+    started_at: str | None
+    completed_at: str | None
+
+
+class KnowledgeRunPage(TypedDict, closed=True):
+    business_id: str
+    data: list[KnowledgeRunProgress]
+    page: Page2
+
+
+class KnowledgeSourceMetadata(TypedDict, closed=True):
+    id: str
+    business_id: str
+    kind: KnowledgeSourceKind
+    status: KnowledgeSourceStatus
+    label: str
+    url: str | None
+    created_at: str
+    updated_at: str
+
+
+class KnowledgeSourcePage(TypedDict, closed=True):
+    business_id: str
+    data: list[KnowledgeSourceMetadata]
+    page: Page2
+
+
+class LoyaltyMembership(TypedDict, closed=True):
+    business_id: str
+    contact_id: str
+    observed_at: str
+    enrolled: bool
+    pre_member: bool
+    joined_at: str | None
+    tier: LoyaltyMembershipTier | None
+    wallets: list[LoyaltyWallet]
+    open_hold_count: int
+
+
+BusinessContactsFieldsListData: TypeAlias = ContactFieldCatalog
+
+
+BusinessFlowsBlocksGetData: TypeAlias = SavedFlowBlockInterface
+
+
+BusinessKnowledgeRunsGetData: TypeAlias = KnowledgeRunProgress
+
+
+BusinessKnowledgeRunsListData: TypeAlias = KnowledgeRunProgress
+
+
+BusinessKnowledgeSourcesListData: TypeAlias = KnowledgeSourceMetadata
+
+
+BusinessLoyaltyMembersGetData: TypeAlias = LoyaltyMembership
+
+
+BusinessConversationsControlsGetData: TypeAlias = ConversationControlState
+
+
+BusinessConversationsControlsHistoryData: TypeAlias = ConversationControlHistoryPage
+
+
 BusinessMessagesSendData: TypeAlias = PublicOperation
+
+
+BusinessMessagesPrepareData: TypeAlias = NotificationPreparationResult
+
+
+BusinessMessagesPreparationsGetData: TypeAlias = PreparedNotification
+
+
+BusinessMessagesPreparationsApplyData: TypeAlias = PreparedNotification
+
+
+BusinessMessagingGetConfigurationData: TypeAlias = PublicMessagingConfiguration
+
+
+BusinessMessagingUpdateConfigurationData: TypeAlias = PublicMessagingConfiguration
 
 
 BusinessOperationsGetData: TypeAlias = PublicOperation
@@ -2589,6 +4816,34 @@ BusinessOperationsCancelData: TypeAlias = PublicOperation
 
 
 BusinessEventsPublishData: TypeAlias = PublicOperation
+
+
+BusinessFlowsSimulateData: TypeAlias = FlowDraftSimulation
+
+
+BusinessFlowsRegressionsListSuitesData: TypeAlias = FlowRegressionSuites
+
+
+BusinessFlowsGovernanceGetData: TypeAlias = FlowGovernanceConfiguration
+
+
+class BusinessFlowsRegressionsSaveSuiteArguments(TypedDict, closed=True):
+    suite_id: FlowRegressionId | None
+    expected_revision: FlowRegressionRevision | None
+    name: str
+    required: bool
+    status: Literal['active', 'archived']
+    cases: list[FlowRegressionCase]
+    idempotency_key: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+
+BusinessFlowsRegressionsRunData: TypeAlias = FlowRegressionRun
+
+
+BusinessFlowsRegressionsGetData: TypeAlias = FlowRegressionRun
 
 
 BusinessFlowsDeploymentsGetData: TypeAlias = FlowTemplateDeployment
@@ -2617,6 +4872,15 @@ class BusinessFlowsDeploymentsApplyUpdateArguments(TypedDict, closed=True):
 
 
 BusinessFlowsDeploymentsApplyUpdateData: TypeAlias = BlueprintUpdateReceipt
+
+
+BusinessFlowsDeploymentsRequestPublicationData: TypeAlias = ManagedPublicationRequest
+
+
+BusinessFlowsDeploymentsGetPublicationRequestData: TypeAlias = ManagedPublicationRequest
+
+
+BusinessFlowsDeploymentsWithdrawPublicationData: TypeAlias = ManagedPublicationRequest
 
 
 PlatformSelfGetData: TypeAlias = PublicApplicationSelf
@@ -2673,9 +4937,334 @@ class PartnerBusinessPage(TypedDict, closed=True):
     page: Page1
 
 
+class Comparisons(TypedDict, closed=True):
+    conversations: BusinessMetricComparison
+    revenue: BusinessMetricComparison
+    automation_rate: BusinessMetricComparison
+    open_conversations: BusinessMetricComparison
+    active_contacts: BusinessMetricComparison
+
+
+class BusinessKpis(TypedDict, closed=True):
+    conversations: float
+    conversations_delta: float | None
+    revenue: str
+    revenue_delta: float | None
+    automation_rate: float
+    open_conversations: float
+    active_contacts: float
+    contacts_delta: float | None
+    comparisons: Comparisons
+
+
+class BusinessAnalyticsReport(TypedDict, closed=True):
+    kpis: BusinessKpis
+    conversations_series: list[BusinessSeriesPoint]
+    revenue_series: list[BusinessSeriesPoint]
+    revenue_drivers: list[BusinessRevenueDriver]
+    intent_breakdown: list[IntentBreakdownItem]
+    channel_metrics: ChannelMetrics
+    ai_performance: list[BusinessMetric]
+    reply_times: BusinessReplyTimes
+    customer_signals: BusinessCustomerSignals
+    generated_at: str
+    channel: AnalyticsChannel
+    range: AnalyticsRange
+    currency: str
+    window: Window
+    comparison: Comparison | None
+    available_ranges: list[AnalyticsRange]
+    entry_points: list[BusinessEntryPoint]
+    outcomes: list[BusinessOutcome]
+    outcomes_total: float
+
+
+class FlowRegressionSuite(TypedDict, closed=True):
+    business_id: FlowRegressionId
+    recipe_id: FlowRegressionId
+    id: FlowRegressionId
+    revision: FlowRegressionRevision
+    name: str
+    required: bool
+    status: Literal['active', 'archived']
+    cases: list[FlowRegressionCase]
+
+
+class FlowDeploymentCatalog(TypedDict, closed=True):
+    business_id: FlowDeploymentCatalogId
+    deployments: list[FlowDeploymentSummary]
+    page: Page2
+
+
+class FlowTriggerConfigV11(TypedDict, closed=True):
+    type: Literal['inbound_endpoint']
+    channel: FlowConcreteChannelV1
+    purpose: FlowEndpointPurposeV1
+    fields: list[FlowEndpointFieldV1]
+    contact_identities: list[FlowEndpointContactIdentityV1]
+    name_pointer: NotRequired[str]
+    mappings: list[FlowEndpointMappingV1]
+    dedupe_key_pointer: NotRequired[str]
+
+
+class FlowTriggerConfigV17(TypedDict, closed=True):
+    type: Literal['scheduled']
+    channel: FlowConcreteChannelV1
+    schedule: FlowScheduleV1
+    audience_id: NotRequired[str]
+
+
+FlowTriggerConfigV1: TypeAlias = (
+    FlowTriggerConfigV11
+    | FlowTriggerConfigV12
+    | FlowTriggerConfigV13
+    | FlowTriggerConfigV14
+    | FlowTriggerConfigV15
+    | FlowTriggerConfigV16
+    | FlowTriggerConfigV17
+    | FlowTriggerConfigV18
+    | FlowTriggerConfigV19
+    | FlowTriggerConfigV110
+)
+
+
+class FlowActionConfigV12(TypedDict, closed=True):
+    type: Literal['route_node']
+    node: str
+    specialist_policy: NotRequired[FlowSpecialistPolicyV1]
+
+
+class FlowActionConfigV110(TypedDict, closed=True):
+    type: Literal['set_variable']
+    variable_id: str
+    value: FlowValueBindingV1
+
+
+class FlowActionConfigV111(TypedDict, closed=True):
+    type: Literal['webhook']
+    endpoint_id: str
+    method: Literal['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
+    path: NotRequired[str]
+    path_values: NotRequired[dict[str, FlowValueBindingV1]]
+    headers: NotRequired[dict[str, FlowValueBindingV1]]
+    body_fields: NotRequired[list[FlowWebhookBodyFieldV1]]
+    body: NotRequired[FlowValueBindingV1]
+    timeout_ms: float
+    retry: FlowRetryPolicyV1
+    response_mappings: list[FlowWebhookResponseMappingV1]
+    status_variable_id: str
+
+
+class FlowActionConfigV113(TypedDict, closed=True):
+    type: Literal['subflow']
+    flow_id: str
+    version_id: str
+    input_mappings: list[FlowSubflowInputMappingV1]
+    output_mappings: list[FlowSubflowOutputMappingV1]
+    status_variable_id: str
+
+
+class FlowActionConfigV123(TypedDict, closed=True):
+    type: Literal['conversion']
+    event: FlowConversionEventV1
+    value_paise: NotRequired[FlowValueBindingV1]
+
+
+class FlowActionConfigV129(TypedDict, closed=True):
+    type: Literal['find_order']
+    order_number: NotRequired[FlowValueBindingV1]
+    result_variable_id: str
+    status_variable_id: str
+
+
+class FlowActionConfigV130(TypedDict, closed=True):
+    type: Literal['connector_action']
+    connector_id: str
+    action_id: str
+    inputs: dict[str, FlowValueBindingV1]
+    response_mappings: list[FlowWebhookResponseMappingV1]
+    status_variable_id: str
+
+
+class FlowActionConfigV131(TypedDict, closed=True):
+    type: Literal['mcp_tool_call']
+    connection_id: str
+    tool_name: str
+    input_schema_hash: str
+    effect: FlowMcpToolEffectV1
+    ask_before_run: bool
+    inputs: dict[str, FlowValueBindingV1]
+    response_mappings: list[FlowWebhookResponseMappingV1]
+    timeout_ms: NotRequired[float]
+    status_variable_id: str
+
+
+FlowActionConfigV1: TypeAlias = (
+    FlowActionConfigV11
+    | FlowActionConfigV12
+    | FlowActionConfigV13
+    | FlowActionConfigV14
+    | FlowActionConfigV15
+    | FlowActionConfigV16
+    | FlowActionConfigV17
+    | FlowActionConfigV18
+    | FlowActionConfigV19
+    | FlowActionConfigV110
+    | FlowActionConfigV111
+    | FlowActionConfigV112
+    | FlowActionConfigV113
+    | FlowActionConfigV114
+    | FlowActionConfigV115
+    | FlowActionConfigV116
+    | FlowActionConfigV117
+    | FlowActionConfigV118
+    | FlowActionConfigV119
+    | FlowActionConfigV120
+    | FlowActionConfigV121
+    | FlowActionConfigV122
+    | FlowActionConfigV123
+    | FlowActionConfigV124
+    | FlowActionConfigV125
+    | FlowActionConfigV126
+    | FlowActionConfigV127
+    | FlowActionConfigV128
+    | FlowActionConfigV129
+    | FlowActionConfigV130
+    | FlowActionConfigV131
+)
+
+
+BusinessFlowsRegressionsGetSuiteData: TypeAlias = FlowRegressionSuite
+
+
+BusinessFlowsRegressionsSaveSuiteData: TypeAlias = FlowRegressionSuite
+
+
+BusinessFlowsDeploymentsListData: TypeAlias = FlowDeploymentCatalog
+
+
+BusinessAnalyticsGetData: TypeAlias = BusinessAnalyticsReport
+
+
 PlatformBusinessesListData: TypeAlias = PublicPartnerBusiness
 
 
 PlatformBusinessesGetData: TypeAlias = PublicPartnerBusiness
 
-__all__ = ['Ai', 'Application', 'ApplicationEventContext', 'ApplicationResourceEventEnvelope', 'ApplyBlueprintUpdateInput', 'Attachment', 'Blueprint', 'BlueprintCapabilities', 'BlueprintDefinition', 'BlueprintDependencies', 'BlueprintDependency', 'BlueprintImportBody', 'BlueprintOverrideKeys', 'BlueprintParameterDefinition', 'BlueprintParameterDefinition1', 'BlueprintParameterDefinition2', 'BlueprintParameters', 'BlueprintTemplateReference', 'BlueprintUpdateChanges', 'BlueprintUpdatePreview', 'BlueprintUpdateReceipt', 'BlueprintUpdateTarget', 'BlueprintVariable', 'BlueprintVariables', 'BusinessConsentsGetArguments', 'BusinessConsentsGetData', 'BusinessConsentsRecordMarketingOptInArguments', 'BusinessConsentsRecordMarketingOptInData', 'BusinessConsentsWithdrawArguments', 'BusinessConsentsWithdrawData', 'BusinessContactsAttributesUpdateArguments', 'BusinessContactsAttributesUpdateData', 'BusinessContactsCreateArguments', 'BusinessContactsCreateData', 'BusinessContactsGetArguments', 'BusinessContactsGetData', 'BusinessContactsListArguments', 'BusinessContactsListData', 'BusinessContactsListIteratorArguments', 'BusinessContactsTagsReplaceArguments', 'BusinessContactsTagsReplaceData', 'BusinessContactsUpdateArguments', 'BusinessContactsUpdateData', 'BusinessConversationsGetArguments', 'BusinessConversationsGetData', 'BusinessConversationsListArguments', 'BusinessConversationsListData', 'BusinessConversationsListIteratorArguments', 'BusinessConversationsMessagesListArguments', 'BusinessConversationsMessagesListData', 'BusinessConversationsMessagesListIteratorArguments', 'BusinessCreationLink', 'BusinessCreationLinkResponse', 'BusinessDelegation', 'BusinessEventsBindingsListArguments', 'BusinessEventsBindingsListData', 'BusinessEventsBindingsListIteratorArguments', 'BusinessEventsPublishArguments', 'BusinessEventsPublishData', 'BusinessFlowsDeploymentsApplyUpdateArguments', 'BusinessFlowsDeploymentsApplyUpdateData', 'BusinessFlowsDeploymentsGetArguments', 'BusinessFlowsDeploymentsGetData', 'BusinessFlowsDeploymentsGetPublicationRequestArguments', 'BusinessFlowsDeploymentsGetPublicationRequestData', 'BusinessFlowsDeploymentsPreviewUpdateArguments', 'BusinessFlowsDeploymentsPreviewUpdateData', 'BusinessFlowsDeploymentsRequestPublicationArguments', 'BusinessFlowsDeploymentsRequestPublicationData', 'BusinessFlowsRunsGetArguments', 'BusinessFlowsRunsGetData', 'BusinessFlowsTemplatesCatalogArguments', 'BusinessFlowsTemplatesCatalogData', 'BusinessFlowsTemplatesImportArguments', 'BusinessFlowsTemplatesImportData', 'BusinessMessagesGetArguments', 'BusinessMessagesGetData', 'BusinessMessagesPreviewArguments', 'BusinessMessagesPreviewData', 'BusinessMessagesSendArguments', 'BusinessMessagesSendData', 'BusinessMessagingGetConfigurationArguments', 'BusinessMessagingGetConfigurationData', 'BusinessMessagingGetReadinessArguments', 'BusinessMessagingGetReadinessData', 'BusinessOperationsCancelArguments', 'BusinessOperationsCancelData', 'BusinessOperationsGetArguments', 'BusinessOperationsGetData', 'BusinessOperationsLookupArguments', 'BusinessOperationsLookupData', 'BusinessOrdersGetArguments', 'BusinessOrdersGetData', 'BusinessOrdersListArguments', 'BusinessOrdersListData', 'BusinessOrdersListIteratorArguments', 'BusinessOrdersShipmentsListArguments', 'BusinessOrdersShipmentsListData', 'BusinessOrdersShipmentsListIteratorArguments', 'BusinessShipmentsGetArguments', 'BusinessShipmentsGetData', 'BusinessTemplatesListArguments', 'BusinessTemplatesListData', 'BusinessTemplatesListIteratorArguments', 'BusinessUsageGetArguments', 'BusinessUsageGetData', 'BusinessUsageGetLimitsArguments', 'BusinessUsageGetLimitsData', 'BusinessWorkspaceGetArguments', 'BusinessWorkspaceGetData', 'Channel', 'ConsentWithdrawal', 'ContactAttributeValues', 'ContactConsentState', 'ContactPage', 'ContactReference', 'Content', 'Content1', 'Content2', 'Content3', 'Content4', 'Content5', 'ConversationPage', 'Conversations', 'CreateBlueprintVersionInput', 'CreateContactRequest', 'CreateInstallationRequestInput', 'CreateOnboardingSessionInput', 'CreatePartnerSubscription', 'CreatePlatformBusinessInput', 'CreatedInstallationRequest', 'CreatedOnboardingSession', 'DelegationExchangeInput', 'Dependency', 'DependencySlot', 'DeveloperChangedEventEnvelope', 'DeveloperEventType', 'DeveloperResourceRef', 'Draft', 'EndpointTestEventEnvelope', 'Error', 'EventBindingPage', 'Field', 'FlowTemplateBinding', 'FlowTemplateBindings', 'FlowTemplateCatalog', 'FlowTemplateDeployment', 'FlowTemplateDigest', 'FlowTemplateIdentifier', 'FlowTemplateImportBody', 'FlowTemplateImportReceipt', 'FlowTemplateSummary', 'FlowTemplateVersion', 'Freshness', 'Identity', 'IncludedAi', 'Installation', 'InstallationRequestResult', 'InstallationRequestResult1', 'InternalTemplateImportBody', 'Item', 'Key', 'LastDelivery', 'Limits', 'ManagedPublicationInput', 'ManagedPublicationRequest', 'MarketingOptInRegistration', 'MessageDeliveryChangedEventEnvelope', 'MessagePage', 'MessagePreview', 'MessagingReadiness', 'Model', 'NotificationInput', 'OnboardingConnection', 'OperationCancelInput', 'OperationChangedEventEnvelope', 'OperationLookupInput', 'OrderPage', 'Page', 'Page1', 'Page2', 'PageInfo', 'Parameter', 'Parent', 'Parent1', 'Partner', 'PartnerBusinessPage', 'PartnerDeliveryAttempt', 'PartnerDeliveryDetailResult', 'PartnerDeliveryPage', 'PartnerDeliveryResult', 'PartnerReceiverHealth', 'PartnerSubscription', 'PartnerSubscriptionDecision', 'PartnerSubscriptionListResponse', 'PartnerSubscriptionResponse', 'PartnerSubscriptionSecret', 'PartnerSubscriptionSecretResponse', 'PartnerWebhookDelivery', 'PartnerWebhookDeliveryDetail', 'Period', 'Plan', 'PlatformBlueprintsCreateVersionArguments', 'PlatformBlueprintsCreateVersionData', 'PlatformBlueprintsGetVersionArguments', 'PlatformBlueprintsGetVersionData', 'PlatformBlueprintsListTemplatesArguments', 'PlatformBlueprintsListTemplatesData', 'PlatformBlueprintsListVersionsArguments', 'PlatformBlueprintsListVersionsData', 'PlatformBusinessCreationsGetArguments', 'PlatformBusinessCreationsGetData', 'PlatformBusinessCreationsRenewClaimLinkArguments', 'PlatformBusinessCreationsRenewClaimLinkData', 'PlatformBusinessesCreateArguments', 'PlatformBusinessesCreateData', 'PlatformBusinessesGetArguments', 'PlatformBusinessesGetData', 'PlatformBusinessesListArguments', 'PlatformBusinessesListData', 'PlatformBusinessesListIteratorArguments', 'PlatformInstallationRequestsCreateArguments', 'PlatformInstallationRequestsCreateData', 'PlatformInstallationRequestsGetArguments', 'PlatformInstallationRequestsGetData', 'PlatformInstallationsGetArguments', 'PlatformInstallationsGetData', 'PlatformInstallationsRevokeArguments', 'PlatformInstallationsRevokeData', 'PlatformOnboardingCreateArguments', 'PlatformOnboardingCreateData', 'PlatformOnboardingGetArguments', 'PlatformOnboardingGetData', 'PlatformSelfGetArguments', 'PlatformSelfGetData', 'PlatformSubscriptionsActivateArguments', 'PlatformSubscriptionsActivateData', 'PlatformSubscriptionsBusinessesDeliveriesGetArguments', 'PlatformSubscriptionsBusinessesDeliveriesGetData', 'PlatformSubscriptionsBusinessesDeliveriesListArguments', 'PlatformSubscriptionsBusinessesDeliveriesListData', 'PlatformSubscriptionsBusinessesDeliveriesListIteratorArguments', 'PlatformSubscriptionsBusinessesDeliveriesReplayArguments', 'PlatformSubscriptionsBusinessesDeliveriesReplayData', 'PlatformSubscriptionsBusinessesGetHealthArguments', 'PlatformSubscriptionsBusinessesGetHealthData', 'PlatformSubscriptionsBusinessesRecoverArguments', 'PlatformSubscriptionsBusinessesRecoverData', 'PlatformSubscriptionsCreateArguments', 'PlatformSubscriptionsCreateData', 'PlatformSubscriptionsDisableArguments', 'PlatformSubscriptionsDisableData', 'PlatformSubscriptionsGetArguments', 'PlatformSubscriptionsGetData', 'PlatformSubscriptionsListArguments', 'PlatformSubscriptionsListData', 'PlatformSubscriptionsPauseArguments', 'PlatformSubscriptionsPauseData', 'PlatformSubscriptionsRotateSecretArguments', 'PlatformSubscriptionsRotateSecretData', 'PlatformSubscriptionsUpdateArguments', 'PlatformSubscriptionsUpdateData', 'PlatformSubscriptionsVerifyArguments', 'PlatformSubscriptionsVerifyData', 'PlatformUsageGetArguments', 'PlatformUsageGetData', 'Point', 'PreviewBlueprintUpdateInput', 'Problem', 'ProblemCode', 'Producer', 'Producer1', 'PublicApplicationSelf', 'PublicBlueprintTemplate', 'PublicBlueprintVersion', 'PublicBusinessCreation', 'PublicChannel', 'PublicContact', 'PublicContactSummary', 'PublicConversation', 'PublicEventBinding', 'PublicFlowRun', 'PublicInstallation', 'PublicInstallationRequest', 'PublicMessage', 'PublicMessagingConfiguration', 'PublicOnboardingSession', 'PublicOperation', 'PublicOperation1', 'PublicOperation2', 'PublicOperation3', 'PublicOperation4', 'PublicOperation5', 'PublicOperationFields', 'PublicOrder', 'PublicOrderSummary', 'PublicPartnerApiUsage', 'PublicPartnerBusiness', 'PublicScope', 'PublicShipment', 'PublicTemplate', 'PublicWorkspace', 'Publication', 'PublishEventInput', 'Purpose', 'RecordMarketingOptInInput', 'RecoverPartnerReceiverInput', 'ReplaceContactTagsInput', 'ReplacedContactTags', 'ReplayPartnerDeliveryInput', 'Resource', 'Resource2', 'Resource3', 'Resource4', 'Resource5', 'Resource6', 'RevokeInstallationInput', 'RotatePartnerSubscriptionSecret', 'ShipmentPage', 'SoftwareLimits', 'SoftwareUsageSummary', 'Source', 'Source1', 'Subject', 'Template', 'Template1', 'Template2', 'Template3', 'Template4', 'Template5', 'Template6', 'TemplatePage', 'Test', 'TextPurposeBindings', 'To', 'To1', 'To10', 'To2', 'To3', 'To5', 'To6', 'To7', 'To8', 'To9', 'UpdateContactAttributesInput', 'UpdateContactInput', 'UpdatePartnerSubscription', 'UpdatedContact', 'UpdatedContactAttributes', 'Value', 'Variable', 'WebhookVerificationChallenge', 'WebhookVerificationProof', 'WithdrawConsentInput']
+
+FlowRegressionCatalog: TypeAlias = (
+    FlowRegressionSuites | FlowRegressionConfiguration | FlowRegressionSuite
+)
+
+
+class FlowTriggerNodeV1(TypedDict, closed=True):
+    id: str
+    label: str
+    ports: list[FlowPortV1]
+    kind: Literal['trigger']
+    config: FlowTriggerConfigV1
+
+
+class FlowActionNodeV1(TypedDict, closed=True):
+    id: str
+    label: str
+    ports: list[FlowPortV1]
+    kind: Literal['action']
+    config: FlowActionConfigV1
+
+
+FlowDraftSnapshot: TypeAlias = Union["AvailableFlowDraft", UnavailableFlowDraft]
+
+
+class AvailableFlowDraft(TypedDict, closed=True):
+    business_id: FlowDraftId
+    recipe_id: FlowDraftId
+    deployment_revision: FlowDraftRevision
+    side_effects: Literal[False]
+    revision: FlowDraftRevision
+    fingerprint: str
+    state: Literal['available']
+    reasons: list[Any]
+    definition: FlowDefinitionV1
+
+
+class FlowDefinitionV1(TypedDict, closed=True):
+    schema_version: Literal['inside-flow/v1']
+    id: str
+    business_id: str
+    name: str
+    recipe_kind: FlowRecipeKindV1
+    status: FlowRecipeStatusV1
+    version: float
+    channel: FlowChannelV1
+    nodes: list[FlowNodeV1]
+    edges: list[FlowEdgeV1]
+    variables: list[FlowVariableDefinitionV1]
+    outcomes: list[FlowOutcomeV1]
+    policy: FlowPolicyV1
+    interface: NotRequired[FlowInterfaceV1]
+
+
+FlowNodeV1: TypeAlias = Union[
+    FlowTriggerNodeV1, FlowActionNodeV1, "FlowDecisionNodeV1", FlowTerminalNodeV1
+]
+
+
+class Config(TypedDict, closed=True):
+    cases: list[FlowDecisionCaseV1]
+    default_port_id: str
+
+
+class FlowDecisionNodeV1(TypedDict, closed=True):
+    id: str
+    label: str
+    ports: list[FlowPortV1]
+    kind: Literal['decision']
+    config: Config
+
+
+class FlowDecisionCaseV1(TypedDict, closed=True):
+    port_id: str
+    priority: float
+    when: FlowPredicateV1
+
+
+class FlowPredicateV14(TypedDict, closed=True):
+    op: Literal['and', 'or']
+    operands: list[FlowPredicateV1]
+
+
+class FlowPredicateV15(TypedDict, closed=True):
+    op: Literal['not']
+    operand: FlowPredicateV1
+
+
+FlowPredicateV1: TypeAlias = (
+    FlowPredicateV11
+    | FlowPredicateV12
+    | FlowPredicateV13
+    | FlowPredicateV14
+    | FlowPredicateV15
+)
+
+
+class ManagedFlowDraftSaveInput(TypedDict, closed=True):
+    kind: Literal['managed_draft']
+    expected_deployment_revision: FlowDraftRevision
+    expected_draft_revision: FlowDraftRevision
+    definition: FlowDefinitionV1
+
+
+BusinessFlowsDraftsGetData: TypeAlias = FlowDraftSnapshot
+
+
+class BusinessFlowsDraftsSaveArguments(TypedDict, closed=True):
+    expected_deployment_revision: FlowDraftRevision
+    expected_draft_revision: FlowDraftRevision
+    definition: FlowDefinitionV1
+    idempotency_key: NotRequired[str]
+    timeout_seconds: NotRequired[float]
+    attempt_timeout_seconds: NotRequired[float]
+    max_retries: NotRequired[int]
+
+__all__ = ['AcknowledgeKnowledgeSectionOverrideInput', 'Ai', 'AnalyticsChannel', 'AnalyticsOrigin', 'AnalyticsRange', 'Application', 'ApplicationEventContext', 'ApplicationResourceEventEnvelope', 'ApplyBlueprintUpdateInput', 'ApplyPreparedMessagingConfigurationInput', 'ApplyPreparedNotificationInput', 'ArchiveContactFieldInput', 'ArchivedContactField', 'Attachment', 'Automation', 'AvailableFlowDraft', 'Blueprint', 'BlueprintCapabilities', 'BlueprintDefinition', 'BlueprintDependencies', 'BlueprintDependency', 'BlueprintImportBody', 'BlueprintOverrideKeys', 'BlueprintParameterDefinition', 'BlueprintParameterDefinition1', 'BlueprintParameterDefinition2', 'BlueprintParameters', 'BlueprintTemplateReference', 'BlueprintUpdateChanges', 'BlueprintUpdatePreview', 'BlueprintUpdateReceipt', 'BlueprintUpdateTarget', 'BlueprintVariable', 'BlueprintVariables', 'BusinessAnalyticsGetArguments', 'BusinessAnalyticsGetData', 'BusinessAnalyticsQuery', 'BusinessAnalyticsReport', 'BusinessComparisonBasis', 'BusinessConsentsGetArguments', 'BusinessConsentsGetData', 'BusinessConsentsRecordMarketingOptInArguments', 'BusinessConsentsRecordMarketingOptInData', 'BusinessConsentsWithdrawArguments', 'BusinessConsentsWithdrawData', 'BusinessContactsAttributesUpdateArguments', 'BusinessContactsAttributesUpdateData', 'BusinessContactsCreateArguments', 'BusinessContactsCreateData', 'BusinessContactsFieldsArchiveArguments', 'BusinessContactsFieldsArchiveData', 'BusinessContactsFieldsConfigureMemoryArguments', 'BusinessContactsFieldsConfigureMemoryData', 'BusinessContactsFieldsCreateArguments', 'BusinessContactsFieldsCreateData', 'BusinessContactsFieldsListArguments', 'BusinessContactsFieldsListData', 'BusinessContactsGetArguments', 'BusinessContactsGetData', 'BusinessContactsListArguments', 'BusinessContactsListData', 'BusinessContactsListIteratorArguments', 'BusinessContactsTagsReplaceArguments', 'BusinessContactsTagsReplaceData', 'BusinessContactsUpdateArguments', 'BusinessContactsUpdateData', 'BusinessConversationsAssigneesListArguments', 'BusinessConversationsAssigneesListData', 'BusinessConversationsAssigneesListIteratorArguments', 'BusinessConversationsControlsAssignArguments', 'BusinessConversationsControlsAssignData', 'BusinessConversationsControlsClearSnoozeArguments', 'BusinessConversationsControlsClearSnoozeData', 'BusinessConversationsControlsGetArguments', 'BusinessConversationsControlsGetData', 'BusinessConversationsControlsHistoryArguments', 'BusinessConversationsControlsHistoryData', 'BusinessConversationsControlsSnoozeArguments', 'BusinessConversationsControlsSnoozeData', 'BusinessConversationsControlsTakeOverArguments', 'BusinessConversationsControlsTakeOverData', 'BusinessConversationsGetArguments', 'BusinessConversationsGetData', 'BusinessConversationsListArguments', 'BusinessConversationsListData', 'BusinessConversationsListIteratorArguments', 'BusinessConversationsMessagesListArguments', 'BusinessConversationsMessagesListData', 'BusinessConversationsMessagesListIteratorArguments', 'BusinessCreationLink', 'BusinessCreationLinkResponse', 'BusinessCustomerSignals', 'BusinessDelegation', 'BusinessEntryPoint', 'BusinessEventsBindingsListArguments', 'BusinessEventsBindingsListData', 'BusinessEventsBindingsListIteratorArguments', 'BusinessEventsPublishArguments', 'BusinessEventsPublishData', 'BusinessFlowsBlocksGetArguments', 'BusinessFlowsBlocksGetData', 'BusinessFlowsBlocksListArguments', 'BusinessFlowsBlocksListData', 'BusinessFlowsBlocksListIteratorArguments', 'BusinessFlowsDeploymentsApplyUpdateArguments', 'BusinessFlowsDeploymentsApplyUpdateData', 'BusinessFlowsDeploymentsGetArguments', 'BusinessFlowsDeploymentsGetData', 'BusinessFlowsDeploymentsGetPublicationRequestArguments', 'BusinessFlowsDeploymentsGetPublicationRequestData', 'BusinessFlowsDeploymentsListArguments', 'BusinessFlowsDeploymentsListData', 'BusinessFlowsDeploymentsPreviewUpdateArguments', 'BusinessFlowsDeploymentsPreviewUpdateData', 'BusinessFlowsDeploymentsRequestPublicationArguments', 'BusinessFlowsDeploymentsRequestPublicationData', 'BusinessFlowsDeploymentsWithdrawPublicationArguments', 'BusinessFlowsDeploymentsWithdrawPublicationData', 'BusinessFlowsDraftsGetArguments', 'BusinessFlowsDraftsGetData', 'BusinessFlowsDraftsSaveArguments', 'BusinessFlowsDraftsSaveData', 'BusinessFlowsGovernanceGetArguments', 'BusinessFlowsGovernanceGetData', 'BusinessFlowsRegressionsGetArguments', 'BusinessFlowsRegressionsGetConfigurationArguments', 'BusinessFlowsRegressionsGetConfigurationData', 'BusinessFlowsRegressionsGetData', 'BusinessFlowsRegressionsGetSuiteArguments', 'BusinessFlowsRegressionsGetSuiteData', 'BusinessFlowsRegressionsListSuitesArguments', 'BusinessFlowsRegressionsListSuitesData', 'BusinessFlowsRegressionsRunArguments', 'BusinessFlowsRegressionsRunData', 'BusinessFlowsRegressionsSaveSuiteArguments', 'BusinessFlowsRegressionsSaveSuiteData', 'BusinessFlowsRunsGetArguments', 'BusinessFlowsRunsGetData', 'BusinessFlowsRunsListArguments', 'BusinessFlowsRunsListData', 'BusinessFlowsRunsListIteratorArguments', 'BusinessFlowsSimulateArguments', 'BusinessFlowsSimulateData', 'BusinessFlowsStepsListArguments', 'BusinessFlowsStepsListData', 'BusinessFlowsTemplatesCatalogArguments', 'BusinessFlowsTemplatesCatalogData', 'BusinessFlowsTemplatesImportArguments', 'BusinessFlowsTemplatesImportData', 'BusinessKnowledgeGetArguments', 'BusinessKnowledgeGetData', 'BusinessKnowledgeRunsGetArguments', 'BusinessKnowledgeRunsGetData', 'BusinessKnowledgeRunsListArguments', 'BusinessKnowledgeRunsListData', 'BusinessKnowledgeRunsListIteratorArguments', 'BusinessKnowledgeSectionsAcknowledgeOverrideArguments', 'BusinessKnowledgeSectionsAcknowledgeOverrideData', 'BusinessKnowledgeSectionsListArguments', 'BusinessKnowledgeSectionsListData', 'BusinessKnowledgeSectionsListIteratorArguments', 'BusinessKnowledgeSectionsSetOverrideArguments', 'BusinessKnowledgeSectionsSetOverrideData', 'BusinessKnowledgeSourcesImportWebsiteArguments', 'BusinessKnowledgeSourcesImportWebsiteData', 'BusinessKnowledgeSourcesListArguments', 'BusinessKnowledgeSourcesListData', 'BusinessKnowledgeSourcesListIteratorArguments', 'BusinessKnowledgeSourcesRemoveArguments', 'BusinessKnowledgeSourcesRemoveData', 'BusinessKnowledgeSourcesRemoveWebsiteArguments', 'BusinessKnowledgeSourcesRemoveWebsiteData', 'BusinessKpis', 'BusinessLoyaltyMembersGetArguments', 'BusinessLoyaltyMembersGetData', 'BusinessMessagesGetArguments', 'BusinessMessagesGetData', 'BusinessMessagesPreparationsApplyArguments', 'BusinessMessagesPreparationsApplyData', 'BusinessMessagesPreparationsGetArguments', 'BusinessMessagesPreparationsGetData', 'BusinessMessagesPrepareArguments', 'BusinessMessagesPrepareData', 'BusinessMessagesPreviewArguments', 'BusinessMessagesPreviewData', 'BusinessMessagesSendArguments', 'BusinessMessagesSendData', 'BusinessMessagingGetConfigurationArguments', 'BusinessMessagingGetConfigurationData', 'BusinessMessagingGetReadinessArguments', 'BusinessMessagingGetReadinessData', 'BusinessMessagingPreparationsApplyArguments', 'BusinessMessagingPreparationsApplyData', 'BusinessMessagingPreparationsCreateArguments', 'BusinessMessagingPreparationsCreateData', 'BusinessMessagingPreparationsGetArguments', 'BusinessMessagingPreparationsGetData', 'BusinessMessagingUpdateConfigurationArguments', 'BusinessMessagingUpdateConfigurationData', 'BusinessMetric', 'BusinessMetricComparison', 'BusinessMetricComparison1', 'BusinessMetricComparison2', 'BusinessMetricComparison3', 'BusinessOperationsCancelArguments', 'BusinessOperationsCancelData', 'BusinessOperationsGetArguments', 'BusinessOperationsGetData', 'BusinessOperationsLookupArguments', 'BusinessOperationsLookupData', 'BusinessOrdersGetArguments', 'BusinessOrdersGetData', 'BusinessOrdersListArguments', 'BusinessOrdersListData', 'BusinessOrdersListIteratorArguments', 'BusinessOrdersShipmentsListArguments', 'BusinessOrdersShipmentsListData', 'BusinessOrdersShipmentsListIteratorArguments', 'BusinessOutcome', 'BusinessOutcomeStatus', 'BusinessReplyTimeGroup', 'BusinessReplyTimes', 'BusinessRevenueDriver', 'BusinessSeriesPoint', 'BusinessShipmentsGetArguments', 'BusinessShipmentsGetData', 'BusinessTemplatesListArguments', 'BusinessTemplatesListData', 'BusinessTemplatesListIteratorArguments', 'BusinessUsageGetArguments', 'BusinessUsageGetData', 'BusinessUsageGetLimitsArguments', 'BusinessUsageGetLimitsData', 'BusinessWorkspaceGetArguments', 'BusinessWorkspaceGetData', 'Channel', 'ChannelMetrics', 'Channels', 'Comparison', 'Comparisons', 'Config', 'Config1', 'ConfigureContactFieldMemoryInput', 'ConfiguredContactFieldMemory', 'ConsentWithdrawal', 'ContactAttributeValues', 'ContactConsentState', 'ContactFieldCatalog', 'ContactFieldDefinition', 'ContactPage', 'ContactReference', 'Content', 'Content1', 'Content2', 'Content3', 'Content4', 'Content5', 'Content6', 'Content7', 'ConversationAssignee', 'ConversationAssigneePage', 'ConversationAssignmentCommand', 'ConversationAssignmentInput', 'ConversationAssignmentReceipt', 'ConversationClearSnoozeCommand', 'ConversationClearSnoozeReceipt', 'ConversationControlCommand', 'ConversationControlHistoryEvent', 'ConversationControlHistoryPage', 'ConversationControlReceipt', 'ConversationControlState', 'ConversationHandoffReasonCode', 'ConversationPage', 'ConversationSnoozeCommand', 'ConversationSnoozeInput', 'ConversationSnoozeReceipt', 'ConversationTakeoverCommand', 'ConversationTakeoverInput', 'ConversationTakeoverReceipt', 'Conversations', 'Counts', 'CreateBlueprintVersionInput', 'CreateContactFieldInput', 'CreateContactRequest', 'CreateInstallationRequestInput', 'CreateOnboardingSessionInput', 'CreatePartnerSubscription', 'CreatePlatformBusinessInput', 'CreatedContactField', 'CreatedInstallationRequest', 'CreatedOnboardingSession', 'DelegationExchangeInput', 'Dependency', 'DependencySlot', 'DeveloperChangedEventEnvelope', 'DeveloperEventType', 'DeveloperResourceRef', 'Draft', 'Draft1', 'EndpointTestEventEnvelope', 'Error', 'EventBindingPage', 'Evidence', 'Field', 'FlowActionConfigV1', 'FlowActionConfigV11', 'FlowActionConfigV110', 'FlowActionConfigV111', 'FlowActionConfigV112', 'FlowActionConfigV113', 'FlowActionConfigV114', 'FlowActionConfigV115', 'FlowActionConfigV116', 'FlowActionConfigV117', 'FlowActionConfigV118', 'FlowActionConfigV119', 'FlowActionConfigV12', 'FlowActionConfigV120', 'FlowActionConfigV121', 'FlowActionConfigV122', 'FlowActionConfigV123', 'FlowActionConfigV124', 'FlowActionConfigV125', 'FlowActionConfigV126', 'FlowActionConfigV127', 'FlowActionConfigV128', 'FlowActionConfigV129', 'FlowActionConfigV13', 'FlowActionConfigV130', 'FlowActionConfigV131', 'FlowActionConfigV14', 'FlowActionConfigV15', 'FlowActionConfigV16', 'FlowActionConfigV17', 'FlowActionConfigV18', 'FlowActionConfigV19', 'FlowActionNodeV1', 'FlowAgentCallInputV1', 'FlowApprovalModeV1', 'FlowChannelV1', 'FlowCommentIntentV1', 'FlowCommentPostsV1', 'FlowComparisonOpV1', 'FlowConcreteChannelV1', 'FlowContactIdentityKindV1', 'FlowConversionEventV1', 'FlowDecisionCaseV1', 'FlowDecisionNodeV1', 'FlowDefinitionV1', 'FlowDeploymentCatalog', 'FlowDeploymentCatalogId', 'FlowDeploymentCatalogRevision', 'FlowDeploymentSummary', 'FlowDraftId', 'FlowDraftRevision', 'FlowDraftSimulation', 'FlowDraftSnapshot', 'FlowDraftUnavailableReason', 'FlowEdgeV1', 'FlowEndpointContactIdentityV1', 'FlowEndpointFieldV1', 'FlowEndpointMappingV1', 'FlowEndpointPurposeV1', 'FlowGovernanceConfiguration', 'FlowGovernanceId', 'FlowGovernanceRevision', 'FlowHandoffFromAgentKeyV1', 'FlowInputValidationV1', 'FlowInterfaceFieldV1', 'FlowInterfaceV1', 'FlowLiteralV1', 'FlowLiteralV11', 'FlowLiteralV12', 'FlowLiteralV13', 'FlowLiteralV14', 'FlowLiteralV15', 'FlowLiteralV16', 'FlowMcpToolEffectV1', 'FlowNodeV1', 'FlowOutcomeV1', 'FlowPolicyV1', 'FlowPortV1', 'FlowPredicateV1', 'FlowPredicateV11', 'FlowPredicateV12', 'FlowPredicateV13', 'FlowPredicateV14', 'FlowPredicateV15', 'FlowPublicationChecks', 'FlowRecipeKindV1', 'FlowRecipeStatusV1', 'FlowRegressionCase', 'FlowRegressionCatalog', 'FlowRegressionConfiguration', 'FlowRegressionCount', 'FlowRegressionId', 'FlowRegressionRevision', 'FlowRegressionRun', 'FlowRegressionSuite', 'FlowRegressionSuites', 'FlowRegressionTimestamp', 'FlowReplyOptionV1', 'FlowResponseFieldMatchV1', 'FlowRetryPolicyV1', 'FlowRunPage', 'FlowScheduleV1', 'FlowScheduleV11', 'FlowScheduleV12', 'FlowScheduleV13', 'FlowSimulationCode', 'FlowSimulationId', 'FlowSimulationRevision', 'FlowSimulationVariable', 'FlowSpecialistApprovalModeV1', 'FlowSpecialistKnowledgeSourceTypeV1', 'FlowSpecialistLowConfidenceModeV1', 'FlowSpecialistPolicyV1', 'FlowStep', 'FlowStepCatalog', 'FlowSubflowInputMappingV1', 'FlowSubflowOutputMappingV1', 'FlowTemplateBinding', 'FlowTemplateBindings', 'FlowTemplateCatalog', 'FlowTemplateDeployment', 'FlowTemplateDigest', 'FlowTemplateIdentifier', 'FlowTemplateImportBody', 'FlowTemplateImportReceipt', 'FlowTemplateSummary', 'FlowTemplateVersion', 'FlowTerminalNodeV1', 'FlowTimeOfDayV1', 'FlowTriggerConfigV1', 'FlowTriggerConfigV11', 'FlowTriggerConfigV110', 'FlowTriggerConfigV12', 'FlowTriggerConfigV13', 'FlowTriggerConfigV14', 'FlowTriggerConfigV15', 'FlowTriggerConfigV16', 'FlowTriggerConfigV17', 'FlowTriggerConfigV18', 'FlowTriggerConfigV19', 'FlowTriggerNodeV1', 'FlowValueBindingV1', 'FlowValueBindingV11', 'FlowValueBindingV12', 'FlowValueTypeV1', 'FlowVariableDefinitionV1', 'FlowVariableScopeV1', 'FlowWaitEventV1', 'FlowWaitUntilV1', 'FlowWaitUntilV11', 'FlowWaitUntilV12', 'FlowWaitUntilV13', 'FlowWebhookBodyFieldV1', 'FlowWebhookResponseMappingV1', 'Freshness', 'Handoff', 'Href', 'Identity', 'ImportWebsiteKnowledgeInput', 'IncludedAi', 'Installation', 'InstallationRequestResult', 'InstallationRequestResult1', 'IntentBreakdownItem', 'InternalTemplateImportBody', 'Issue', 'Item', 'JsonValue', 'Key', 'KnowledgeDocumentMetadata', 'KnowledgeRunCounter', 'KnowledgeRunPage', 'KnowledgeRunProgress', 'KnowledgeRunStatus', 'KnowledgeSectionContent', 'KnowledgeSectionContentPage', 'KnowledgeSectionEditReceipt', 'KnowledgeSourceKind', 'KnowledgeSourceMetadata', 'KnowledgeSourcePage', 'KnowledgeSourceRemovalReceipt', 'KnowledgeSourceStatus', 'LastDelivery', 'Limits', 'Limits1', 'LoyaltyMembership', 'LoyaltyMembershipTier', 'LoyaltyWallet', 'MachinePublicScope', 'ManagedFlowDraftSaveInput', 'ManagedFlowDraftSaveReceipt', 'ManagedFlowRegressionInput', 'ManagedFlowRegressionSuiteInput', 'ManagedFlowSimulationInput', 'ManagedPublicationInput', 'ManagedPublicationRequest', 'ManagedPublicationWithdrawal', 'MarketingOptInRegistration', 'MessageDeliveryChangedEventEnvelope', 'MessagePage', 'MessagePreview', 'MessagingConfiguration', 'MessagingReadiness', 'Model', 'Next', 'NextExpiry', 'NotificationInput', 'NotificationPreparationResult', 'Objections', 'OnUnhandledError', 'OnboardingConnection', 'OperationCancelInput', 'OperationChangedEventEnvelope', 'OperationLookupInput', 'OrderPage', 'Owner', 'Page', 'Page1', 'Page2', 'PageInfo', 'Parameter', 'Parent', 'Parent1', 'Partner', 'PartnerBusinessPage', 'PartnerDeliveryAttempt', 'PartnerDeliveryDetailResult', 'PartnerDeliveryPage', 'PartnerDeliveryResult', 'PartnerReceiverHealth', 'PartnerSubscription', 'PartnerSubscriptionDecision', 'PartnerSubscriptionListResponse', 'PartnerSubscriptionResponse', 'PartnerSubscriptionSecret', 'PartnerSubscriptionSecretResponse', 'PartnerWebhookDelivery', 'PartnerWebhookDeliveryDetail', 'Path', 'Period', 'Plan', 'PlatformBlueprintsCreateVersionArguments', 'PlatformBlueprintsCreateVersionData', 'PlatformBlueprintsGetVersionArguments', 'PlatformBlueprintsGetVersionData', 'PlatformBlueprintsListTemplatesArguments', 'PlatformBlueprintsListTemplatesData', 'PlatformBlueprintsListVersionsArguments', 'PlatformBlueprintsListVersionsData', 'PlatformBusinessCreationsGetArguments', 'PlatformBusinessCreationsGetData', 'PlatformBusinessCreationsRenewClaimLinkArguments', 'PlatformBusinessCreationsRenewClaimLinkData', 'PlatformBusinessesCreateArguments', 'PlatformBusinessesCreateData', 'PlatformBusinessesGetArguments', 'PlatformBusinessesGetData', 'PlatformBusinessesListArguments', 'PlatformBusinessesListData', 'PlatformBusinessesListIteratorArguments', 'PlatformInstallationRequestsCreateArguments', 'PlatformInstallationRequestsCreateData', 'PlatformInstallationRequestsGetArguments', 'PlatformInstallationRequestsGetData', 'PlatformInstallationsGetArguments', 'PlatformInstallationsGetData', 'PlatformInstallationsRevokeArguments', 'PlatformInstallationsRevokeData', 'PlatformOnboardingCreateArguments', 'PlatformOnboardingCreateData', 'PlatformOnboardingGetArguments', 'PlatformOnboardingGetData', 'PlatformSelfGetArguments', 'PlatformSelfGetData', 'PlatformSubscriptionsActivateArguments', 'PlatformSubscriptionsActivateData', 'PlatformSubscriptionsBusinessesDeliveriesGetArguments', 'PlatformSubscriptionsBusinessesDeliveriesGetData', 'PlatformSubscriptionsBusinessesDeliveriesListArguments', 'PlatformSubscriptionsBusinessesDeliveriesListData', 'PlatformSubscriptionsBusinessesDeliveriesListIteratorArguments', 'PlatformSubscriptionsBusinessesDeliveriesReplayArguments', 'PlatformSubscriptionsBusinessesDeliveriesReplayData', 'PlatformSubscriptionsBusinessesGetHealthArguments', 'PlatformSubscriptionsBusinessesGetHealthData', 'PlatformSubscriptionsBusinessesRecoverArguments', 'PlatformSubscriptionsBusinessesRecoverData', 'PlatformSubscriptionsCreateArguments', 'PlatformSubscriptionsCreateData', 'PlatformSubscriptionsDisableArguments', 'PlatformSubscriptionsDisableData', 'PlatformSubscriptionsGetArguments', 'PlatformSubscriptionsGetData', 'PlatformSubscriptionsListArguments', 'PlatformSubscriptionsListData', 'PlatformSubscriptionsPauseArguments', 'PlatformSubscriptionsPauseData', 'PlatformSubscriptionsRotateSecretArguments', 'PlatformSubscriptionsRotateSecretData', 'PlatformSubscriptionsUpdateArguments', 'PlatformSubscriptionsUpdateData', 'PlatformSubscriptionsVerifyArguments', 'PlatformSubscriptionsVerifyData', 'PlatformUsageGetArguments', 'PlatformUsageGetData', 'Point', 'PreparedMessagingConfiguration', 'PreparedNotification', 'Prerequisites', 'PreviewBlueprintUpdateInput', 'Problem', 'ProblemCode', 'Producer', 'Producer1', 'PublicApplicationSelf', 'PublicBlueprintTemplate', 'PublicBlueprintVersion', 'PublicBusinessCreation', 'PublicChannel', 'PublicContact', 'PublicContactSummary', 'PublicConversation', 'PublicEventBinding', 'PublicFlowRun', 'PublicInstallation', 'PublicInstallationRequest', 'PublicMessage', 'PublicMessagingConfiguration', 'PublicOnboardingSession', 'PublicOperation', 'PublicOperation1', 'PublicOperation2', 'PublicOperation3', 'PublicOperation4', 'PublicOperation5', 'PublicOperationFields', 'PublicOrder', 'PublicOrderSummary', 'PublicPartnerApiUsage', 'PublicPartnerBusiness', 'PublicScope', 'PublicShipment', 'PublicTemplate', 'PublicWorkspace', 'Publication', 'PublishEventInput', 'Purpose', 'Readines', 'RecordMarketingOptInInput', 'RecoverPartnerReceiverInput', 'RemoveKnowledgeSourceInput', 'RemoveWebsiteKnowledgeInput', 'ReplaceContactTagsInput', 'ReplacedContactTags', 'ReplayPartnerDeliveryInput', 'Resource', 'Resource2', 'Resource3', 'Resource4', 'Resource5', 'Resource6', 'Result', 'Review', 'RevokeInstallationInput', 'RotatePartnerSubscriptionSecret', 'Row', 'SavedFlowBlockField', 'SavedFlowBlockInterface', 'SavedFlowBlockPage', 'SavedFlowBlockReference', 'SelectedPath', 'Sentiment', 'SetKnowledgeSectionOverrideInput', 'ShipmentPage', 'SoftwareLimits', 'SoftwareUsageSummary', 'Source', 'Source1', 'Source2', 'Subject', 'Suite', 'Suite1', 'Target', 'Template', 'Template1', 'Template2', 'Template3', 'Template4', 'Template5', 'Template6', 'Template7', 'Template8', 'TemplatePage', 'Test', 'TextPurposeBindings', 'To', 'To1', 'To10', 'To11', 'To12', 'To13', 'To2', 'To3', 'To5', 'To6', 'To7', 'To8', 'To9', 'UnavailableFlowDraft', 'UpdateContactAttributesInput', 'UpdateContactInput', 'UpdatePartnerSubscription', 'UpdatedContact', 'UpdatedContactAttributes', 'Value', 'Variable', 'WebhookVerificationChallenge', 'WebhookVerificationProof', 'WebsiteKnowledgeImportReceipt', 'WebsiteKnowledgeRemovalReceipt', 'WhatsAppTemplateFlowButtonConfigV1', 'Window', 'WithdrawConsentInput']

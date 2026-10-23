@@ -29,12 +29,40 @@ BINDINGS = [
     ("business", "contacts", "update", "updateContact", {}, {}, None),
     ("business", "contacts.tags", "replace", "replaceContactTags", {}, {}, None),
     ("business", "contacts.attributes", "update", "updateContactAttributes", {}, {}, None),
+    ("business", "contacts.fields", "list", "listContactFields", {}, {}, None),
+    ("business", "flows.steps", "list", "listFlowSteps", {"view": "built_in_steps"}, {}, None),
+    ("business", "flows.blocks", "list", "listSavedFlowBlocks", {"view": "saved_references"}, {}, "page"),
+    ("business", "flows.blocks", "get", "getSavedFlowBlockInterface", {"view": "interface"}, {}, None),
+    ("business", "knowledge.runs", "get", "getKnowledgeRun", {"view": "progress"}, {}, None),
+    ("business", "knowledge.runs", "list", "listKnowledgeRuns", {"view": "ingestion_runs"}, {}, "page"),
+    ("business", "knowledge.sources", "list", "listKnowledgeSources", {"view": "catalog"}, {}, "page"),
+    ("business", "knowledge.sections", "list", "listKnowledgeSections", {"view": "sections"}, {}, "page"),
+    ("business", "knowledge.sections", "set_override", "setKnowledgeSectionOverride", {"view": "edit"}, {}, None),
+    ("business", "knowledge.sections", "acknowledge_override", "acknowledgeKnowledgeSectionOverride", {"view": "edit"}, {}, None),
+    ("business", "knowledge.sources", "import_website", "importWebsiteKnowledge", {"view": "import"}, {}, None),
+    ("business", "knowledge.sources", "remove_website", "removeWebsiteKnowledge", {"view": "remove"}, {}, None),
+    ("business", "knowledge.sources", "remove", "removeKnowledgeSource", {"view": "remove"}, {}, None),
+    ("business", "knowledge", "get", "getKnowledgeDocument", {}, {}, None),
+    ("business", "loyalty.members", "get", "getLoyaltyMembership", {}, {}, None),
+    ("business", "contacts.fields", "create", "createContactField", {"view": "creation"}, {}, None),
+    ("business", "contacts.fields", "archive", "archiveContactField", {"view": "archive"}, {}, None),
+    ("business", "contacts.fields", "configure_memory", "configureContactFieldMemory", {"view": "memory"}, {}, None),
     ("business", "conversations", "list", "listConversations", {}, {}, "page"),
     ("business", "conversations", "get", "getConversation", {}, {}, None),
     ("business", "conversations.messages", "list", "listConversationMessages", {}, {}, "page"),
+    ("business", "conversations.controls", "get", "getConversationControl", {"view": "control"}, {}, None),
+    ("business", "conversations.controls", "history", "getConversationControl", {"view": "control_history"}, {}, None),
+    ("business", "conversations.controls", "take_over", "updateConversationControl", {"view": "control"}, {"action": "take_over"}, None),
+    ("business", "conversations.controls", "assign", "updateConversationControl", {"view": "control"}, {"action": "assign"}, None),
+    ("business", "conversations.controls", "snooze", "updateConversationControl", {"view": "control"}, {"action": "snooze"}, None),
+    ("business", "conversations.controls", "clear_snooze", "updateConversationControl", {"view": "control"}, {"action": "clear_snooze"}, None),
+    ("business", "conversations.assignees", "list", "listConversationAssignees", {"view": "assignees"}, {}, "page"),
     ("business", "messages", "get", "getMessage", {}, {}, None),
     ("business", "messages", "send", "sendMessage", {}, {"intent": "notification"}, None),
     ("business", "messages", "preview", "previewMessage", {}, {"intent": "notification"}, None),
+    ("business", "messages", "prepare", "prepareNotification", {}, {"intent": "notification"}, None),
+    ("business", "messages.preparations", "get", "getPreparedNotification", {}, {}, None),
+    ("business", "messages.preparations", "apply", "applyPreparedNotification", {}, {}, None),
     ("business", "orders", "list", "listOrders", {}, {}, "page"),
     ("business", "orders", "get", "getOrder", {}, {}, None),
     ("business", "orders.shipments", "list", "listOrderShipments", {}, {}, "page"),
@@ -42,6 +70,10 @@ BINDINGS = [
     ("business", "templates", "list", "listTemplates", {}, {}, "page"),
     ("business", "messaging", "get_readiness", "getMessagingReadiness", {}, {}, None),
     ("business", "messaging", "get_configuration", "getMessagingConfiguration", {"view": "configuration"}, {}, None),
+    ("business", "messaging", "update_configuration", "updateMessagingConfiguration", {}, {}, None),
+    ("business", "messaging.preparations", "create", "prepareMessagingConfiguration", {}, {}, None),
+    ("business", "messaging.preparations", "get", "getPreparedMessagingConfiguration", {}, {}, None),
+    ("business", "messaging.preparations", "apply", "applyPreparedMessagingConfiguration", {}, {}, None),
     ("business", "consents", "get", "getConsentState", {"view": "messaging"}, {}, None),
     ("business", "consents", "withdraw", "withdrawConsent", {}, {}, None),
     ("business", "consents", "record_marketing_opt_in", "recordMarketingOptIn", {}, {}, None),
@@ -51,13 +83,27 @@ BINDINGS = [
     ("business", "events", "publish", "publishEvent", {}, {}, None),
     ("business", "events.bindings", "list", "listEventBindings", {"view": "event_bindings"}, {}, "page"),
     ("business", "flows.runs", "get", "getFlowRun", {"view": "progress"}, {}, None),
+    ("business", "flows.runs", "list", "listFlowRuns", {"view": "progress"}, {}, "page"),
+    ("business", "flows", "_simulate", "simulateFlowDraft", {}, {"kind": "managed_draft"}, None),
+    ("business", "flows.regressions", "list_suites", "listFlowRegressionSuites", {"view": "managed"}, {}, None),
+    ("business", "flows.governance", "get", "getFlowGovernance", {"view": "managed"}, {}, None),
+    ("business", "flows.regressions", "get_configuration", "listFlowRegressionSuites", {"view": "configuration"}, {}, None),
+    ("business", "flows.regressions", "get_suite", "listFlowRegressionSuites", {"view": "configuration"}, {}, None),
+    ("business", "flows.regressions", "_save_suite", "saveFlowRegressionSuite", {}, {"kind": "managed_deployment"}, None),
+    ("business", "flows.regressions", "run", "runFlowRegression", {}, {"kind": "managed_deployment"}, None),
+    ("business", "flows.regressions", "get", "getFlowRegressionRun", {"view": "managed"}, {}, None),
     ("business", "flows.templates", "catalog", "getFlowTemplateCatalog", {"view": "flow_templates"}, {}, None),
     ("business", "flows.templates", "import_", "importFlowTemplate", {}, {}, None),
     ("business", "flows.deployments", "get", "getFlowDeployment", {"view": "deployment"}, {}, None),
+    ("business", "flows.drafts", "get", "getFlowDeployment", {"view": "draft"}, {}, None),
+    ("business", "flows.drafts", "_save", "saveFlowDraft", {}, {"kind": "managed_draft"}, None),
+    ("business", "flows.deployments", "list", "getFlowTemplateCatalog", {"view": "flow_deployments"}, {}, None),
     ("business", "flows.deployments", "_preview_update", "previewBlueprintUpdate", {}, {}, None),
-    ("business", "flows.deployments", "_apply_update", "applyBlueprintUpdate", {}, {"kind": "blueprint_update"}, None),
+    ("business", "flows.deployments", "_apply_update", "saveFlowDraft", {}, {"kind": "blueprint_update"}, None),
     ("business", "flows.deployments", "_request_publication", "requestFlowPublication", {}, {"kind": "managed_deployment"}, None),
     ("business", "flows.deployments", "get_publication_request", "getFlowPublicationRequest", {"view": "managed"}, {}, None),
+    ("business", "flows.deployments", "withdraw_publication", "withdrawFlowPublication", {}, {"kind": "managed_deployment"}, None),
+    ("business", "analytics", "get", "getBusinessAnalytics", {}, {}, None),
     ("business", "usage", "get", "getSoftwareUsage", {"view": "software_usage"}, {}, None),
     ("business", "usage", "get_limits", "getSoftwareUsage", {"view": "software_limits"}, {}, None),
     ("platform", "self", "get", "getApplicationSelf", {}, {}, None),
@@ -129,10 +175,12 @@ def generate():
                 "query_parameters": {p["name"]: p["schema"] for p in parameters if p["in"] == "query"},
                 "required_query": [p["name"] for p in parameters if p["in"] == "query" and p.get("required")],
                 "response": response,
+                "result_property": operation.get("x-result-property"),
                 "request": operation.get("requestBody", {}).get("content", {}).get("application/json", {}).get("schema"),
                 "idempotency": any(p["in"] == "header" and p["name"].lower() == "idempotency-key" for p in parameters),
                 "platform": any("applicationKey" in v for v in operation.get("security", [])),
                 "summary": operation.get("summary", ""),
+                "body_limit": operation.get("x-request-max-bytes"),
             }
     controls = {"timeoutSeconds": {"type": "number"}, "attemptTimeoutSeconds": {"type": "number"}, "maxRetries": {"type": "integer"}}
     definitions = copy.deepcopy(schemas)
@@ -144,7 +192,7 @@ def generate():
     def object_fields(schema):
         schema = resolved(schema)
         properties, required = dict(schema.get("properties", {})), set(schema.get("required", []))
-        for kind in ["allOf", "oneOf"]:
+        for kind in ["allOf", "oneOf", "anyOf"]:
             branches = [object_fields(s) for s in schema.get(kind, [])]
             for child, _ in branches:
                 properties.update(child)
@@ -156,7 +204,15 @@ def generate():
         operation = operations[operation_id]
         key = family + "." + resource + "." + method
         name = title(key) + "Arguments"
-        body_properties, body_required = object_fields(operation["request"]) if operation["request"] else ({}, set())
+        request_schema = operation["request"]
+        if operation_id == "updateConversationControl":
+            request_schema = {"$ref": "#/components/schemas/" + {
+                "take_over": "ConversationTakeoverCommand", "assign": "ConversationAssignmentCommand",
+                "snooze": "ConversationSnoozeCommand", "clear_snooze": "ConversationClearSnoozeCommand",
+            }[method]}
+        if operation_id == "saveFlowDraft":
+            request_schema = {"$ref": "#/components/schemas/" + ("ManagedFlowDraftSaveInput" if resource == "flows.drafts" else "ApplyBlueprintUpdateInput")}
+        body_properties, body_required = object_fields(request_schema) if request_schema else ({}, set())
         body = {"properties": body_properties, "required": sorted(body_required)}
         properties = {k: v for k, v in body.get("properties", {}).items() if k not in fixed_body}
         required = [k for k in body.get("required", []) if k not in fixed_body]
@@ -165,6 +221,16 @@ def generate():
             for parameter in ["from", "to"]:
                 properties[parameter] = {"anyOf": [properties[parameter], {"type": "string", "format": "date-time"}]}
         required += [k for k in operation["required_query"] if k not in fixed_query]
+        if operation_id == "getConversationControl" and method != "history":
+            for field in ["limit", "cursor"]:
+                properties.pop(field, None)
+        if operation_id == "listFlowRegressionSuites":
+            needed = "releaseRequestId" if method == "list_suites" else "suiteId" if method == "get_suite" else None
+            for field in ["releaseRequestId", "suiteId"]:
+                if field != needed:
+                    properties.pop(field, None)
+            if needed:
+                required.append(needed)
         if operation["idempotency"] and operation_id != "publishEvent":
             properties["idempotencyKey"] = {"type": "string"}
         if set(properties) & set(controls):
@@ -173,7 +239,16 @@ def generate():
         definitions[name] = {"type": "object", "properties": properties, "required": required, "additionalProperties": False}
         path_names = [k for k in operation["path_parameters"] if family == "platform" or k != "businessId"]
         response = resolved(operation["response"])
-        data = response["properties"]["data"]
+        result_property = operation["result_property"] or ("data" if "data" in response.get("properties", {}) else None)
+        bare = result_property is None
+        data = operation["response"] if bare else response["properties"][result_property]
+        if operation_id == "getConversationControl":
+            data = {"$ref": "#/components/schemas/" + ("ConversationControlHistoryPage" if method == "history" else "ConversationControlState")}
+        if operation_id == "updateConversationControl":
+            data = {"$ref": "#/components/schemas/" + {
+                "take_over": "ConversationTakeoverReceipt", "assign": "ConversationAssignmentReceipt",
+                "snooze": "ConversationSnoozeReceipt", "clear_snooze": "ConversationClearSnoozeReceipt",
+            }[method]}
         if page == "nested_page":
             data = resolved(data)["properties"]["data"]
         elif page == "deliveries":
@@ -182,10 +257,18 @@ def generate():
             data = data["items"]
         if operation_id == "getSoftwareUsage":
             data = {"$ref": "#/components/schemas/SoftwareLimits" if method == "get_limits" else "#/components/schemas/SoftwareUsageSummary"}
+        if operation_id == "listFlowRegressionSuites":
+            data = {"$ref": "#/components/schemas/" + {"list_suites": "FlowRegressionSuites", "get_configuration": "FlowRegressionConfiguration", "get_suite": "FlowRegressionSuite"}[method]}
+        if operation_id == "getFlowTemplateCatalog":
+            data = {"$ref": "#/components/schemas/" + ("FlowDeploymentCatalog" if resource == "flows.deployments" else "FlowTemplateCatalog")}
+        if operation_id == "getFlowDeployment":
+            data = {"$ref": "#/components/schemas/" + ("FlowDraftSnapshot" if resource == "flows.drafts" else "FlowTemplateDeployment")}
+        if operation_id == "saveFlowDraft":
+            data = {"$ref": "#/components/schemas/" + ("ManagedFlowDraftSaveReceipt" if resource == "flows.drafts" else "BlueprintUpdateReceipt")}
         result_name = title(key) + "Data"
         definitions[result_name] = data
         bindings[key] = {"operation": operation_id, "query": fixed_query, "body": fixed_body, "body_fields": sorted(body_properties), "paths": path_names,
-                         "arguments": name, "result": result_name, "page": page}
+                         "arguments": name, "result": result_name, "page": page, "bare": bare, "result_property": result_property}
         if page:
             definitions[name.replace("Arguments", "IteratorArguments")] = {**definitions[name], "properties": {**properties, "maxPages": {"type": "integer"}, "maxItems": {"type": "integer"}}}
 
@@ -285,7 +368,31 @@ def generate():
             signature = display + "(" + (paths + ", " if paths else "") + "**kwargs)"
             reference += [f"| `{signature}` | [`{binding['arguments']}`](../src/insidedm/_generated/inputs.py) | [`{binding['result']}`](../src/insidedm/_generated/models.py) |"]
         reference += [""]
-    reference += ["## Saved-source helpers", "", "These helpers capture saved typed models, then call the same existing flow APIs:", "", "| Method | Behavior |", "| --- | --- |", "| `client.flows.blueprints.deploy(blueprint, **kwargs)` | Import saved version into a business-owned draft. |", "| `client.flows.deployments.preview_update(recipe_id, blueprint, **kwargs)` | Read drift and proposed changes. |", "| `client.flows.deployments.apply_update(preview, **kwargs)` | Apply the saved revision-pinned preview to its own business draft. |", "| `client.flows.deployments.request_publication(deployment, **kwargs)` | Request native human review of an unchanged deployment. |", "| `platform.for_business(business_id, scopes=None)` | Select a merchant-approved business client; exchange credentials lazily. |", "| `platform.blueprints.rollouts.preview(blueprint, clients, **kwargs)` | Read up to 25 explicit business/flow pairs into a saved plan. |", "| `platform.blueprints.rollouts.apply(plan, **kwargs)` | Lazily yield serial draft outcomes with stable restart keys. |", "", "Draft creation and update never publish a flow. Persist source and plans with", "`model_dump_json(by_alias=True, exclude_unset=True)`. Apply validates saved identity", "and revision pins before writing; obtain a new preview after a revision conflict.", "", "See `insidedm.types.inputs`, `insidedm.types.responses` and rollout types in", "`insidedm.types`. Platform access requires approved application permissions and", "merchant authorization. Partner onboarding and deployment guides are distributed", "separately to approved partners.", ""]
+    reference += [
+        "## Saved-source helpers", "", "These helpers capture saved typed models, then call the same existing flow APIs:", "",
+        "| Method | Behavior |", "| --- | --- |",
+        "| `client.flows.drafts.save(draft, definition, **kwargs)` | Save a complete native definition using both pins from an available saved draft. No hidden refresh or merge. |",
+        "| `client.flows.drafts.save(recipe_id, definition, expected_deployment_revision=revision, expected_draft_revision=revision, **kwargs)` | Save with explicitly observed pins. Matching retries recover the original receipt; read again for current state. |",
+        "| `client.flows.blueprints.deploy(blueprint, **kwargs)` | Import saved version into a business-owned draft. |",
+        "| `client.flows.deployments.preview_update(recipe_id, blueprint, **kwargs)` | Read drift and proposed changes from a saved version or exact application/key/version/digest reference. |",
+        "| `client.flows.deployments.apply_update(preview, **kwargs)` | Apply the saved revision-pinned preview to its own business draft. |",
+        "| `client.flows.deployments.request_publication(deployment, **kwargs)` | Request native human review of the exact observed draft, including customizations. |",
+        "| `client.flows.simulate(deployment, **kwargs)` | Evaluate the saved draft with native readiness rules and record successful path coverage without provider actions. |",
+        "| `client.flows.simulate(recipe_id, expected_revision=revision, **kwargs)` | Evaluate an explicitly observed draft revision with optional variables and path selection. |",
+        "| `client.flows.regressions.save_suite(suite, **changes)` | Edit a saved suite with its own business, flow and revision; preserve fields not changed. |",
+        "| `client.flows.regressions.save_suite(recipe_id, **kwargs)` | Create with null suite ID/revision or replace an explicitly observed revision. |",
+        "| `platform.for_business(business_id, scopes=None)` | Select a merchant-approved business client; exchange credentials lazily. |",
+        "| `platform.blueprints.rollouts.preview(blueprint, clients, **kwargs)` | Read up to 25 explicit business/flow pairs into a saved plan. |",
+        "| `platform.blueprints.rollouts.apply(plan, **kwargs)` | Lazily yield serial draft outcomes with stable restart keys. |", "",
+        "Draft creation and update never publish a flow. Persist source and plans with",
+        "`model_dump_json(by_alias=True, exclude_unset=True)`. Apply validates saved identity",
+        "and revision pins before writing; obtain a new preview after a revision conflict.", "",
+        "An unavailable native draft can be explicitly repaired with known valid replacement content and its positive pins. The saved-draft helper requires an available model. Unsupported builder formats are never converted implicitly.", "",
+        "See `insidedm.types.inputs`, `insidedm.types.responses` and rollout types in",
+        "`insidedm.types`. Platform access requires approved application permissions and",
+        "merchant authorization. Partner onboarding and deployment guides are distributed",
+        "separately to approved partners.", "",
+    ]
     outputs = {"src/insidedm/_generated/" + name: content for name, content in outputs.items()}
     outputs["docs/api-reference.md"] = "\n".join(reference)
     return outputs

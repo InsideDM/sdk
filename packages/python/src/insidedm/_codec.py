@@ -9,7 +9,7 @@ import json
 import keyword
 import math
 import re
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from importlib.resources import files
 from typing import Any
 
@@ -27,7 +27,17 @@ def snake(name: str) -> str:
 
 
 def resolve(schema: dict[str, Any]) -> dict[str, Any]:
-    return SCHEMAS[schema["$ref"].rsplit("/", 1)[1]] if "$ref" in schema else schema
+    seen: set[str] = set()
+    while "$ref" in schema:
+        ref = schema["$ref"]
+        if not isinstance(ref, str) or not ref.startswith("#/components/schemas/") or ref in seen or len(seen) >= 128:
+            raise SchemaMismatch("input", "Use a resolvable documented schema.")
+        seen.add(ref)
+        try:
+            schema = SCHEMAS[ref.rsplit("/", 1)[1]]
+        except KeyError:
+            raise SchemaMismatch("input", "Use a resolvable documented schema.") from None
+    return schema
 
 
 class SchemaMismatch(ValueError):
@@ -48,14 +58,20 @@ def _score(schema: dict[str, Any], value: Any) -> int:
 
 
 def decode(schema: dict[str, Any], value: Any, *, field: str = "input",
-           response: bool = False, python_names: bool = False, depth: int = 0) -> Any:
-    result = _decode(schema, value, field=field, response=response, python_names=python_names, depth=depth)
+           response: bool = False, python_names: bool = False, depth: int = 0, schema_depth: int = 0) -> Any:
+    result = _decode(schema, value, field=field, response=response, python_names=python_names, depth=depth, schema_depth=schema_depth)
     if "$ref" in schema:
         from ._semantics import DomainMismatch, validate
         try:
-            captured = validate(schema["$ref"].rsplit("/", 1)[1], result)
-            if captured is not None:
-                result = captured
+            # resolve() already validated this bounded, acyclic chain. Apply
+            # domain invariants to the actual type behind generated aliases.
+            current = schema
+            while "$ref" in current:
+                name = current["$ref"].rsplit("/", 1)[1]
+                captured = validate(name, result)
+                if captured is not None:
+                    result = captured
+                current = SCHEMAS[name]
         except DomainMismatch as error:
             raise SchemaMismatch(field + "." + snake(error.field), error.hint) from None
         except (ValueError, KeyError, TypeError, OverflowError):
@@ -64,11 +80,11 @@ def decode(schema: dict[str, Any], value: Any, *, field: str = "input",
 
 
 def _decode(schema: dict[str, Any], value: Any, *, field: str,
-            response: bool, python_names: bool, depth: int) -> Any:
+            response: bool, python_names: bool, depth: int, schema_depth: int) -> Any:
     def refuse(hint: str = "Use the documented value shape."):
         raise SchemaMismatch(field, hint)
 
-    if depth > 40:
+    if depth > 40 or schema_depth > 128:
         refuse()
     schema = resolve(schema)
     # Sibling object constraints apply to composed schemas too (e.g. a nonempty
@@ -78,19 +94,19 @@ def _decode(schema: dict[str, Any], value: Any, *, field: str,
     if "allOf" in schema:
         merged = {}
         for part in schema["allOf"]:
-            result = decode(part, value, field=field, response=response, python_names=python_names, depth=depth + 1)
+            result = decode(part, value, field=field, response=response, python_names=python_names, depth=depth, schema_depth=schema_depth + 1)
             if not isinstance(result, dict):
                 refuse()
             merged.update(result)
         return merged
-    if "oneOf" in schema:
+    if "oneOf" in schema or "anyOf" in schema:
         matches, failures = [], []
-        for part in schema["oneOf"]:
+        for part in schema.get("oneOf", schema.get("anyOf", [])):
             try:
-                matches.append(decode(part, value, field=field, response=response, python_names=python_names, depth=depth + 1))
+                matches.append(decode(part, value, field=field, response=response, python_names=python_names, depth=depth, schema_depth=schema_depth + 1))
             except SchemaMismatch as error:
                 failures.append((_score(part, value), error))
-        if len(matches) == 1:
+        if len(matches) == 1 or "anyOf" in schema and matches:
             return matches[0]
         failures.sort(key=lambda p: p[0], reverse=True)
         if not matches and failures and (len(failures) == 1 or failures[0][0] > failures[1][0]):
@@ -131,8 +147,12 @@ def _decode(schema: dict[str, Any], value: Any, *, field: str,
                     refuse("Use a valid timestamp with a time zone.")
             except ValueError:
                 refuse("Use a valid timestamp with a time zone.")
-        if schema.get("format") == "date" and re.fullmatch(r"\d{4}-\d{2}-\d{2}", value) is None:
-            refuse("Use YYYY-MM-DD.")
+        if schema.get("format") == "date":
+            try:
+                if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value) is None or date.fromisoformat(value).isoformat() != value:
+                    refuse("Use a valid calendar date in YYYY-MM-DD format.")
+            except ValueError:
+                refuse("Use a valid calendar date in YYYY-MM-DD format.")
     if actual in ("number", "integer"):
         if not schema.get("minimum", -math.inf) <= value <= schema.get("maximum", math.inf):
             refuse("Use a number within the documented bounds.")

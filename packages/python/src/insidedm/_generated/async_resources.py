@@ -12,6 +12,25 @@ class AsyncBusinessContactsAttributes(AsyncResource):
     async def update(self, contact_id: str, **kwargs: Unpack[inputs.BusinessContactsAttributesUpdateArguments]) -> Result[models.BusinessContactsAttributesUpdateData]:
         'Update declared custom fields on a contact'
         return await self._invoke('business.contacts.attributes.update', {'contactId': contact_id}, kwargs)
+class AsyncBusinessContactsFields(AsyncResource):
+    def __init__(self, transport):
+        super().__init__(transport)
+
+    async def list(self, **kwargs: Unpack[inputs.BusinessContactsFieldsListArguments]) -> Result[models.BusinessContactsFieldsListData]:
+        'Discover configured custom contact fields'
+        return await self._invoke('business.contacts.fields.list', {}, kwargs)
+
+    async def create(self, **kwargs: Unpack[inputs.BusinessContactsFieldsCreateArguments]) -> Result[models.BusinessContactsFieldsCreateData]:
+        'Create a custom contact field using the native configuration owner'
+        return await self._invoke('business.contacts.fields.create', {}, kwargs)
+
+    async def archive(self, definition_id: str, **kwargs: Unpack[inputs.BusinessContactsFieldsArchiveArguments]) -> Result[models.BusinessContactsFieldsArchiveData]:
+        'Archive a custom field at an observed native configuration version'
+        return await self._invoke('business.contacts.fields.archive', {'definitionId': definition_id}, kwargs)
+
+    async def configure_memory(self, definition_id: str, **kwargs: Unpack[inputs.BusinessContactsFieldsConfigureMemoryArguments]) -> Result[models.BusinessContactsFieldsConfigureMemoryData]:
+        "Configure a custom field's agent memory at an observed version"
+        return await self._invoke('business.contacts.fields.configure_memory', {'definitionId': definition_id}, kwargs)
 class AsyncBusinessContactsTags(AsyncResource):
     def __init__(self, transport):
         super().__init__(transport)
@@ -19,6 +38,46 @@ class AsyncBusinessContactsTags(AsyncResource):
     async def replace(self, contact_id: str, **kwargs: Unpack[inputs.BusinessContactsTagsReplaceArguments]) -> Result[models.BusinessContactsTagsReplaceData]:
         "Replace a contact's complete tag list"
         return await self._invoke('business.contacts.tags.replace', {'contactId': contact_id}, kwargs)
+class AsyncBusinessConversationsAssignees(AsyncResource):
+    def __init__(self, transport):
+        super().__init__(transport)
+
+    async def list(self, **kwargs: Unpack[inputs.BusinessConversationsAssigneesListArguments]) -> PageResult[models.BusinessConversationsAssigneesListData]:
+        'Discover active native conversation-assignment candidates'
+        return await self._invoke('business.conversations.assignees.list', {}, kwargs)
+
+    def iter_pages(self, **kwargs: Unpack[inputs.BusinessConversationsAssigneesListIteratorArguments]) -> AsyncIterator[PageResult[models.BusinessConversationsAssigneesListData]]:
+        return self._iter_pages('business.conversations.assignees.list', {}, kwargs)
+
+    def iter_items(self, **kwargs: Unpack[inputs.BusinessConversationsAssigneesListIteratorArguments]) -> AsyncIterator[models.BusinessConversationsAssigneesListData]:
+        return self._iter_items('business.conversations.assignees.list', {}, kwargs)
+class AsyncBusinessConversationsControls(AsyncResource):
+    def __init__(self, transport):
+        super().__init__(transport)
+
+    async def get(self, conversation_id: str, **kwargs: Unpack[inputs.BusinessConversationsControlsGetArguments]) -> Result[models.BusinessConversationsControlsGetData]:
+        'Inspect native conversation control or its bounded audit history'
+        return await self._invoke('business.conversations.controls.get', {'conversationId': conversation_id}, kwargs)
+
+    async def history(self, conversation_id: str, **kwargs: Unpack[inputs.BusinessConversationsControlsHistoryArguments]) -> Result[models.BusinessConversationsControlsHistoryData]:
+        'Inspect native conversation control or its bounded audit history'
+        return await self._invoke('business.conversations.controls.history', {'conversationId': conversation_id}, kwargs)
+
+    async def take_over(self, conversation_id: str, **kwargs: Unpack[inputs.BusinessConversationsControlsTakeOverArguments]) -> Result[models.BusinessConversationsControlsTakeOverData]:
+        'Change native conversation control as the actual connected user'
+        return await self._invoke('business.conversations.controls.take_over', {'conversationId': conversation_id}, kwargs)
+
+    async def assign(self, conversation_id: str, **kwargs: Unpack[inputs.BusinessConversationsControlsAssignArguments]) -> Result[models.BusinessConversationsControlsAssignData]:
+        'Change native conversation control as the actual connected user'
+        return await self._invoke('business.conversations.controls.assign', {'conversationId': conversation_id}, kwargs)
+
+    async def snooze(self, conversation_id: str, **kwargs: Unpack[inputs.BusinessConversationsControlsSnoozeArguments]) -> Result[models.BusinessConversationsControlsSnoozeData]:
+        'Change native conversation control as the actual connected user'
+        return await self._invoke('business.conversations.controls.snooze', {'conversationId': conversation_id}, kwargs)
+
+    async def clear_snooze(self, conversation_id: str, **kwargs: Unpack[inputs.BusinessConversationsControlsClearSnoozeArguments]) -> Result[models.BusinessConversationsControlsClearSnoozeData]:
+        'Change native conversation control as the actual connected user'
+        return await self._invoke('business.conversations.controls.clear_snooze', {'conversationId': conversation_id}, kwargs)
 class AsyncBusinessConversationsMessages(AsyncResource):
     def __init__(self, transport):
         super().__init__(transport)
@@ -45,47 +104,230 @@ class AsyncBusinessEventsBindings(AsyncResource):
 
     def iter_items(self, **kwargs: Unpack[inputs.BusinessEventsBindingsListIteratorArguments]) -> AsyncIterator[models.BusinessEventsBindingsListData]:
         return self._iter_items('business.events.bindings.list', {}, kwargs)
+class AsyncBusinessFlowsBlocks(AsyncResource):
+    def __init__(self, transport):
+        super().__init__(transport)
+
+    async def list(self, **kwargs: Unpack[inputs.BusinessFlowsBlocksListArguments]) -> PageResult[models.BusinessFlowsBlocksListData]:
+        'Discover saved call and MCP block version references'
+        return await self._invoke('business.flows.blocks.list', {}, kwargs)
+
+    def iter_pages(self, **kwargs: Unpack[inputs.BusinessFlowsBlocksListIteratorArguments]) -> AsyncIterator[PageResult[models.BusinessFlowsBlocksListData]]:
+        return self._iter_pages('business.flows.blocks.list', {}, kwargs)
+
+    def iter_items(self, **kwargs: Unpack[inputs.BusinessFlowsBlocksListIteratorArguments]) -> AsyncIterator[models.BusinessFlowsBlocksListData]:
+        return self._iter_items('business.flows.blocks.list', {}, kwargs)
+
+    async def get(self, flow_id: str, **kwargs: Unpack[inputs.BusinessFlowsBlocksGetArguments]) -> Result[models.BusinessFlowsBlocksGetData]:
+        "Read an exact saved connector version's declared input/output interface"
+        return await self._invoke('business.flows.blocks.get', {'flowId': flow_id}, kwargs)
 class AsyncBusinessFlowsDeployments(AsyncResource):
     def __init__(self, transport):
         super().__init__(transport)
 
     async def get(self, recipe_id: str, **kwargs: Unpack[inputs.BusinessFlowsDeploymentsGetArguments]) -> Result[models.BusinessFlowsDeploymentsGetData]:
-        'Read immutable import origin and current draft drift'
+        'Read managed import origin or the valid native draft definition'
         return await self._invoke('business.flows.deployments.get', {'recipeId': recipe_id}, kwargs)
+
+    async def list(self, **kwargs: Unpack[inputs.BusinessFlowsDeploymentsListArguments]) -> Result[models.BusinessFlowsDeploymentsListData]:
+        'Discover versioned templates, endpoint references or managed deployments'
+        return await self._invoke('business.flows.deployments.list', {}, kwargs)
 
     async def _preview_update(self, recipe_id: str, **kwargs: Unpack[inputs.BusinessFlowsDeploymentsPreviewUpdateArguments]) -> Result[models.BusinessFlowsDeploymentsPreviewUpdateData]:
         'Preview a managed blueprint update while preserving client overrides'
         return await self._invoke('business.flows.deployments._preview_update', {'recipeId': recipe_id}, kwargs)
 
     async def _apply_update(self, recipe_id: str, **kwargs: Unpack[inputs.BusinessFlowsDeploymentsApplyUpdateArguments]) -> Result[models.BusinessFlowsDeploymentsApplyUpdateData]:
-        'Apply a reviewed blueprint update to its current client draft'
+        'Save a managed flow draft or apply a reviewed blueprint update'
         return await self._invoke('business.flows.deployments._apply_update', {'recipeId': recipe_id}, kwargs)
 
     async def _request_publication(self, recipe_id: str, **kwargs: Unpack[inputs.BusinessFlowsDeploymentsRequestPublicationArguments]) -> Result[models.BusinessFlowsDeploymentsRequestPublicationData]:
-        "Submit this integration's unchanged managed draft for native human publication"
+        "Submit this integration's exact observed managed draft for native human publication"
         return await self._invoke('business.flows.deployments._request_publication', {'recipeId': recipe_id}, kwargs)
 
     async def get_publication_request(self, recipe_id: str, release_request_id: str, **kwargs: Unpack[inputs.BusinessFlowsDeploymentsGetPublicationRequestArguments]) -> Result[models.BusinessFlowsDeploymentsGetPublicationRequestData]:
         "Observe this integration's managed publication request"
         return await self._invoke('business.flows.deployments.get_publication_request', {'recipeId': recipe_id, 'releaseRequestId': release_request_id}, kwargs)
+
+    async def withdraw_publication(self, recipe_id: str, release_request_id: str, **kwargs: Unpack[inputs.BusinessFlowsDeploymentsWithdrawPublicationArguments]) -> Result[models.BusinessFlowsDeploymentsWithdrawPublicationData]:
+        "Withdraw this integration's unpublished release request"
+        return await self._invoke('business.flows.deployments.withdraw_publication', {'recipeId': recipe_id, 'releaseRequestId': release_request_id}, kwargs)
+class AsyncBusinessFlowsDrafts(AsyncResource):
+    def __init__(self, transport):
+        super().__init__(transport)
+
+    async def get(self, recipe_id: str, **kwargs: Unpack[inputs.BusinessFlowsDraftsGetArguments]) -> Result[models.BusinessFlowsDraftsGetData]:
+        'Read managed import origin or the valid native draft definition'
+        return await self._invoke('business.flows.drafts.get', {'recipeId': recipe_id}, kwargs)
+
+    async def _save(self, recipe_id: str, **kwargs: Unpack[inputs.BusinessFlowsDraftsSaveArguments]) -> Result[models.BusinessFlowsDraftsSaveData]:
+        'Save a managed flow draft or apply a reviewed blueprint update'
+        return await self._invoke('business.flows.drafts._save', {'recipeId': recipe_id}, kwargs)
+class AsyncBusinessFlowsGovernance(AsyncResource):
+    def __init__(self, transport):
+        super().__init__(transport)
+
+    async def get(self, recipe_id: str, **kwargs: Unpack[inputs.BusinessFlowsGovernanceGetArguments]) -> Result[models.BusinessFlowsGovernanceGetData]:
+        'Read the native approval and regression policy for a managed flow'
+        return await self._invoke('business.flows.governance.get', {'recipeId': recipe_id}, kwargs)
+class AsyncBusinessFlowsRegressions(AsyncResource):
+    def __init__(self, transport):
+        super().__init__(transport)
+
+    async def list_suites(self, recipe_id: str, **kwargs: Unpack[inputs.BusinessFlowsRegressionsListSuitesArguments]) -> Result[models.BusinessFlowsRegressionsListSuitesData]:
+        'Inspect managed regression configuration or release-bound evidence'
+        return await self._invoke('business.flows.regressions.list_suites', {'recipeId': recipe_id}, kwargs)
+
+    async def get_configuration(self, recipe_id: str, **kwargs: Unpack[inputs.BusinessFlowsRegressionsGetConfigurationArguments]) -> Result[models.BusinessFlowsRegressionsGetConfigurationData]:
+        'Inspect managed regression configuration or release-bound evidence'
+        return await self._invoke('business.flows.regressions.get_configuration', {'recipeId': recipe_id}, kwargs)
+
+    async def get_suite(self, recipe_id: str, **kwargs: Unpack[inputs.BusinessFlowsRegressionsGetSuiteArguments]) -> Result[models.BusinessFlowsRegressionsGetSuiteData]:
+        'Inspect managed regression configuration or release-bound evidence'
+        return await self._invoke('business.flows.regressions.get_suite', {'recipeId': recipe_id}, kwargs)
+
+    async def _save_suite(self, recipe_id: str, **kwargs: Unpack[inputs.BusinessFlowsRegressionsSaveSuiteArguments]) -> Result[models.BusinessFlowsRegressionsSaveSuiteData]:
+        'Create, update or archive a native regression suite'
+        return await self._invoke('business.flows.regressions._save_suite', {'recipeId': recipe_id}, kwargs)
+
+    async def run(self, recipe_id: str, **kwargs: Unpack[inputs.BusinessFlowsRegressionsRunArguments]) -> Result[models.BusinessFlowsRegressionsRunData]:
+        'Evaluate one revision-pinned native suite against the retained release candidate'
+        return await self._invoke('business.flows.regressions.run', {'recipeId': recipe_id}, kwargs)
+
+    async def get(self, recipe_id: str, run_id: str, **kwargs: Unpack[inputs.BusinessFlowsRegressionsGetArguments]) -> Result[models.BusinessFlowsRegressionsGetData]:
+        'Recover the native result of a release-bound regression run'
+        return await self._invoke('business.flows.regressions.get', {'recipeId': recipe_id, 'runId': run_id}, kwargs)
 class AsyncBusinessFlowsRuns(AsyncResource):
     def __init__(self, transport):
         super().__init__(transport)
 
     async def get(self, run_id: str, **kwargs: Unpack[inputs.BusinessFlowsRunsGetArguments]) -> Result[models.BusinessFlowsRunsGetData]:
-        'Read the current status of an SDK-started flow'
+        'Read permitted native flow execution status'
         return await self._invoke('business.flows.runs.get', {'runId': run_id}, kwargs)
+
+    async def list(self, **kwargs: Unpack[inputs.BusinessFlowsRunsListArguments]) -> PageResult[models.BusinessFlowsRunsListData]:
+        'List recent native flow executions'
+        return await self._invoke('business.flows.runs.list', {}, kwargs)
+
+    def iter_pages(self, **kwargs: Unpack[inputs.BusinessFlowsRunsListIteratorArguments]) -> AsyncIterator[PageResult[models.BusinessFlowsRunsListData]]:
+        return self._iter_pages('business.flows.runs.list', {}, kwargs)
+
+    def iter_items(self, **kwargs: Unpack[inputs.BusinessFlowsRunsListIteratorArguments]) -> AsyncIterator[models.BusinessFlowsRunsListData]:
+        return self._iter_items('business.flows.runs.list', {}, kwargs)
+class AsyncBusinessFlowsSteps(AsyncResource):
+    def __init__(self, transport):
+        super().__init__(transport)
+
+    async def list(self, **kwargs: Unpack[inputs.BusinessFlowsStepsListArguments]) -> Result[models.BusinessFlowsStepsListData]:
+        'Discover native built-in flow steps and bundles'
+        return await self._invoke('business.flows.steps.list', {}, kwargs)
 class AsyncBusinessFlowsTemplates(AsyncResource):
     def __init__(self, transport):
         super().__init__(transport)
 
     async def catalog(self, **kwargs: Unpack[inputs.BusinessFlowsTemplatesCatalogArguments]) -> Result[models.BusinessFlowsTemplatesCatalogData]:
-        'Discover versioned flow templates and eligible client endpoint references'
+        'Discover versioned templates, endpoint references or managed deployments'
         return await self._invoke('business.flows.templates.catalog', {}, kwargs)
 
     async def import_(self, pack_id: str, **kwargs: Unpack[inputs.BusinessFlowsTemplatesImportArguments]) -> Result[models.BusinessFlowsTemplatesImportData]:
         'Create a client-owned draft from an exact flow template version'
         return await self._invoke('business.flows.templates.import_', {'packId': pack_id}, kwargs)
+class AsyncBusinessKnowledgeRuns(AsyncResource):
+    def __init__(self, transport):
+        super().__init__(transport)
+
+    async def get(self, run_id: str, **kwargs: Unpack[inputs.BusinessKnowledgeRunsGetArguments]) -> Result[models.BusinessKnowledgeRunsGetData]:
+        'Inspect one native website-indexing execution'
+        return await self._invoke('business.knowledge.runs.get', {'runId': run_id}, kwargs)
+
+    async def list(self, **kwargs: Unpack[inputs.BusinessKnowledgeRunsListArguments]) -> PageResult[models.BusinessKnowledgeRunsListData]:
+        'Discover native website-indexing execution progress'
+        return await self._invoke('business.knowledge.runs.list', {}, kwargs)
+
+    def iter_pages(self, **kwargs: Unpack[inputs.BusinessKnowledgeRunsListIteratorArguments]) -> AsyncIterator[PageResult[models.BusinessKnowledgeRunsListData]]:
+        return self._iter_pages('business.knowledge.runs.list', {}, kwargs)
+
+    def iter_items(self, **kwargs: Unpack[inputs.BusinessKnowledgeRunsListIteratorArguments]) -> AsyncIterator[models.BusinessKnowledgeRunsListData]:
+        return self._iter_items('business.knowledge.runs.list', {}, kwargs)
+class AsyncBusinessKnowledgeSections(AsyncResource):
+    def __init__(self, transport):
+        super().__init__(transport)
+
+    async def list(self, **kwargs: Unpack[inputs.BusinessKnowledgeSectionsListArguments]) -> PageResult[models.BusinessKnowledgeSectionsListData]:
+        'Read current generated knowledge and merchant corrections'
+        return await self._invoke('business.knowledge.sections.list', {}, kwargs)
+
+    def iter_pages(self, **kwargs: Unpack[inputs.BusinessKnowledgeSectionsListIteratorArguments]) -> AsyncIterator[PageResult[models.BusinessKnowledgeSectionsListData]]:
+        return self._iter_pages('business.knowledge.sections.list', {}, kwargs)
+
+    def iter_items(self, **kwargs: Unpack[inputs.BusinessKnowledgeSectionsListIteratorArguments]) -> AsyncIterator[models.BusinessKnowledgeSectionsListData]:
+        return self._iter_items('business.knowledge.sections.list', {}, kwargs)
+
+    async def set_override(self, section_id: str, **kwargs: Unpack[inputs.BusinessKnowledgeSectionsSetOverrideArguments]) -> Result[models.BusinessKnowledgeSectionsSetOverrideData]:
+        'Set or clear a verbatim knowledge correction'
+        return await self._invoke('business.knowledge.sections.set_override', {'sectionId': section_id}, kwargs)
+
+    async def acknowledge_override(self, section_id: str, **kwargs: Unpack[inputs.BusinessKnowledgeSectionsAcknowledgeOverrideArguments]) -> Result[models.BusinessKnowledgeSectionsAcknowledgeOverrideData]:
+        'Keep a correction and acknowledge the current generated change'
+        return await self._invoke('business.knowledge.sections.acknowledge_override', {'sectionId': section_id}, kwargs)
+class AsyncBusinessKnowledgeSources(AsyncResource):
+    def __init__(self, transport):
+        super().__init__(transport)
+
+    async def list(self, **kwargs: Unpack[inputs.BusinessKnowledgeSourcesListArguments]) -> PageResult[models.BusinessKnowledgeSourcesListData]:
+        'Discover registered knowledge sources and removal state'
+        return await self._invoke('business.knowledge.sources.list', {}, kwargs)
+
+    def iter_pages(self, **kwargs: Unpack[inputs.BusinessKnowledgeSourcesListIteratorArguments]) -> AsyncIterator[PageResult[models.BusinessKnowledgeSourcesListData]]:
+        return self._iter_pages('business.knowledge.sources.list', {}, kwargs)
+
+    def iter_items(self, **kwargs: Unpack[inputs.BusinessKnowledgeSourcesListIteratorArguments]) -> AsyncIterator[models.BusinessKnowledgeSourcesListData]:
+        return self._iter_items('business.knowledge.sources.list', {}, kwargs)
+
+    async def import_website(self, **kwargs: Unpack[inputs.BusinessKnowledgeSourcesImportWebsiteArguments]) -> Result[models.BusinessKnowledgeSourcesImportWebsiteData]:
+        'Import or refresh website knowledge using the native ingestion owner'
+        return await self._invoke('business.knowledge.sources.import_website', {}, kwargs)
+
+    async def remove_website(self, **kwargs: Unpack[inputs.BusinessKnowledgeSourcesRemoveWebsiteArguments]) -> Result[models.BusinessKnowledgeSourcesRemoveWebsiteData]:
+        'Remove website knowledge and cancel its pending imports'
+        return await self._invoke('business.knowledge.sources.remove_website', {}, kwargs)
+
+    async def remove(self, source_id: str, **kwargs: Unpack[inputs.BusinessKnowledgeSourcesRemoveArguments]) -> Result[models.BusinessKnowledgeSourcesRemoveData]:
+        'Remove a registered note, document or website from knowledge'
+        return await self._invoke('business.knowledge.sources.remove', {'sourceId': source_id}, kwargs)
+class AsyncBusinessLoyaltyMembers(AsyncResource):
+    def __init__(self, transport):
+        super().__init__(transport)
+
+    async def get(self, contact_id: str, **kwargs: Unpack[inputs.BusinessLoyaltyMembersGetArguments]) -> Result[models.BusinessLoyaltyMembersGetData]:
+        'Read current loyalty membership and wallet balances'
+        return await self._invoke('business.loyalty.members.get', {'contactId': contact_id}, kwargs)
+class AsyncBusinessMessagesPreparations(AsyncResource):
+    def __init__(self, transport):
+        super().__init__(transport)
+
+    async def get(self, preparation_id: str, **kwargs: Unpack[inputs.BusinessMessagesPreparationsGetArguments]) -> Result[models.BusinessMessagesPreparationsGetData]:
+        'Read the original preparation and accepted operation'
+        return await self._invoke('business.messages.preparations.get', {'preparationId': preparation_id}, kwargs)
+
+    async def apply(self, preparation_id: str, **kwargs: Unpack[inputs.BusinessMessagesPreparationsApplyArguments]) -> Result[models.BusinessMessagesPreparationsApplyData]:
+        'Apply the exact natively reviewed notification once'
+        return await self._invoke('business.messages.preparations.apply', {'preparationId': preparation_id}, kwargs)
+class AsyncBusinessMessagingPreparations(AsyncResource):
+    def __init__(self, transport):
+        super().__init__(transport)
+
+    async def create(self, **kwargs: Unpack[inputs.BusinessMessagingPreparationsCreateArguments]) -> Result[models.BusinessMessagingPreparationsCreateData]:
+        'Prepare a versioned messaging-settings replacement for human review'
+        return await self._invoke('business.messaging.preparations.create', {}, kwargs)
+
+    async def get(self, preparation_id: str, **kwargs: Unpack[inputs.BusinessMessagingPreparationsGetArguments]) -> Result[models.BusinessMessagingPreparationsGetData]:
+        'Recover the original settings review or accepted result'
+        return await self._invoke('business.messaging.preparations.get', {'preparationId': preparation_id}, kwargs)
+
+    async def apply(self, preparation_id: str, **kwargs: Unpack[inputs.BusinessMessagingPreparationsApplyArguments]) -> Result[models.BusinessMessagingPreparationsApplyData]:
+        'Apply the exact human-approved messaging configuration'
+        return await self._invoke('business.messaging.preparations.apply', {'preparationId': preparation_id}, kwargs)
 class AsyncBusinessOrdersShipments(AsyncResource):
     def __init__(self, transport):
         super().__init__(transport)
@@ -99,6 +341,13 @@ class AsyncBusinessOrdersShipments(AsyncResource):
 
     def iter_items(self, order_id: str, **kwargs: Unpack[inputs.BusinessOrdersShipmentsListIteratorArguments]) -> AsyncIterator[models.BusinessOrdersShipmentsListData]:
         return self._iter_items('business.orders.shipments.list', {'orderId': order_id}, kwargs)
+class AsyncBusinessAnalytics(AsyncResource):
+    def __init__(self, transport):
+        super().__init__(transport)
+
+    async def get(self, **kwargs: Unpack[inputs.BusinessAnalyticsGetArguments]) -> Result[models.BusinessAnalyticsGetData]:
+        'Read the business analytics report for a calendar window'
+        return await self._invoke('business.analytics.get', {}, kwargs)
 class AsyncBusinessConsents(AsyncResource):
     def __init__(self, transport):
         super().__init__(transport)
@@ -118,6 +367,7 @@ class AsyncBusinessContacts(AsyncResource):
     def __init__(self, transport):
         super().__init__(transport)
         self.attributes = AsyncBusinessContactsAttributes(transport)
+        self.fields = AsyncBusinessContactsFields(transport)
         self.tags = AsyncBusinessContactsTags(transport)
 
     async def list(self, **kwargs: Unpack[inputs.BusinessContactsListArguments]) -> PageResult[models.BusinessContactsListData]:
@@ -144,6 +394,8 @@ class AsyncBusinessContacts(AsyncResource):
 class AsyncBusinessConversations(AsyncResource):
     def __init__(self, transport):
         super().__init__(transport)
+        self.assignees = AsyncBusinessConversationsAssignees(transport)
+        self.controls = AsyncBusinessConversationsControls(transport)
         self.messages = AsyncBusinessConversationsMessages(transport)
 
     async def list(self, **kwargs: Unpack[inputs.BusinessConversationsListArguments]) -> PageResult[models.BusinessConversationsListData]:
@@ -170,12 +422,36 @@ class AsyncBusinessEvents(AsyncResource):
 class AsyncBusinessFlows(AsyncResource):
     def __init__(self, transport):
         super().__init__(transport)
+        self.blocks = AsyncBusinessFlowsBlocks(transport)
         self.deployments = AsyncBusinessFlowsDeployments(transport)
+        self.drafts = AsyncBusinessFlowsDrafts(transport)
+        self.governance = AsyncBusinessFlowsGovernance(transport)
+        self.regressions = AsyncBusinessFlowsRegressions(transport)
         self.runs = AsyncBusinessFlowsRuns(transport)
+        self.steps = AsyncBusinessFlowsSteps(transport)
         self.templates = AsyncBusinessFlowsTemplates(transport)
+
+    async def _simulate(self, recipe_id: str, **kwargs: Unpack[inputs.BusinessFlowsSimulateArguments]) -> Result[models.BusinessFlowsSimulateData]:
+        'Simulate one selected native draft path and record successful coverage'
+        return await self._invoke('business.flows._simulate', {'recipeId': recipe_id}, kwargs)
+class AsyncBusinessKnowledge(AsyncResource):
+    def __init__(self, transport):
+        super().__init__(transport)
+        self.runs = AsyncBusinessKnowledgeRuns(transport)
+        self.sections = AsyncBusinessKnowledgeSections(transport)
+        self.sources = AsyncBusinessKnowledgeSources(transport)
+
+    async def get(self, **kwargs: Unpack[inputs.BusinessKnowledgeGetArguments]) -> Result[models.BusinessKnowledgeGetData]:
+        'Read the current knowledge document identity and version'
+        return await self._invoke('business.knowledge.get', {}, kwargs)
+class AsyncBusinessLoyalty(AsyncResource):
+    def __init__(self, transport):
+        super().__init__(transport)
+        self.members = AsyncBusinessLoyaltyMembers(transport)
 class AsyncBusinessMessages(AsyncResource):
     def __init__(self, transport):
         super().__init__(transport)
+        self.preparations = AsyncBusinessMessagesPreparations(transport)
 
     async def get(self, message_id: str, **kwargs: Unpack[inputs.BusinessMessagesGetArguments]) -> Result[models.BusinessMessagesGetData]:
         'One message'
@@ -188,9 +464,14 @@ class AsyncBusinessMessages(AsyncResource):
     async def preview(self, **kwargs: Unpack[inputs.BusinessMessagesPreviewArguments]) -> Result[models.BusinessMessagesPreviewData]:
         'Observe notification eligibility without creating or reserving anything'
         return await self._invoke('business.messages.preview', {}, kwargs)
+
+    async def prepare(self, **kwargs: Unpack[inputs.BusinessMessagesPrepareArguments]) -> Result[models.BusinessMessagesPrepareData]:
+        "Prepare a notification for the connected user's exact review"
+        return await self._invoke('business.messages.prepare', {}, kwargs)
 class AsyncBusinessMessaging(AsyncResource):
     def __init__(self, transport):
         super().__init__(transport)
+        self.preparations = AsyncBusinessMessagingPreparations(transport)
 
     async def get_readiness(self, **kwargs: Unpack[inputs.BusinessMessagingGetReadinessArguments]) -> Result[models.BusinessMessagingGetReadinessData]:
         'Read WhatsApp account setup readiness'
@@ -199,6 +480,10 @@ class AsyncBusinessMessaging(AsyncResource):
     async def get_configuration(self, **kwargs: Unpack[inputs.BusinessMessagingGetConfigurationArguments]) -> Result[models.BusinessMessagingGetConfigurationData]:
         'Discover merchant-managed template aliases and text-purpose bindings'
         return await self._invoke('business.messaging.get_configuration', {}, kwargs)
+
+    async def update_configuration(self, **kwargs: Unpack[inputs.BusinessMessagingUpdateConfigurationArguments]) -> Result[models.BusinessMessagingUpdateConfigurationData]:
+        'Update messaging aliases and purpose bindings'
+        return await self._invoke('business.messaging.update_configuration', {}, kwargs)
 class AsyncBusinessOperations(AsyncResource):
     def __init__(self, transport):
         super().__init__(transport)
@@ -273,11 +558,14 @@ class AsyncBusinessWorkspace(AsyncResource):
 
 class AsyncBusinessResources:
     def _init_resources(self, transport):
+        self.analytics = AsyncBusinessAnalytics(transport)
         self.consents = AsyncBusinessConsents(transport)
         self.contacts = AsyncBusinessContacts(transport)
         self.conversations = AsyncBusinessConversations(transport)
         self.events = AsyncBusinessEvents(transport)
         self.flows = AsyncBusinessFlows(transport)
+        self.knowledge = AsyncBusinessKnowledge(transport)
+        self.loyalty = AsyncBusinessLoyalty(transport)
         self.messages = AsyncBusinessMessages(transport)
         self.messaging = AsyncBusinessMessaging(transport)
         self.operations = AsyncBusinessOperations(transport)
