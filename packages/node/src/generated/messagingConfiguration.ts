@@ -1,12 +1,37 @@
 // Generated from the authoritative InsideDM public contract. Do not edit by hand.
 import { parseBoundedJson } from './boundedJson.js';
 export const MESSAGING_SETTINGS_BODY_LIMIT = 68 * 1024;
+export const UPDATE_MESSAGING_CONFIGURATION_OPERATION = {
+    id: 'updateMessagingConfiguration', name: 'messaging.updateConfiguration', audience: 'conversations', method: 'PATCH',
+    path: '/api/v1/dashboard/{businessId}/developer/messaging-settings',
+    pathTemplate: '/api/v1/dashboard/:businessId/developer/messaging-settings',
+    principalKinds: ['business_key', 'delegation', 'user_delegation'], requiredScopes: ['messaging.configuration.write'],
+    humanPermissions: ['developer.manage', 'settings.edit'], idempotency: 'required', scope: 'workspace',
+    userExecution: 'direct',
+    maxRequestBodyBytes: MESSAGING_SETTINGS_BODY_LIMIT,
+    resultProperty: 'configuration',
+} as const;
 export interface MessagingConfiguration {
     defaultTextPurposeBinding: string | null;
     templateAliases: Record<string, string>;
     textPurposeBindings: Record<string, {
         purpose: 'service' | 'marketing';
     }>;
+}
+export interface MessagingConfigurationUpdate {
+    configuration: MessagingConfiguration;
+    expectedVersion: number | null;
+}
+export interface MessagingConfigurationSnapshot {
+    value: MessagingConfiguration;
+    version: number | null;
+}
+export interface MessagingConfigurationUpdateResult {
+    configuration: MessagingConfigurationSnapshot;
+}
+export function parseMessagingConfigurationUpdateResult(input: unknown): MessagingConfigurationUpdateResult {
+    const root = record(input), configuration = record(root.configuration);
+    return { configuration: { value: parseMessagingConfiguration(JSON.stringify(configuration.value)), version: version(configuration.version) } };
 }
 export type MessagingConfigurationReason = 'configuration_invalid' | 'configuration_changed' | 'sender_ambiguous' | 'channel_not_ready' | 'template_not_approved' | 'template_unsupported' | 'template_locale_mismatch' | 'template_variables_invalid' | 'template_alias_unconfigured' | 'sender_template_mismatch' | 'purpose_binding_required' | 'purpose_binding_invalid' | 'recipient_unavailable' | 'sender_recipient_mismatch';
 export class MessagingConfigurationError extends Error {
@@ -80,7 +105,7 @@ export function parseMessagingConfiguration(raw: string | Uint8Array): Messaging
         refuse();
     return { defaultTextPurposeBinding, templateAliases, textPurposeBindings };
 }
-export function parseMessagingSettingsUpdate(raw: string | Uint8Array) {
+export function parseMessagingSettingsUpdate(raw: string | Uint8Array): MessagingConfigurationUpdate {
     const input = record(parseBoundedJson(raw, MESSAGING_SETTINGS_BODY_LIMIT));
     exact(input, ['configuration', 'expectedVersion']);
     return { configuration: parseMessagingConfiguration(JSON.stringify(input.configuration)), expectedVersion: version(input.expectedVersion) };

@@ -1,5 +1,85 @@
 # Changelog
 
+## Unreleased
+
+- Find recent native flow executions with `flows.runs.list()`, `pages()` and
+  `iterate()`, including flow/status filters and bounded cursor pagination.
+  Connected users see permitted workspace runs; integrations retain their own
+  producer restriction and original event/command proof.
+
+- Connected-user `flows.runs.get()` now reads native workspace flow execution
+  status with current flow-view permission. Server integrations retain their
+  original producer restrictions; traces, inputs and customer identity stay private.
+
+- Read native loyalty membership with `loyalty.members.get(contactId)` under the
+  separate `loyalty.read` scope. Returns bounded wallet balances, pending/held
+  value, tier, next reported expiry and hold count without identity or reward codes.
+
+- Read bounded knowledge document identity/version with `knowledge.get()` under
+  `knowledge.read`, including an absent document or a nonzero empty generation.
+  Retained section counts do not establish answer coverage. Metadata access does
+  not grant knowledge text access. Source-removal versions/counts now generate
+  integer schemas and Python types, rejecting fractional versions locally.
+
+- Remove registered notes, documents or websites with `knowledge.sources.remove()`
+  under `knowledge.write`. The existing native versioned source owner preserves
+  merchant corrections and history while suppressing removed-source claims.
+  Original-intent recovery protects later reactivation; receipts contain counts
+  and identity without source text. Removal can leave documentVersion unchanged
+  when the source contributed no generated claims. No model call is made.
+
+- Conversation control history now includes `held_reply_dismissed` / `dismiss_hold`
+  for a rejected unsent draft. It remains distinct from hand-back to AI and does
+  not imply sending, releasing ownership or enabling automation.
+
+- Correct knowledge with `knowledge.sections.setOverride()` or retain a reviewed
+  correction with `.acknowledgeOverride()`. The explicit `knowledge.content.write`
+  grant does not imply reading content. Exact document-version fences and original
+  intent receipts preserve later edits across retries. Empty text suppresses
+  generated content; null clears the correction. Both commands share native
+  dashboard writers, retain actual actor attribution and make no model call.
+
+- Read current knowledge with `knowledge.sections.list/pages/iterate()` under
+  the explicit `knowledge.content.read` grant. Bounded native pages include
+  generated text, verbatim corrections, correction state and document versions.
+  Cursors bind one document generation; existing metadata grants stay unchanged.
+
+- Remove website knowledge with `knowledge.sources.removeWebsite()`. The shared
+  native owner atomically suppresses generated claims, cancels pending imports
+  and preserves merchant/subsection corrections, catalog data and import history.
+  Original-intent recovery cannot remove a later re-add. The result reports
+  top-level sections that need a later explicit refresh; no model call is made.
+
+- Import or refresh website knowledge with `knowledge.sources.importWebsite()`
+  under the separate `knowledge.write` scope. Native accepted run/command/intent
+  receipts commit together; retries recover original acceptance before website
+  checks, and current execution stays in `knowledge.runs`. Original API-key,
+  installation and OAuth-user custody remains enforced through acquisition,
+  model funding/dispatch, generated knowledge and embedding commits.
+
+- Website import diagnostics expose the native post-generation
+  `documentSectionCount`, `sectionsEmbedded` and `sectionsEmbeddingSkipped`
+  counts, replacing obsolete unwritten chunk metrics in this unreleased view.
+  Counts remain null if the embedding pass throws; existing section totals are
+  not presented as changes by this import.
+
+- Discover registered knowledge sources with `knowledge.sources.list()`,
+  `.pages()` and `.iterate()`, including native metadata, removal state and
+  kind/status filters. Count- and size-bounded pages preserve exact labels/URLs;
+  connection settings, credentials and document bodies remain excluded.
+
+- Preview source updates using an exact application/key/version/digest reference
+  or a saved full version. Applying a saved preview checks its business against
+  the selected client before writing.
+
+- Edit native managed drafts with `flows.drafts.save(draft, definition, options)`
+  using saved revision pins, native validation and stable retry recovery.
+- The shared graph PUT is now named `saveFlowDraft` in access-token-provider and
+  recovery metadata. `flows.deployments.applyUpdate(...)` keeps its public syntax
+  and uses the same owner. No additional endpoint is introduced.
+- Generated operation byte budgets preserve native graph sizes while retaining
+  smaller bounds for other requests.
+
 ## 0.1.0-alpha.1 (2026-10-21)
 
 - The SDK manages its API endpoint. Consumers configure their server key without

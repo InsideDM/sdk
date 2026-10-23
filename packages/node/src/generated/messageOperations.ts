@@ -11,16 +11,16 @@ export interface MessagePreview {
     wouldCreateRecipient: boolean;
 }
 const base = { audience: 'conversations', principalKinds: ['business_key', 'delegation'], scope: 'workspace' } as const;
-export const MESSAGE_PREVIEW_OPERATION = { ...base, id: 'previewMessage', name: 'messages.preview', method: 'POST',
+export const MESSAGE_PREVIEW_OPERATION = { ...base, principalKinds: ['business_key', 'delegation', 'user_delegation'], userExecution: 'direct', id: 'previewMessage', name: 'messages.preview', method: 'POST',
     path: '/api/v1/inbox/{businessId}/messages/preview', pathTemplate: '/api/v1/inbox/:businessId/messages/preview',
     requiredScopes: ['messages.send'], humanPermissions: ['campaigns.send'], idempotency: 'none' } as const;
-export const GET_OPERATION = { ...base, id: 'getOperation', name: 'operations.get', method: 'GET',
+export const GET_OPERATION = { ...base, principalKinds: ['business_key', 'delegation', 'user_delegation'], id: 'getOperation', name: 'operations.get', method: 'GET',
     path: '/api/v1/inbox/{businessId}/operations/{operationId}', pathTemplate: '/api/v1/inbox/:businessId/operations/:operationId',
     requiredScopes: ['operations.read'], humanPermissions: ['inbox.view'], idempotency: 'none' } as const;
-export const LOOKUP_OPERATION = { ...base, id: 'lookupOperation', name: 'operations.lookup', method: 'POST',
+export const LOOKUP_OPERATION = { ...base, principalKinds: ['business_key', 'delegation', 'user_delegation'], userExecution: 'direct', id: 'lookupOperation', name: 'operations.lookup', method: 'POST',
     path: '/api/v1/inbox/{businessId}/operations/by-idempotency-key', pathTemplate: '/api/v1/inbox/:businessId/operations/by-idempotency-key',
     requiredScopes: ['operations.read'], humanPermissions: ['inbox.view'], idempotency: 'none' } as const;
-export const CANCEL_OPERATION = { ...base, id: 'cancelOperation', name: 'operations.cancel', method: 'POST',
+export const CANCEL_OPERATION = { ...base, principalKinds: ['business_key', 'delegation', 'user_delegation'], userExecution: 'direct', id: 'cancelOperation', name: 'operations.cancel', method: 'POST',
     path: '/api/v1/inbox/{businessId}/operations/{operationId}/cancel', pathTemplate: '/api/v1/inbox/:businessId/operations/:operationId/cancel',
     requiredScopes: ['operations.read'], humanPermissions: ['campaigns.send', 'inbox.view'], idempotency: 'required' } as const;
 export function parseOperationCancellation(raw: string | Uint8Array): {

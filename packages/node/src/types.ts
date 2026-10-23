@@ -1,19 +1,54 @@
 import type { PublicChannel, PublicConversationState, PublicOrderState, PublicPaymentState } from './generated/wire.js';
 export type {BlueprintRolloutClient,BlueprintRolloutFailure,BlueprintRolloutPlan,BlueprintRolloutOutcome} from './blueprintRollouts.js';
-export type {ManagedPublicationRequest} from './generated/flowPublicationRequests.js';
+export type {ManagedPublicationRequest,FlowPublicationChecks,FlowPublicationBlocker,WithdrawFlowPublicationInput} from './generated/flowPublicationRequests.js';
+export type FlowPublicationRequestInput = Omit<import('./generated/flowPublicationRequests.js').ManagedPublicationInput, 'kind'>;
+export type { PreparedNotification, PreparedMessagingConfiguration, NotificationPreparationResult, ApplyPreparedNotificationInput, ApplyPreparedMessagingConfigurationInput } from './generated/commandPreparationTypes.js';
+export type { ConversationControlState, ConversationTakeoverInput, ConversationTakeoverReceipt, ConversationAssignmentInput, ConversationAssignmentReceipt,
+  ConversationSnoozeInput, ConversationSnoozeReceipt, ConversationClearSnoozeReceipt } from './generated/conversationControls.js';
+export type { ConversationHandoffReasonCode } from './generated/conversationControls.js';
+export type { KnowledgeRunProgress, KnowledgeRunStatus, KnowledgeRunParams, KnowledgeRunPage } from './generated/knowledgeRuns.js';
+export type { KnowledgeSourceMetadata, KnowledgeSourceKind, KnowledgeSourceStatus, KnowledgeSourceParams, KnowledgeSourcePage } from './generated/knowledgeSources.js';
+export type { ImportWebsiteKnowledgeInput, WebsiteKnowledgeImportReceipt } from './generated/knowledgeWebsiteImports.js';
+export type { RemoveWebsiteKnowledgeInput, WebsiteKnowledgeRemovalReceipt } from './generated/knowledgeWebsiteRemovals.js';
+export type { RemoveKnowledgeSourceInput, KnowledgeSourceRemovalReceipt } from './generated/knowledgeSourceRemovals.js';
+export type { KnowledgeDocumentMetadata } from './generated/knowledgeDocuments.js';
+export type { LoyaltyMembership, LoyaltyWallet, LoyaltyMembershipTier } from './generated/loyaltyMembership.js';
+export type { KnowledgeSectionContent, KnowledgeSectionContentPage, KnowledgeSectionParams } from './generated/knowledgeSections.js';
+export type { SetKnowledgeSectionOverrideInput, AcknowledgeKnowledgeSectionOverrideInput, KnowledgeSectionEditReceipt } from './generated/knowledgeSectionEdits.js';
+export type { FlowStep, FlowStepCatalog, SavedFlowBlockParams, SavedFlowBlockReference, SavedFlowBlockPage,
+  SavedFlowBlockInterfaceParams, SavedFlowBlockInterface, SavedFlowBlockField } from './generated/flowSteps.js';
+export type { ConversationAssignee, ConversationAssigneeParams } from './generated/conversationAssignees.js';
+export type { ConversationControlHistoryParams, ConversationControlHistoryPage, ConversationControlHistoryEvent } from './generated/conversationControlHistory.js';
 
-export interface ClientOptions {
-  /** Workspace API key. Keep it on your server. No provider credentials are needed. */
-  apiKey: string;
+export interface AccessTokenRequest {
+  readonly operation: import('./generated/operations.js').PublicOperationId;
+  readonly method: string;
+  readonly route: string;
+  readonly body: string | null;
+  readonly idempotencyKey: string | null;
+  readonly businessId: string | null;
+  readonly grantId: string | null;
+  readonly signal: AbortSignal;
+}
+/** Return an API-resource access token. Called for each attempt within the
+ * request deadline; retain refresh tokens in your own trusted token manager. */
+export type AccessTokenProvider = (request: AccessTokenRequest) => string | Promise<string>;
+export interface ClientSettings {
   /** Total request budget, including retries and workspace discovery. Default: 20,000 ms. */
   timeoutMs?: number;
   /** Maximum time for one attempt. Default: 10,000 ms. */
   attemptTimeoutMs?: number;
   /** Additional attempts for eligible transient failures. Default: 2. */
   maxRetries?: number;
-  /** Trusted Fetch implementation for testing or instrumentation; receives the API key. */
+  /** Trusted Fetch implementation for testing or instrumentation; receives the credential. */
   fetch?: typeof globalThis.fetch;
 }
+export type ClientOptions = ClientSettings & (
+  /** Workspace API key. Keep it on your server. */
+  { apiKey: string; accessToken?: never }
+  /** OAuth is optional. Use only credentials issued for the InsideDM API resource. */
+  | { accessToken: string | AccessTokenProvider; apiKey?: never }
+);
 
 export interface RequestOptions {
   /** Cancel this request with the caller's AbortSignal. */
@@ -32,9 +67,23 @@ export interface WriteRequestOptions extends RequestOptions {
 }
 
 export type WriteRecovery = {operation:'updateContactAttributes';contactId:string;idempotencyKey:string}
+  |{operation:'importWebsiteKnowledge'|'removeWebsiteKnowledge';idempotencyKey:string}
+  |{operation:'removeKnowledgeSource';sourceId:string;expectedVersion:number;idempotencyKey:string}
+  |{operation:'setKnowledgeSectionOverride'|'acknowledgeKnowledgeSectionOverride';sectionId:string;expectedVersion:number;idempotencyKey:string}
+  |{operation:'createContactField';idempotencyKey:string}
+  |{operation:'archiveContactField';definitionId:string;expectedVersion:number;idempotencyKey:string}
+  |{operation:'configureContactFieldMemory';definitionId:string;expectedVersion:number;idempotencyKey:string}
+  |{operation:'updateConversationControl';conversationId:string;expectedRevision:string;idempotencyKey:string;action:'take_over'|'snooze'|'clear_snooze'}
+  |{operation:'updateConversationControl';conversationId:string;expectedRevision:string;idempotencyKey:string;action:'assign';assigneeUserId:string|null}
+  |{operation:'saveFlowRegressionSuite';recipeId:string;suiteId:string|null;expectedRevision:number|null;idempotencyKey:string}
+  |{operation:'runFlowRegression';recipeId:string;releaseRequestId:string;suiteId:string;expectedSuiteRevision:number;idempotencyKey:string}
+  |{operation:'prepareNotification';idempotencyKey:string}
+  |{operation:'updateMessagingConfiguration';idempotencyKey:string}
+  |{operation:'prepareMessagingConfiguration';idempotencyKey:string}
   |{operation:'requestFlowPublication';recipeId:string;idempotencyKey:string}
+  |{operation:'withdrawFlowPublication';recipeId:string;releaseRequestId:string;idempotencyKey:string}
   |{operation:'createBlueprintVersion';blueprintKey:string;version:number;idempotencyKey:string}
-  |{operation:'applyBlueprintUpdate';recipeId:string;idempotencyKey:string}
+  |{operation:'saveFlowDraft';recipeId:string;idempotencyKey:string}
   |{operation:'importFlowTemplate';packId:string;idempotencyKey:string}
   |{operation:'replayPlatformSubscriptionDelivery';subscriptionId:string;businessId:string;deliveryId:string;idempotencyKey:string}
   |{operation:'recoverPlatformSubscriptionReceiver';subscriptionId:string;businessId:string;idempotencyKey:string}
@@ -64,6 +113,15 @@ export type {PublicPartnerApiUsage} from './generated/partnerUsage.js';
 export type { SoftwareUsageSummary, SoftwareLimits } from './generated/softwareUsage.js';
 export type { FlowTemplateImportBody, FlowTemplateImportReceipt, FlowTemplateCatalog, FlowTemplateSummary, FlowTemplateBinding, FlowTemplateDeployment } from './generated/flowTemplateDeployments.js';
 export interface FlowTemplateCatalogParams { limit?: number; cursor?: string }
+export type {FlowRegressionSuites,FlowRegressionRun,RunFlowRegressionInput,FlowRegressionConfiguration,FlowRegressionSuite,SaveFlowRegressionSuiteInput,FlowRegressionCase} from './generated/flowRegressionTypes.js';
+export type FlowRegressionSuiteEdits=Partial<Pick<import('./generated/flowRegressionTypes.js').SaveFlowRegressionSuiteInput,'name'|'required'|'status'|'cases'>>;
+export type {FlowDraftSimulation,SimulateFlowDraftInput} from './generated/flowSimulationTypes.js';
+export type {FlowGovernanceConfiguration} from './generated/flowGovernanceTypes.js';
+export type {FlowDeploymentCatalog,FlowDeploymentSummary} from './generated/flowDeploymentCatalogTypes.js';
+export type {FlowDraftSnapshot,AvailableFlowDraft,ManagedFlowDraftSaveReceipt as FlowDraftSaveReceipt} from './generated/flowDraftTypes.js';
+export type SaveFlowDraftInput=Omit<import('./generated/flowDraftTypes.js').ManagedFlowDraftSaveInput,'kind'>;
+export type {FlowDefinitionV1 as FlowDraftDefinition,FlowNodeV1,FlowEdgeV1} from './generated/nativeFlowTypes.js';
+export type FlowSimulationOptions=Omit<import('./generated/flowSimulationTypes.js').SimulateFlowDraftInput,'expectedRevision'>;
 export interface SoftwareUsageInput { from: string | Date; to: string | Date }
 export type {CreatePlatformBusinessInput,RenewBusinessClaimLinkInput,PublicBusinessCreation,BusinessCreationLink} from './generated/businessCreations.js';
 export type {CreateOnboardingSessionInput,PublicOnboardingSession,CreatedOnboardingSession} from './generated/onboardingSessions.js';
@@ -74,7 +132,7 @@ export interface PartnerDeliveryListInput extends Omit<import('./generated/partn
 export interface PartnerDeliveryReplayInput extends PartnerDeliveryTarget{reason:import('./generated/partnerSubscriptionDiagnostics.js').PartnerDeliveryReplayReason}
 export interface PartnerReceiverRecoveryInput extends PartnerDeliveryTarget{expectedRevision:string}
 export interface PartnerApiUsageInput{businessId:string;granularity?:'day'|'minute';from?:string|Date;to?:string|Date}
-export interface CreateInstallationRequestInput{scopes:readonly import('./generated/vocabulary.js').PublicScope[];returnUrl:string}
+export interface CreateInstallationRequestInput{scopes:readonly import('./generated/vocabulary.js').MachinePublicScope[];returnUrl:string}
 export type { RecordMarketingOptInInput, MarketingOptInRegistration } from './generated/consents.js';
 export type { ReplaceContactTagsInput, ReplacedContactTags } from './generated/contactTags.js';
 export type CreateContactInput = Omit<import('./generated/contactCreation.js').CreateContactRequest, 'channel'>;
@@ -94,6 +152,7 @@ export type NotificationInput=Omit<CanonicalNotification,'content'|'intent'|'to'
 export type {PublicOperation,PublicOperationState,PublicOperationEffects} from './generated/operation.js';
 export type {MessagePreview} from './generated/messageOperations.js';
 export type {PublicTemplate, TemplateListParams, MessagingReadiness, PublicMessagingConfiguration} from './generated/messagingDiscovery.js';
+export type { MessagingConfiguration, MessagingConfigurationUpdate, MessagingConfigurationSnapshot } from './generated/messagingConfiguration.js';
 
 export interface ResponseMeta {
   /** Server correlation ID for support; never a client-generated substitute. */
@@ -126,11 +185,15 @@ export interface PaginationOptions extends RequestOptions {
   maxItems?: number;
 }
 
-export type { PublicScope, DeveloperEventType, DeveloperSubscriptionEventType } from './generated/vocabulary.js';
+export type { PublicScope, MachinePublicScope, DeveloperEventType, DeveloperSubscriptionEventType } from './generated/vocabulary.js';
 export type * from './generated/wire.js';
 export type { PublicProblem, PublicFieldError, DeveloperProblemCode } from './generated/problem.js';
 export type { ContactAttributeValue, UpdateContactAttributesInput, UpdatedContactAttributes } from './generated/contactAttributes.js';
 export type { PublishEventInput } from './generated/eventPublish.js';
 export type { PublicFlowRun } from './generated/flowRunProgress.js';
+export type { FlowRunListParams, FlowRunPage } from './generated/flowRunCatalogTypes.js';
 export type {PublicEventBinding,EventBindingParams} from './generated/eventBindings.js';
 export type { OperationLookupInput } from './generated/messageOperations.js';
+export type * from './generated/analyticsTypes.js';
+export type { ContactFieldCatalog, ContactFieldDefinition, CreateContactFieldInput, CreatedContactField, ArchiveContactFieldInput, ArchivedContactField,
+  ConfigureContactFieldMemoryInput, ConfiguredContactFieldMemory } from './generated/contactFields.js';

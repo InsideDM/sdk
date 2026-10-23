@@ -58,13 +58,18 @@ production acceptance is pending.** Use the offline client below to explore the
 interface without service access.
 CommonJS uses `const { InsideDM } = require('@insidedm/sdk')`.
 
+Applications that already manage OAuth can use an optional
+[user access-token provider](docs/user-access.md) for supported business reads.
+
 ## What you can build
 
 | Business need | SDK capabilities |
 | --- | --- |
 | Customer notifications | Discover approved templates, preview eligibility and send WhatsApp notifications. |
 | CRM synchronization | Create contacts and update names, tags and custom fields. |
+| Loyalty support | Read current membership, points or stamps, held value, tier and next expiry with `loyalty.members.get(contactId)`. |
 | Event-driven automation | Start published flows from your order, CRM or business events and inspect run progress. |
+| Business knowledge | Read document versions and source/import progress, import or refresh websites, read and correct knowledge with explicit content grants, or remove a website, note or uploaded document while preserving your corrections. |
 | Reliable processing | Recover submissions with the original intent key, inspect operations and verify signed webhooks. |
 | n8n integrations | Connect customer workflows using importable examples, published flows and verified events. |
 
@@ -110,6 +115,55 @@ const { data: status } = await insideDM.operations.get(submission.id);
 Keep the event ID stable and match `properties` to the flow's configured mappings.
 Tracking needs `operations.read`; run reads need `flows.read`. See
 [flow inputs and run progress](https://github.com/insideDM/sdk/blob/main/packages/node/docs/business-reference.md#start-a-published-flow-from-your-business-system).
+
+## Configure message defaults
+
+Use `messaging.configuration.read` and `messaging.configuration.write` to manage
+template aliases and text-purpose bindings through the same settings owner as the
+dashboard. Read the current version before replacing the configuration.
+
+```ts
+const { data: current } = await insideDM.messaging.getConfiguration();
+const { data: saved } = await insideDM.messaging.updateConfiguration({
+  expectedVersion: current.version,
+  configuration: {
+    ...current.value,
+    templateAliases: {
+      ...current.value.templateAliases,
+      order_confirmation: process.env.INSIDEDM_TEMPLATE_ID!,
+    },
+  },
+}, { idempotencyKey: 'configure-order-confirmation-v1' });
+```
+
+A stale version returns `revision_conflict`. Reuse the same key and input when
+recovering an uncertain request; retries read current settings without applying
+the change again. Configuration changes do not grant consent or send messages.
+
+For a connected user's approval flow, use `messaging.preparations.create()` with
+that same input. Show its `review.url` to the user, check the preparation with
+`messaging.preparations.get(id)`, then call `messaging.preparations.apply(id,
+{ expectedRevision: ready.revision })` only when its state is `ready`. These
+methods use user access with both configuration scopes. An `applied` result
+identifies the original native audit and settings version; retries recover that
+result. [User access and review](https://github.com/insideDM/sdk/blob/main/packages/node/docs/user-access.md).
+
+## Read business analytics
+
+Use a key with `analytics.read`. Calendar windows use your business timezone;
+custom dates are inclusive. This returns the same report as the Analytics page.
+
+```ts
+const { data: report } = await insideDM.analytics.get({
+  channel: 'whatsapp',
+  range: 'month',
+});
+
+console.log(report.window, report.kpis, report.replyTimes);
+```
+
+For a custom window, use `{ range: 'custom', start: '2026-10-01', end: '2026-10-15' }`.
+Unavailable comparisons have an explicit reason; a missing measure is not zero.
 
 ## Errors and request tracing
 

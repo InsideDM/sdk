@@ -2,7 +2,7 @@
 export const LIST_EVENT_BINDINGS_OPERATION = {
     id: 'listEventBindings', name: 'events.bindings.list', audience: 'conversations', method: 'GET',
     path: '/api/v1/flows/{businessId}/recipes', pathTemplate: '/api/v1/flows/:businessId/recipes',
-    principalKinds: ['business_key', 'delegation'], requiredScopes: ['events.write'], humanPermissions: ['flows.publish'], idempotency: 'none', scope: 'workspace',
+    principalKinds: ['business_key', 'delegation', 'user_delegation'], requiredScopes: ['events.write'], humanPermissions: ['flows.publish'], idempotency: 'none', scope: 'workspace',
 } as const;
 export interface EventBindingParams {
     limit?: number;

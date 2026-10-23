@@ -218,7 +218,7 @@ test('public source export uses a fresh allowlisted directory and refuses overwr
     assert.ok(existsSync(resolve(target, '.github/workflows/node-ci.yml')));
     assert.ok(existsSync(resolve(target, '.github/workflows/node-release.yml')));
     assert.ok(existsSync(resolve(target, 'packages/python/README.md')));
-    assert.equal(existsSync(resolve(target, 'packages/python/pyproject.toml')), false);
+    assert.equal(existsSync(resolve(target, 'packages/python/pyproject.toml')), true);
     assert.equal(existsSync(resolve(target, 'packages/node/.github')), false);
     for (const path of ['docs/partner-quickstart.md', 'docs/partner-reference.md', 'docs/client-provisioning.md', 'docs/hosted-onboarding.md', 'docs/partner-webhooks.md', 'docs/blueprints.md', 'examples/managedRolloutWorker.mjs']) assert.equal(existsSync(resolve(target, 'packages/node', path)), false);
     for (const path of ['.git', 'node_modules', 'dist', 'apps', 'env', 'infra', 'pnpm-lock.yaml']) assert.equal(existsSync(resolve(target, path)), false);

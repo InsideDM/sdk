@@ -1,5 +1,5 @@
 // Generated from the authoritative InsideDM public contract. Do not edit by hand.
-import { parsePublicScopes, type PublicScope } from './vocabulary.js';
+import { parseMachinePublicScopes, type MachinePublicScope } from './vocabulary.js';
 import { parsePartnerPlatformScopes, type PartnerPlatformScope } from './partnerScopes.js';
 export const GET_APPLICATION_SELF_OPERATION = { id: 'getApplicationSelf', name: 'platform.self.get', audience: 'accounts', method: 'GET',
     path: '/api/v1/platform/self', pathTemplate: '/api/v1/platform/self', principalKinds: ['app'], requiredScopes: [], allowAnyLiveApplication: true, scope: 'portfolio', idempotency: 'none' } as const;
@@ -14,7 +14,7 @@ export interface PublicApplicationSelf {
         name: string;
     };
     scopes: PartnerPlatformScope[];
-    maximumBusinessScopes: PublicScope[];
+    maximumBusinessScopes: MachinePublicScope[];
     returnUrls: string[];
     credentialExpiresAt: string;
 }
@@ -32,7 +32,7 @@ export function parseApplicationSelf(value: unknown): PublicApplicationSelf {
     exact(value, ['application', 'partner', 'scopes', 'maximumBusinessScopes', 'returnUrls', 'credentialExpiresAt']);
     exact(value.application, ['id', 'name', 'status']);
     exact(value.partner, ['id', 'name']);
-    const scopes = Array.isArray(value.scopes) && value.scopes.length === 0 ? [] : parsePartnerPlatformScopes(value.scopes), maximum = parsePublicScopes(value.maximumBusinessScopes);
+    const scopes = Array.isArray(value.scopes) && value.scopes.length === 0 ? [] : parsePartnerPlatformScopes(value.scopes), maximum = parseMachinePublicScopes(value.maximumBusinessScopes);
     if (!uuid(value.application.id) || !name(value.application.name) || value.application.status !== 'active' || !uuid(value.partner.id) || !name(value.partner.name)
         || !scopes || !Array.isArray(maximum) || !maximum.length || !Array.isArray(value.returnUrls) || value.returnUrls.length > 20 || new Set(value.returnUrls).size !== value.returnUrls.length
         || typeof value.credentialExpiresAt !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value.credentialExpiresAt)

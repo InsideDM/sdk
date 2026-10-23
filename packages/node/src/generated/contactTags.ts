@@ -16,7 +16,8 @@ export const REPLACE_CONTACT_TAGS_OPERATION = {
     id: 'replaceContactTags', name: 'contacts.tags.replace', audience: 'conversations', method: 'PATCH',
     path: '/api/v1/dashboard/{businessId}/contacts/{contactId}/tags',
     pathTemplate: '/api/v1/dashboard/:businessId/contacts/:contactId/tags',
-    principalKinds: ['business_key', 'delegation'], requiredScopes: ['contacts.write'], humanPermissions: ['contacts.edit'],
+    principalKinds: ['business_key', 'delegation', 'user_delegation'], requiredScopes: ['contacts.write'], humanPermissions: ['contacts.edit'],
+    userExecution: 'direct',
     idempotency: 'required', scope: 'workspace',
 } as const;
 export class ContactTagsRequestError extends Error {

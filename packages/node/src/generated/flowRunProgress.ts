@@ -3,7 +3,7 @@ export const GET_FLOW_RUN_OPERATION = {
     id: 'getFlowRun', name: 'flows.runs.get', audience: 'conversations', method: 'GET',
     path: '/api/v1/dashboard/{businessId}/agent-runs/{runId}',
     pathTemplate: '/api/v1/dashboard/:businessId/agent-runs/:runId',
-    principalKinds: ['business_key', 'delegation'], requiredScopes: ['flows.read'], humanPermissions: ['flows.view'],
+    principalKinds: ['business_key', 'delegation', 'user_delegation'], requiredScopes: ['flows.read'], humanPermissions: ['flows.view'],
     idempotency: 'none', scope: 'workspace',
 } as const;
 export interface PublicFlowRun {

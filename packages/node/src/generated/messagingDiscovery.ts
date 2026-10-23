@@ -37,7 +37,7 @@ export interface PublicMessagingConfiguration {
     value: MessagingConfiguration;
     version: number | null;
 }
-const base = { audience: 'conversations', principalKinds: ['business_key', 'delegation'], scope: 'workspace', method: 'GET', idempotency: 'none' } as const;
+const base = { audience: 'conversations', principalKinds: ['business_key', 'delegation', 'user_delegation'], scope: 'workspace', method: 'GET', idempotency: 'none' } as const;
 export const LIST_TEMPLATES_OPERATION = { ...base, id: 'listTemplates', name: 'templates.list',
     path: '/api/v1/inbox/{businessId}/templates', pathTemplate: '/api/v1/inbox/:businessId/templates',
     requiredScopes: ['templates.read'], humanPermissions: ['inbox.view', 'inbox.reply'] } as const;

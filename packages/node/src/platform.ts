@@ -17,16 +17,17 @@ import {parseCreateInstallationRequest,parseCreatedInstallationRequest,parseInst
   type CreatedInstallationRequest,type PublicInstallationRequest} from './generated/installationRequests.js';
 import {parseApplicationCredential} from './generated/applicationCredential.js';
 import {parseBusinessDelegation,type BusinessDelegation} from './generated/delegationExchange.js';
-import {parsePublicScopes,type PublicScope} from './generated/vocabulary.js';
-import type {ClientOptions,RequestOptions,WriteRequestOptions,Result,CreateInstallationRequestInput,PartnerApiUsageInput} from './types.js';
+import {parseMachinePublicScopes,type MachinePublicScope} from './generated/vocabulary.js';
+import type {ClientSettings,RequestOptions,WriteRequestOptions,Result,CreateInstallationRequestInput,PartnerApiUsageInput} from './types.js';
 
-export interface PlatformClientOptions extends ClientOptions{
+export interface PlatformClientOptions extends ClientSettings{
   /** Your server application credential (idmp_). Business approval is still required. */
   apiKey:string;
+  accessToken?:never;
 }
 export interface ForBusinessOptions{
   /** Optional narrower business scopes. Omit to use the approved installation's effective scopes. */
-  scopes?:readonly PublicScope[];
+  scopes?:readonly MachinePublicScope[];
 }
 interface Flight{controller:AbortController;promise:Promise<BusinessDelegation>;waiters:number;done:boolean}
 interface Entry{token:BusinessDelegation|null;flights:Map<string,Flight>}
@@ -52,7 +53,7 @@ export class InsideDMPlatform{
   readonly self;
   readonly installationRequests;
   readonly #transport:Transport;
-  readonly #options:Omit<ClientOptions,'apiKey'>;
+  readonly #options:ClientSettings;
   readonly #entries=new Map<string,Entry>();
   #pending=0;
   #applicationId:string|null=null;
@@ -264,7 +265,7 @@ export class InsideDMPlatform{
   forBusiness(businessId:string,options:ForBusinessOptions={}):BusinessClient{
     if(typeof businessId!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(businessId))throw new InsideDMConfigurationError('businessId: use the saved InsideDM business ID from this client\'s approved connection.', 'businessId');
     if(!options||typeof options!=='object'||Array.isArray(options)||Object.keys(options).some(key=>key!=='scopes'))throw new InsideDMConfigurationError('Business selection accepts only an optional scope subset.');
-    const parsed=options.scopes===undefined?null:parsePublicScopes(options.scopes);
+    const parsed=options.scopes===undefined?null:parseMachinePublicScopes(options.scopes);
     if(parsed!==null&&!Array.isArray(parsed))throw new InsideDMConfigurationError('Provide a nonempty set of known business scopes.');
     const id=businessId.toLowerCase(),scopes=parsed===null?null:Object.freeze([...parsed]),key=`${id}\0${scopes?.join(',')??'*'}`;
     return new DelegatedBusinessClient(new Transport(this.#options,{kind:'delegation',businessId:id,
@@ -282,7 +283,7 @@ export class InsideDMPlatform{
     }
     const entry:Entry={token:null,flights:new Map()};this.#entries.set(key,entry);return entry;
   }
-  async #exchange(businessId:string,scopes:readonly PublicScope[]|null,options:AcquisitionOptions,signal:AbortSignal):Promise<BusinessDelegation>{
+  async #exchange(businessId:string,scopes:readonly MachinePublicScope[]|null,options:AcquisitionOptions,signal:AbortSignal):Promise<BusinessDelegation>{
     const {body}=await this.#transport.request('createBusinessDelegation',{},{},{signal,timeoutMs:120_000,
       attemptTimeoutMs:options.attemptTimeoutMs,maxRetries:options.maxRetries},{body:JSON.stringify({businessId,...(scopes?{scopes}:{})})});
     let grant:BusinessDelegation;
@@ -293,7 +294,7 @@ export class InsideDMPlatform{
       throw new InsideDMProtocolError('InsideDM returned an inconsistent business delegation.',{code:'invalid_response'});
     this.#applicationId=grant.applicationId;return grant;
   }
-  async #acquire(key:string,businessId:string,scopes:readonly PublicScope[]|null,options:AcquisitionOptions):Promise<string>{
+  async #acquire(key:string,businessId:string,scopes:readonly MachinePublicScope[]|null,options:AcquisitionOptions):Promise<string>{
     if(options.signal?.aborted)throw stopped('aborted');
     const deadline=performance.now()+options.timeoutMs,entry=this.#entry(key);
     if(entry.token&&Date.parse(entry.token.expiresAt)>Date.now()+REFRESH_SKEW_MS)return entry.token.token;

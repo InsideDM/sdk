@@ -1,17 +1,28 @@
 // Generated from the authoritative InsideDM public contract. Do not edit by hand.
 export const PUBLIC_API_SCOPES = [
+    'analytics.read',
     "contacts.read",
     'contacts.write',
     "conversations.read",
+    'conversations.takeover',
+    'conversations.assign',
+    'conversations.snooze',
     "messages.read",
     'messages.send',
     'operations.read',
     'events.write',
     'flows.read',
     'flows.deploy',
+    'flows.test',
+    'knowledge.read',
+    'knowledge.content.read',
+    'knowledge.content.write',
+    'knowledge.write',
+    'loyalty.read',
     'templates.read',
     'messaging.read',
     'messaging.configuration.read',
+    'messaging.configuration.write',
     'consents.write',
     'consents.read',
     'usage.read',
@@ -19,6 +30,8 @@ export const PUBLIC_API_SCOPES = [
     "shipments.read",
 ] as const;
 export type PublicScope = (typeof PUBLIC_API_SCOPES)[number];
+export const MACHINE_PUBLIC_API_SCOPES = PUBLIC_API_SCOPES.filter(scope => scope !== 'conversations.takeover' && scope !== 'conversations.assign' && scope !== 'conversations.snooze');
+export type MachinePublicScope = (typeof MACHINE_PUBLIC_API_SCOPES)[number];
 export const DEVELOPER_EVENT_TYPES = [
     'operation.changed',
     "contact.changed",
@@ -67,4 +80,14 @@ export function parsePublicScopes(input: unknown): PublicScope[] | PublicScopePa
         seen.add(entry);
     }
     return PUBLIC_API_SCOPES.filter((scope) => seen.has(scope));
+}
+export function parseMachinePublicScopes(input: unknown): MachinePublicScope[] | PublicScopeParseError {
+    const parsed = parsePublicScopes(input);
+    if (!Array.isArray(parsed))
+        return parsed;
+    const supported = new Set<string>(MACHINE_PUBLIC_API_SCOPES);
+    for (const scope of parsed)
+        if (!supported.has(scope))
+            return { error: 'unknown_scope', scope };
+    return MACHINE_PUBLIC_API_SCOPES.filter(scope => parsed.includes(scope));
 }

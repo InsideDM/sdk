@@ -13,6 +13,12 @@ const AT = '2026-01-01T00:00:00.000Z';
 const FIXTURE_KEY = `idm_${Buffer.alloc(12).toString('base64url')}_${Buffer.alloc(32).toString('base64url')}`;
 export const TEST_WEBHOOK_SECRET = `whsec_${Buffer.alloc(32).toString('base64url')}`;
 
+// OpenAPI concrete paths take precedence over templated paths. Declaration
+// order must not turn `templates` or `messaging-readiness` into a conversation ID.
+const routeSpecificity = (path: string) => path.split('/').map(segment => segment.startsWith('{') ? '1' : '0').join('');
+const operationsBySpecificity = Object.values(PUBLIC_OPERATIONS).sort((left, right) =>
+  routeSpecificity(left.path).localeCompare(routeSpecificity(right.path)));
+
 /** Deterministic synthetic data; never merchant records or production credentials. */
 function fixture(schema: Schema): unknown {
   if (schema.$ref) return fixture((SCHEMAS as Readonly<Record<string, Schema>>)[schema.$ref.split('/').at(-1)!]!);
@@ -20,6 +26,7 @@ function fixture(schema: Schema): unknown {
   if (schema.enum) return schema.enum[0];
   if (schema.allOf) return Object.assign({}, ...schema.allOf.map(fixture));
   if (schema.oneOf) return fixture(schema.oneOf[0]!);
+  if (schema.anyOf) return fixture(schema.anyOf[0]!);
   const types = typeof schema.type === 'string' ? [schema.type] : schema.type ?? [];
   if (types.includes('null')) return null;
   if (types.includes('object')) return Object.fromEntries(Object.entries(schema.properties ?? {}).map(([key, value]) => [key, fixture(value)]));
@@ -45,23 +52,43 @@ export function createTestClient(options: TestClientOptions = {}): InsideDM {
     const request = new Request(input, init);
     const url = new URL(request.url);
     if (url.origin !== DEFAULT_API_BASE_URL) throw new Error('Fixture transport refuses unexpected hosts.');
-    const operation = Object.values(PUBLIC_OPERATIONS).find((candidate) => candidate.method === request.method && new RegExp(`^${candidate.path.replace(/\{[^}]+\}/g, '[^/]+')}$`).test(url.pathname));
+    const operation = operationsBySpecificity.find((candidate) => candidate.method === request.method && new RegExp(`^${candidate.path.replace(/\{[^}]+\}/g, '[^/]+')}$`).test(url.pathname));
     if (!operation) throw new Error('Fixture transport received an unknown operation.');
     const importInput=operation===PUBLIC_OPERATIONS.importFlowTemplate?await request.clone().json() as {version:string;blueprint?:{digest:string}}:null;
-    const updateInput=operation===PUBLIC_OPERATIONS.previewBlueprintUpdate||operation===PUBLIC_OPERATIONS.applyBlueprintUpdate?await request.clone().json() as {target:BlueprintUpdateTarget;bindings?:Record<string,FlowTemplateBinding>;expectedDeploymentRevision?:number;expectedDraftRevision?:number}:null;
+    const configurationInput = operation === PUBLIC_OPERATIONS.updateMessagingConfiguration
+      ? await request.clone().json() as { configuration: unknown; expectedVersion: number | null } : null;
+    const updateInput=operation===PUBLIC_OPERATIONS.previewBlueprintUpdate||operation===PUBLIC_OPERATIONS.saveFlowDraft?await request.clone().json() as {kind?:string;target:BlueprintUpdateTarget;bindings?:Record<string,FlowTemplateBinding>;expectedDeploymentRevision?:number;expectedDraftRevision?:number}:null;
     const publicationInput=operation===PUBLIC_OPERATIONS.requestFlowPublication?await request.clone().json() as {expectedDeploymentRevision:number;expectedDraftRevision:number}:null;
-    const body = operation===PUBLIC_OPERATIONS.requestFlowPublication||operation===PUBLIC_OPERATIONS.getFlowPublicationRequest
+    const settingsPreparation = operation===PUBLIC_OPERATIONS.prepareMessagingConfiguration||operation===PUBLIC_OPERATIONS.getPreparedMessagingConfiguration||operation===PUBLIC_OPERATIONS.applyPreparedMessagingConfiguration;
+    const preparationId=operation===PUBLIC_OPERATIONS.prepareMessagingConfiguration?TEST_ID:url.pathname.split('/').at(operation===PUBLIC_OPERATIONS.applyPreparedMessagingConfiguration?-2:-1)!;
+    const controlInput=operation===PUBLIC_OPERATIONS.updateConversationControl?await request.clone().json() as {action:'take_over'|'assign';assigneeUserId?:string|null}:null;
+    const body = controlInput
+      ? {data:{businessId:TEST_ID,conversationId:url.pathname.split('/').at(-1),auditId:TEST_ID,requestId:TEST_REQUEST_ID,
+        action:controlInput.action,assigneeUserId:controlInput.action==='take_over'?TEST_ID:controlInput.assigneeUserId??null,changed:true,appliedRevision:'cc1_'+'1'.repeat(64)}}
+      : operation===PUBLIC_OPERATIONS.getConversationControl
+      ? {data:{businessId:TEST_ID,conversationId:url.pathname.split('/').at(-1),revision:'cc1_'+'0'.repeat(64),channel:'whatsapp',lifecycle:'open',
+        owner:{kind:'unassigned',userId:null},automation:{paused:false,pausedAt:null},snoozedUntil:null,handoff:null,updatedAt:AT}}
+      : settingsPreparation
+      ? {data:{businessId:TEST_ID,id:preparationId,kind:'messaging_configuration',state:'awaiting_review',revision:1,intentDigest:'0'.repeat(64),
+        createdAt:AT,updatedAt:AT,expiresAt:'2026-01-01T00:15:00.000Z',reviewedAt:null,reasonCode:null,result:null,
+        review:{url:`https://insidedm.io/approve/settings/${TEST_ID}/${preparationId}`,expiresAt:'2026-01-01T00:15:00.000Z'}}}
+      : operation===PUBLIC_OPERATIONS.requestFlowPublication||operation===PUBLIC_OPERATIONS.getFlowPublicationRequest
       ? {data:{businessId:TEST_ID,recipeId:url.pathname.split('/').at(operation===PUBLIC_OPERATIONS.requestFlowPublication?-2:-3),id:operation===PUBLIC_OPERATIONS.requestFlowPublication?TEST_ID:url.pathname.split('/').at(-1),
         deploymentRevision:publicationInput?.expectedDeploymentRevision??1,draftRevision:publicationInput?.expectedDraftRevision??1,status:'pending',requestedAt:AT,publishedVersionId:null}}
       : operation===PUBLIC_OPERATIONS.previewBlueprintUpdate
       ? {data:{businessId:TEST_ID,recipeId:url.pathname.split('/').at(-3),deploymentRevision:1,draftRevision:1,from:updateInput!.target,target:updateInput!.target,
         state:'action_required',reasons:['source_unavailable'],bindings:updateInput!.bindings??{},changes:null}}
-      : operation===PUBLIC_OPERATIONS.applyBlueprintUpdate
-      ? {data:{businessId:TEST_ID,recipeId:url.pathname.split('/').at(-2),deploymentRevision:updateInput!.expectedDeploymentRevision,draftRevision:updateInput!.expectedDraftRevision,status:'unchanged',target:updateInput!.target}}
+      : operation===PUBLIC_OPERATIONS.saveFlowDraft
+      ? {data:{businessId:TEST_ID,recipeId:url.pathname.split('/').at(-2),deploymentRevision:updateInput!.expectedDeploymentRevision,draftRevision:updateInput!.expectedDraftRevision,status:'unchanged',
+        ...(updateInput!.kind==='managed_draft'?{kind:'managed_draft',fingerprint:'sha256:'+'0'.repeat(64),sideEffects:false}:{target:updateInput!.target})}}
       : operation === PUBLIC_OPERATIONS.getFlowDeployment
-      ? { data: {businessId:TEST_ID,recipeId:url.pathname.split('/').at(-2),revision:1,flowStatus:'draft',publication:{versionId:null,state:'not_published'},source:{kind:'internal_template',packId:'lead-capture',version:'1',digest:'sha256:'+'0'.repeat(64)},bindings:{},overrides:{},createdAt:AT,draft:{state:'unchanged',revision:1}} }
+      ? url.searchParams.get('view')==='draft'
+        ? {data:{businessId:TEST_ID,recipeId:url.pathname.split('/').at(-2),deploymentRevision:1,revision:null,fingerprint:null,state:'unavailable',reasons:['missing_draft'],definition:null,sideEffects:false}}
+        : { data: {businessId:TEST_ID,recipeId:url.pathname.split('/').at(-2),revision:1,flowStatus:'draft',publication:{versionId:null,state:'not_published'},source:{kind:'internal_template',packId:'lead-capture',version:'1',digest:'sha256:'+'0'.repeat(64)},bindings:{},overrides:{},createdAt:AT,draft:{state:'unchanged',revision:1}} }
       : operation === PUBLIC_OPERATIONS.getFlowTemplateCatalog
-      ? { data: { businessId: TEST_ID, templates: [], dependencies: [], page: {hasMore:false,nextCursor:null} } }
+      ? url.searchParams.get('view')==='flow_deployments'
+        ? {data:{businessId:TEST_ID,deployments:[],page:{hasMore:false,nextCursor:null}}}
+        : { data: { businessId: TEST_ID, templates: [], dependencies: [], page: {hasMore:false,nextCursor:null} } }
       : operation === PUBLIC_OPERATIONS.importFlowTemplate
       ? { data: { businessId: TEST_ID, recipeId: TEST_ID, packId: url.pathname.split('/').at(-2), version: importInput!.version, digest: importInput!.blueprint?.digest??'sha256:'+'0'.repeat(64), status: 'draft' } }
       : operation === PUBLIC_OPERATIONS.publishEvent
@@ -70,10 +97,17 @@ export function createTestClient(options: TestClientOptions = {}): InsideDM {
       ? { data: { contactId: TEST_ID, revision: '1' } }
       : operation === PUBLIC_OPERATIONS.getConsentState
       ? { data: { contactId: url.searchParams.get('contactId'), identities: [] } }
+      : operation === PUBLIC_OPERATIONS.getLoyaltyMembership
+      ? { data: { businessId: TEST_ID, contactId: url.pathname.split('/').at(-2), observedAt: AT,
+        enrolled: false, preMember: false, joinedAt: null, tier: null, wallets: [], openHoldCount: 0 } }
       : operation === PUBLIC_OPERATIONS.withdrawConsent
       ? { data: { channel: 'whatsapp', purpose: (await request.clone().json() as { purpose: string }).purpose, status: 'withdrawn', changedAt: AT } }
       : operation === PUBLIC_OPERATIONS.getMessagingReadiness
       ? { data: { channel: 'whatsapp', accountReady: false, reasonCode: 'account_not_connected', textPurposeConfigured: false } }
+      : configurationInput !== null
+      ? { configuration: { value: configurationInput.configuration, version: (configurationInput.expectedVersion ?? 0) + 1 } }
+      : operation === PUBLIC_OPERATIONS.getBusinessAnalytics
+      ? { ...(fixture(operation.response) as Record<string, unknown>), channel: url.searchParams.get('channel') ?? 'all', range: url.searchParams.get('range') ?? 'month' }
       : operation === PUBLIC_OPERATIONS.getSoftwareUsage
       ? url.searchParams.get('view') === 'software_limits'
         ? { data: fixture({ $ref: '#/components/schemas/SoftwareLimits' }) }

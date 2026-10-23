@@ -53,7 +53,7 @@ export const GET_SOFTWARE_USAGE_OPERATION = {
     id: 'getSoftwareUsage', name: 'usage.get', audience: 'conversations', method: 'GET',
     path: '/api/v1/dashboard/{businessId}/billing/v2',
     pathTemplate: '/api/v1/dashboard/:businessId/billing/v2',
-    principalKinds: ['business_key', 'delegation'], requiredScopes: ['usage.read'],
+    principalKinds: ['business_key', 'delegation', 'user_delegation'], requiredScopes: ['usage.read'],
     humanPermissions: ['billing.view'], scope: 'workspace', idempotency: 'none',
 } as const;
 export const SOFTWARE_USAGE_MAX_PERIOD_DAYS = 31;

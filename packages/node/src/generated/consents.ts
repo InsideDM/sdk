@@ -41,17 +41,17 @@ export interface ContactConsentState {
 export const GET_CONSENT_STATE_OPERATION = {
     id: 'getConsentState', name: 'consents.get', audience: 'conversations', method: 'GET',
     path: '/api/v1/dashboard/{businessId}/contacts/consent-history', pathTemplate: '/api/v1/dashboard/:businessId/contacts/consent-history',
-    principalKinds: ['business_key', 'delegation'], requiredScopes: ['consents.read'], humanPermissions: ['contacts.view'], idempotency: 'none', scope: 'workspace',
+    principalKinds: ['business_key', 'delegation', 'user_delegation'], requiredScopes: ['consents.read'], humanPermissions: ['contacts.view'], idempotency: 'none', scope: 'workspace',
 } as const;
 export const WITHDRAW_CONSENT_OPERATION = {
     id: 'withdrawConsent', name: 'consents.withdraw', audience: 'conversations', method: 'POST',
     path: '/api/v1/dashboard/{businessId}/consents/withdraw', pathTemplate: '/api/v1/dashboard/:businessId/consents/withdraw',
-    principalKinds: ['business_key', 'delegation'], requiredScopes: ['consents.write'], humanPermissions: ['contacts.edit'], idempotency: 'required', scope: 'workspace',
+    principalKinds: ['business_key', 'delegation', 'user_delegation'], requiredScopes: ['consents.write'], humanPermissions: ['contacts.edit'], userExecution: 'direct', idempotency: 'required', scope: 'workspace',
 } as const;
 export const RECORD_MARKETING_OPT_IN_OPERATION = {
     id: 'recordMarketingOptIn', name: 'consents.recordMarketingOptIn', audience: 'conversations', method: 'POST',
     path: '/api/v1/dashboard/{businessId}/consents/marketing-opt-in', pathTemplate: '/api/v1/dashboard/:businessId/consents/marketing-opt-in',
-    principalKinds: ['business_key', 'delegation'], requiredScopes: ['consents.write'], humanPermissions: ['contacts.edit'], idempotency: 'required', scope: 'workspace',
+    principalKinds: ['business_key', 'delegation', 'user_delegation'], requiredScopes: ['consents.write'], humanPermissions: ['contacts.edit'], userExecution: 'direct', idempotency: 'required', scope: 'workspace',
 } as const;
 export class ConsentRequestError extends Error {
     constructor() { super('Provide a valid contact consent request.'); this.name = 'ConsentRequestError'; }

@@ -5,11 +5,11 @@ import { parseBlueprintKey } from './partnerBlueprints.js';
 export const BLUEPRINT_UPDATE_OPERATIONS = [{
         id: 'previewBlueprintUpdate', name: 'flows.deployments.previewUpdate', audience: 'conversations', method: 'POST',
         path: '/api/v1/flows/{businessId}/recipes/{recipeId}/graph/deployment-preview', pathTemplate: '/api/v1/flows/:businessId/recipes/:recipeId/graph/deployment-preview',
-        principalKinds: ['business_key', 'delegation'], requiredScopes: ['flows.deploy'], humanPermissions: ['flows.edit'], idempotency: 'none', scope: 'workspace',
+        principalKinds: ['business_key', 'delegation', 'user_delegation'], requiredScopes: ['flows.deploy'], humanPermissions: ['flows.edit'], idempotency: 'none', scope: 'workspace', userExecution: 'direct',
     }, {
-        id: 'applyBlueprintUpdate', name: 'flows.deployments.applyUpdate', audience: 'conversations', method: 'PUT',
+        id: 'saveFlowDraft', name: 'flows.drafts.save', audience: 'conversations', method: 'PUT',
         path: '/api/v1/flows/{businessId}/recipes/{recipeId}/graph', pathTemplate: '/api/v1/flows/:businessId/recipes/:recipeId/graph',
-        principalKinds: ['business_key', 'delegation'], requiredScopes: ['flows.deploy'], humanPermissions: ['flows.edit'], idempotency: 'required', scope: 'workspace',
+        principalKinds: ['business_key', 'delegation', 'user_delegation'], requiredScopes: ['flows.deploy'], humanPermissions: ['flows.edit'], idempotency: 'required', scope: 'workspace', userExecution: 'direct', bodyLimit: 528384,
     }] as const;
 export interface BlueprintUpdateTarget {
     applicationId: string;

@@ -57,6 +57,7 @@ if (!process.exitCode) {
   const pkg = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
   if (!check) {
     await writeEsmEntrypointWrappers(pkg);
+    await writeEsmDeclarationWrappers(pkg);
     await prunePrivateDeclarations(pkg);
     await prunePrivateRuntimeModules(pkg);
     await stripRuntimeComments(path.join(root, 'dist'));
@@ -100,6 +101,26 @@ async function writeEsmEntrypointWrappers(pkg){
     const body=`import runtime from ${JSON.stringify(specifier.startsWith('.')?specifier:'./'+specifier)};\n`+
       names.map(name=>`export const ${name} = runtime.${name};\n`).join('');
     await writeFile(emitted,body);
+  }
+}
+
+// Both entrypoint families refer to one declaration graph, just as their JS
+// wrappers share constructors. This avoids duplicate private-field identities
+// and ships each interface once while retaining native ESM/CJS resolution.
+async function writeEsmDeclarationWrappers(pkg){
+  const entries=new Set();
+  const collect=value=>{
+    if(typeof value==='string'&&value.startsWith('./dist/esm/')&&value.endsWith('.d.ts'))entries.add(value);
+    else if(value&&typeof value==='object')Object.values(value).forEach(collect);
+  };
+  collect(pkg.types);collect(pkg.exports);
+  if(!entries.size)throw new Error('Public ESM declaration entrypoints are missing.');
+  for(const entry of entries){
+    const emitted=path.resolve(root,entry),relative=path.relative(path.join(root,'dist','esm'),emitted);
+    if(relative.startsWith('..')||path.isAbsolute(relative))throw new Error('ESM declaration entrypoint escapes distribution.');
+    const cjs=path.join(root,'dist','cjs',relative);await readFile(cjs,'utf8');
+    const specifier=path.relative(path.dirname(emitted),cjs).split(path.sep).join('/').replace(/\.d\.ts$/,'.js');
+    await writeFile(emitted,`export * from ${JSON.stringify(specifier.startsWith('.')?specifier:'./'+specifier)};\n`);
   }
 }
 

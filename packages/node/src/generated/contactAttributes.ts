@@ -17,7 +17,8 @@ export const UPDATE_CONTACT_ATTRIBUTES_OPERATION = {
     id: 'updateContactAttributes', audience: 'conversations', method: 'PATCH',
     path: '/api/v1/dashboard/{businessId}/contacts/{contactId}/attributes',
     pathTemplate: '/api/v1/dashboard/:businessId/contacts/:contactId/attributes',
-    principalKinds: ['business_key', 'delegation'], requiredScopes: ['contacts.write'], humanPermissions: ['contacts.edit'],
+    principalKinds: ['business_key', 'delegation', 'user_delegation'], requiredScopes: ['contacts.write'], humanPermissions: ['contacts.edit'],
+    userExecution: 'direct',
     idempotency: 'required', scope: 'workspace',
 } as const;
 export class ContactAttributeRequestError extends Error {

@@ -1,6 +1,6 @@
 // Generated from the authoritative InsideDM public contract. Do not edit by hand.
 import { parseBoundedJson } from './boundedJson.js';
-import { parsePublicScopes, type PublicScope } from './vocabulary.js';
+import { parseMachinePublicScopes, type MachinePublicScope } from './vocabulary.js';
 export const INSTALLATION_OPERATIONS = [
     { id: 'getInstallation', name: 'platform.installations.get', audience: 'accounts', method: 'GET', pathTemplate: '/api/v1/platform/installations/:installationId', principalKinds: ['app'], requiredScopes: ['platform.businesses.read'], scope: 'portfolio', idempotency: 'none' },
     { id: 'revokeInstallation', name: 'platform.installations.revoke', audience: 'accounts', method: 'POST', pathTemplate: '/api/v1/platform/installations/:installationId/revoke', principalKinds: ['app'], requiredScopes: ['platform.installations.manage'], scope: 'portfolio', idempotency: 'required' },
@@ -15,7 +15,7 @@ export interface PublicInstallation {
     businessId: string;
     applicationId: string;
     status: 'active' | 'revoked' | 'suspended';
-    scopes: PublicScope[];
+    scopes: MachinePublicScope[];
     authorityVersion: string;
     revision: string;
 }
@@ -42,7 +42,7 @@ export function parsePublicInstallation(value: unknown): PublicInstallation {
     if (!record(value))
         throw new PublicInstallationError();
     exact(value, ['id', 'businessId', 'applicationId', 'status', 'scopes', 'authorityVersion', 'revision']);
-    const scopes = parsePublicScopes(value.scopes);
+    const scopes = parseMachinePublicScopes(value.scopes);
     if (!uuid(value.id) || !uuid(value.businessId) || !uuid(value.applicationId) || !['active', 'revoked', 'suspended'].includes(String(value.status))
         || !revision(value.revision) || !revision(value.authorityVersion) || !Array.isArray(scopes) || !scopes.length)
         throw new PublicInstallationError();

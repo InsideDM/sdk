@@ -1,19 +1,19 @@
 // Generated from the authoritative InsideDM public contract. Do not edit by hand.
 import { parseBoundedJson } from './boundedJson.js';
-import { parsePublicScopes, type PublicScope } from './vocabulary.js';
+import { parseMachinePublicScopes, type MachinePublicScope } from './vocabulary.js';
 export const INSTALLATION_REQUEST_OPERATIONS = [
     { id: 'createInstallationRequest', name: 'platform.installationRequests.create', audience: 'accounts', method: 'POST', path: '/api/v1/platform/installation-requests', pathTemplate: '/api/v1/platform/installation-requests', principalKinds: ['app'], requiredScopes: ['platform.businesses.link'], scope: 'portfolio', idempotency: 'required' },
     { id: 'getInstallationRequest', name: 'platform.installationRequests.get', audience: 'accounts', method: 'GET', pathTemplate: '/api/v1/platform/installation-requests/:requestId', principalKinds: ['app'], requiredScopes: ['platform.businesses.link'], scope: 'portfolio', idempotency: 'none' },
 ] as const;
 export interface CreateInstallationRequestInput {
-    scopes: PublicScope[];
+    scopes: MachinePublicScope[];
     returnUrl: string;
 }
 export interface PublicInstallationRequest {
     id: string;
     applicationId: string;
     status: 'pending' | 'approved' | 'cancelled' | 'expired' | 'unavailable';
-    scopes: PublicScope[];
+    scopes: MachinePublicScope[];
     expiresAt: string;
     result: {
         businessId: string;
@@ -30,7 +30,7 @@ const uuid = (value: unknown): value is string => typeof value === 'string' && /
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 function exact(value: Record<string, unknown>, fields: readonly string[]) { if (Object.keys(value).length !== fields.length || Object.keys(value).some(key => !fields.includes(key)))
     throw new InstallationRequestError(); }
-function scopesOf(value: unknown): PublicScope[] { const parsed = parsePublicScopes(value); if (!Array.isArray(parsed) || !parsed.length)
+function scopesOf(value: unknown): MachinePublicScope[] { const parsed = parseMachinePublicScopes(value); if (!Array.isArray(parsed) || !parsed.length)
     throw new InstallationRequestError(); return parsed; }
 function https(value: unknown, max: number): URL {
     try {

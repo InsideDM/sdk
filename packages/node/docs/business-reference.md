@@ -21,18 +21,28 @@ time window under the same scope; observations are provisional, not invoices.
 | Workspace | `workspace.get()` |
 | Software usage and limits | `usage.get({ from, to })`, `usage.getLimits()` |
 | Templates | `templates.list(params)`, `templates.pages(params)`, `templates.iterate(params)` |
-| Messaging setup | `messaging.getReadiness()`, `messaging.getConfiguration()` |
+| Messaging setup | `messaging.getReadiness()`, `messaging.getConfiguration()`, `messaging.updateConfiguration()` |
+| Business analytics | `analytics.get()` |
 | Consent | `consents.get(contactId)`, `consents.recordMarketingOptIn(input)`, `consents.withdraw(input)` |
-| Contacts | `contacts.create(input)`, `contacts.get(id)`, `contacts.list(params)`, `contacts.update(id, input)`, `contacts.attributes.update(id, input)`, `contacts.tags.replace(id, input)` |
+| Loyalty membership | `loyalty.members.get(contactId)` |
+| Contacts | `contacts.create(input)`, `contacts.get(id)`, `contacts.list(params)`, `contacts.update(id, input)`, `contacts.fields.list()`, `contacts.fields.create(input)`, `contacts.fields.configureMemory(id, input)`, `contacts.fields.archive(id, input)`, `contacts.attributes.update(id, input)`, `contacts.tags.replace(id, input)` |
 | Conversations | `conversations.get(id)`, `conversations.list(params)` |
 | Messages | `messages.get(id)`, `messages.send(input)`, `messages.preview(input)`, `conversations.messages.list(conversationId, params)` |
 | Operations | `operations.get(id)`, `operations.lookup(originalKey)`, `operations.cancel(id, input)` |
 | Published flows | `events.bindings.list/pages/iterate(params)`, `events.publish(input)`; recover with `operations.lookup({ kind: 'events.publish', idempotencyKey: eventId })` |
-| Flow execution | `flows.runs.get(runId)` |
+| Flow execution | `flows.runs.list(...)`, `flows.runs.get(runId)` |
+| Website import progress | `knowledge.runs.list/pages/iterate(params)`, `knowledge.runs.get(runId)` |
+| Document identity and current version | `knowledge.get(options)` |
+| Knowledge text and corrections | `knowledge.sections.list/pages/iterate(params)` |
+| Website knowledge import | `knowledge.sources.importWebsite(input, options)` |
+| Website knowledge removal | `knowledge.sources.removeWebsite({ url }, options)` |
+| Registered note, document or website removal | `knowledge.sources.remove(sourceId, { expectedVersion }, options)` |
+| Flow builder steps | `flows.steps.list()` |
+| Saved connector blocks | `flows.blocks.list/pages/iterate(params)` |
 | Orders | `orders.get(id)`, `orders.list(params)` |
 | Shipments | `shipments.get(id)`, `orders.shipments.list(orderId, params)` |
 
-Every list also provides `pages()` and `iterate()` with the same arguments. Nested lists retain their parent ID as the first argument. List filters are typed and validated before any request. All methods call the canonical HTTP operations in [the included OpenAPI contract](../openapi/public-v1.yaml).
+Paginated lists also provide `pages()` and `iterate()` with the same arguments. Nested lists retain their parent ID as the first argument. List filters are typed and validated before any request. All methods call the canonical HTTP operations in [the included OpenAPI contract](../openapi/public-v1.yaml).
 
 ```ts
 for await (const contact of insideDM.contacts.iterate(
@@ -44,6 +54,167 @@ for await (const contact of insideDM.contacts.iterate(
 ```
 
 Iterators fetch only as consumed, preserve the initial filters and limit, and stop at the requested bounds. `maxItems` may trim the final yielded page; its cursor remains the server's page cursor and does not resume inside that page. Without bounds, traversal continues until the server returns a null cursor. A cursor is opaque, tied to its workspace, filters and limit, and expires after 15 minutes. An expired cursor raises `invalid_cursor`; the SDK never silently restarts a traversal.
+
+## Read a customer's loyalty membership
+
+Use a contact ID from your workspace and the separate `loyalty.read` grant:
+
+```ts
+const { data: membership } = await insideDM.loyalty.members.get(contactId);
+for (const wallet of membership.wallets) {
+  console.log(wallet.wallet, wallet.spendable, wallet.pending, wallet.held);
+}
+console.log(membership.enrolled, membership.tier?.label, membership.openHoldCount);
+```
+
+The read uses the dashboard's native membership owner and balance formulas.
+`wallet` is `points` or `stamps`; amounts are whole units. Held points are already
+excluded from `spendable`, so do not subtract them again. `nextExpiry` reports the
+native lot expiry and amount, not a guarantee that the amount will expire after
+future purchases or redemptions. `observedAt` is the server's observation time;
+this is a current read, not a balance reservation or a transaction quote.
+
+A known customer who has not joined returns `enrolled: false`. An empty `wallets`
+array means no wallet was reported; do not invent a zero balance. `preMember`
+identifies pending pre-membership state. `joinedAt` is the native first-lot time
+when available, not a verified enrollment timestamp. `tier` and its next tier
+contain native IDs and labels only. Missing, erased, merged or other-workspace
+customers return `resource_not_found`.
+
+This scope releases no contact identity, reward codes, individual holds or ledger
+history. It cannot enroll customers, spend rewards, authorize messaging or
+establish marketing consent. Connected-user access also requires the user's
+current `loyalty.view` permission.
+
+## Inspect conversation control
+
+Use `conversations.read` and the native inbox-view permission to inspect current
+ownership and automation control through the same inbox owner as the dashboard:
+
+```ts
+const { data: control } = await insideDM.conversations.controls.get(conversationId);
+console.log(control.owner, control.automation, control.snoozedUntil, control.handoff);
+```
+
+`lifecycle` preserves native open, waiting-customer, resolved, archived and spam
+states. `automation.paused` reflects an explicit pause or human ownership; it is
+separate from lifecycle, snoozing and current send eligibility. `handoff` reports
+live status, request time, assignee and a closed `reasonCode`. This is the native
+classification, such as `LOW_CONFIDENCE`, `MANUAL_APPROVAL` or `USER_REQUESTED`,
+rather than a verified assertion about the customer. `UNKNOWN` withholds unsupported
+or absent reasons. No transcript, handoff brief, agent
+memory, provider identifier or credentials enter this view. The opaque `revision`
+identifies the observation; reading it changes no control and resumes no work.
+
+Read native control history to explain changes in who handles the conversation:
+
+```ts
+const { data: history } = await insideDM.conversations.controls.history(
+  conversationId, { limit: 25 },
+);
+for (const event of history.events) {
+  console.log(event.occurredAt, event.action, event.actorKind, event.via, event.reasonCode);
+}
+```
+
+Events are newest first, ordered by event time and ID. Continue with
+`{ limit: 25, cursor: history.page.nextCursor }` when the cursor is non-null.
+Keep the same conversation and limit. The cursor fixes the original page's
+cutoff; new events appear on a fresh walk. History covers the retained native
+handoff, takeover, assignment, hand-back, held-reply dismissal and snooze ledger.
+`held_reply_dismissed` with `via: 'dismiss_hold'` records dismissing an unsent draft
+while preserving human ownership and the automation pause. `handed_back` records
+release to AI. Handoff-request events
+carry the native classification recorded at that time; other events have a null
+reason. Treat suspected spam/scam/sentiment flags as classifications, not facts.
+It is separate from
+message delivery, orders and agent reasoning. Raw audit payloads, actor identities
+and customer content are excluded. History and current control reads require
+`conversations.read`; a past event is not proof of current ownership.
+
+To take over as the connected user, read that revision and use a stable action key:
+
+```ts
+const { data: control } = await insideDM.conversations.controls.get(conversationId);
+const { data: receipt } = await insideDM.conversations.controls.takeOver(
+  conversationId,
+  { expectedRevision: control.revision },
+  { idempotencyKey: takeoverActionId },
+);
+console.log(receipt.changed, receipt.auditId);
+```
+
+This requires API-resource user access with `conversations.read` and
+`conversations.takeover`, and all native inbox view/reply/assign/manage permissions.
+API keys and installation credentials cannot impersonate a person. Taking over
+pauses automation, assigns the open handoff and cancels waiting flows, including
+when another teammate owns the chat. It sends no message and resumes no agent work.
+Retry the identical input and original key after an uncertain result. The receipt
+recovers the original acceptance even after later ownership changes; read
+`controls.get` separately for current state. A new action needs a fresh revision
+and key. A no-op preserves the conversation revision and reports `changed: false`.
+
+Discover current assignment candidates with API-resource user access,
+`conversations.read` and the native inbox-view/assignment permissions:
+
+```ts
+for await (const teammate of insideDM.conversations.assignees.iterate(
+  { limit: 25 }, { maxItems: 100 },
+)) {
+  console.log(teammate.userId, teammate.displayName, teammate.isCurrentUser, teammate.canReply);
+}
+```
+
+Only active members with non-deleted identities are returned. Login addresses,
+roles and invitation details are excluded. Missing names display as “Teammate”.
+Use `list()` for a page or `pages()` for lazy pages. Cursors bind the original
+user/grant, workspace, scopes and limit. Candidate and reply facts are current
+observations; a control action must recheck authority and membership itself.
+Assign an unowned conversation or one you handle using a discovered teammate ID:
+
+```ts
+const { data: current } = await insideDM.conversations.controls.get(conversationId);
+const { data: assigned } = await insideDM.conversations.controls.assign(
+  conversationId,
+  { assigneeUserId: supportUserId, expectedRevision: current.revision },
+  { idempotencyKey: assignmentActionId },
+);
+console.log(assigned.assigneeUserId, assigned.auditId);
+```
+
+This requires user access with `conversations.read` and `conversations.assign`,
+plus native inbox-view/assignment permissions. Use `assigneeUserId: null` to
+return to the paused human queue. Assignment does not take a chat from another
+teammate (`invalid_state`); an explicit takeover requires its own permissions.
+Stale revisions return `revision_conflict`. Both actions pause automation,
+align the open handoff and cancel waiting flows without sending or resuming.
+Reuse the original target, revision and key after uncertainty. Recovery retains
+the original acceptance even if the assignee later leaves; a new assignment
+must use a currently active member. Read current control separately.
+
+Put a conversation aside using the same 24-hour snooze as the dashboard:
+
+```ts
+const { data: current } = await insideDM.conversations.controls.get(conversationId);
+const { data: snoozed } = await insideDM.conversations.controls.snooze(
+  conversationId,
+  { expectedRevision: current.revision },
+  { idempotencyKey: snoozeActionId },
+);
+console.log(snoozed.snoozedUntil);
+```
+
+This needs user access with `conversations.read`, `conversations.snooze` and native
+inbox view/reply/manage permissions. It pauses automation while preserving the
+current owner and open handoff. Another teammate's conversation requires explicit
+takeover. Retry the original revision and key after uncertainty to recover the
+original expiry without extending it. A fresh snooze action starts a new 24-hour
+period and needs a fresh observation and key.
+
+`controls.clearSnooze(conversationId, { expectedRevision }, { idempotencyKey })`
+clears only the snooze time. Read current control first. Clearing an already
+cleared snooze is a no-op. Neither expiry nor clearing resumes automation, changes
+ownership, closes a handoff or sends a message.
 
 ## Update a contact's display name
 
@@ -58,13 +229,101 @@ The result contains the contact ID, current display name and revision. Replaying
 
 ## Contact custom fields
 
-Use a key granted `contacts.write`. The fields must already be declared in the dashboard. The SDK resolves the workspace automatically on its first write and uses the dashboard's existing endpoint and handler. The server must have shared writes configured before this method is available.
+Create a field when the configuration you need does not exist:
+
+```ts
+const { data: created } = await insideDM.contacts.fields.create(
+  { label: 'Support tier', key: 'support_tier', type: 'text' },
+  { idempotencyKey: createFieldActionId },
+);
+console.log(created.definition.id, created.definition.key);
+
+await insideDM.contacts.attributes.update(
+  contactId,
+  { attributes: { [created.definition.key]: 'gold' } },
+  { idempotencyKey: saveValueActionId },
+);
+```
+
+Creation requires `contacts.write` and the native contact-edit permission.
+Catalog discovery separately requires `contacts.read` and contact-view permission.
+Field types are `text`, `number`, `boolean` and `date`; omitted type defaults to
+text. Supply a stable lowercase key for integrations, or omit it to let the
+native owner derive one from the label. Non-Latin labels receive distinct stable
+generated keys. Keys/types are permanent and archived keys cannot be reused.
+The native limit is 500 live fields. Creation leaves agent memory off, stores no
+customer values and sends no message.
+
+Retain the original creation input and action key. A retry recovers the original
+definition/audit/request even after memory changes, archival or same-lineage API
+key rotation, without restoring an archived field or changing later policy.
+Omitted/default text type, null/omitted key and trimmed labels normalize before
+intent matching. A different input under the same action key conflicts. Read
+`contacts.fields.list()` separately for current availability and memory policy.
+
+Archive a field using the observed configuration version:
+
+```ts
+const { data: fields } = await insideDM.contacts.fields.list();
+const { data: archived } = await insideDM.contacts.fields.archive(
+  created.definition.id,
+  { expectedVersion: fields.version },
+  { idempotencyKey: archiveFieldActionId },
+);
+console.log(archived.archived, archived.appliedVersion);
+```
+
+Archival requires `contacts.write` and native contact-edit permission. It removes
+the field from the active catalog and future agent-memory lookups, keeping
+contact values and permanently reserving the key. Any field-configuration edit
+invalidates the observed catalog version (`revision_conflict`). Creation receipts
+also contain their original `appliedVersion`; it is usable only while no later
+configuration edit has occurred. A catalog version of zero means the area has
+not been configured yet.
+
+After uncertainty, retry the identical field ID, original expectedVersion and
+original key. Recovery retains the accepted audit/version after later edits,
+without applying another archival or changing current configuration. A new
+archive action needs a fresh observation and key. This method configures fields;
+it does not erase customer values or send a message.
+
+Configure agent memory with an explicit flag and the current catalog version:
+
+```ts
+const { data: catalog } = await insideDM.contacts.fields.list();
+const { data: memory } = await insideDM.contacts.fields.configureMemory(fieldId, {
+  expectedVersion: catalog.version,
+  agentMayRemember: true,
+  agentHint: 'Preferred fit',
+}, { idempotencyKey: memoryActionId });
+console.log(memory.changed, memory.definition.agentMayRemember);
+```
+
+Requires `contacts.write` and native contact-edit permission. Omit `agentHint` to
+preserve it; `null` clears it. Whitespace is normalized. The native personal-data
+policy checks the permanent key, label and hint before allowing memory. A policy
+refusal is `invalid_request` with `problem.errors` containing the fixed field
+`request.agentMayRemember` and reason `agent_memory_forbidden`. A configured flag
+does not override runtime memory policy. No-op saves retain the version. Existing
+customer values remain; this does not backfill values or send messages.
+
+After uncertainty, reuse the identical field ID, original version, flag/hint and
+action key. Recovery returns original acceptance after later edits or archival
+without reapplying it. Read the catalog separately for current configuration.
+
+Use a `contacts.write` credential and keys from the field catalog or creation
+receipt to update values. The SDK resolves the workspace and uses the native
+value owner:
 
 ```ts
 const result = await insideDM.contacts.attributes.update(contactId, {
   attributes: { loyalty_score: 0.75, preferred_size: null },
 }, { idempotencyKey: 'crm/customer-123/fields-v4' });
 ```
+
+Discover configured field keys and types with `contacts.fields.list()` first.
+Its `data.definitions` contains all live definitions (up to the business limit),
+including labels and agent-memory settings; it contains no customer values.
 
 Null clears a field; omitted fields stay unchanged. The result contains the contact ID, current custom fields and revision. Each logical call generates a new idempotency key unless you supply one. Retries preserve the same key and input. Success metadata includes `idempotencyKey`; errors expose it through the explicit `error.recovery` getter, excluded from default error logs. Persist your own key before a consequential workflow if recovery must survive a process restart.
 
@@ -104,6 +363,13 @@ console.log(configuration.value.templateAliases,
 ```
 
 This uses the existing settings endpoint's restricted configuration view and returns no account choices, credentials or human role-management data. `version` is null for an unconfigured workspace; reading creates no settings. Reading an alias does not guarantee its template is still approved. An explicit approved template ID continues to need no configuration step.
+
+When using `messaging.updateConfiguration`, supply the complete configuration and
+its observed `expectedVersion`. Identical effective settings retain that version;
+empty defaults do not create a settings row. A stale version still conflicts
+even when the supplied values match today's settings. After an uncertain result,
+reuse the exact input/key to observe current state without overwriting later
+edits. A successful unchanged response does not establish template eligibility.
 
 ```ts
 const key = 'orders/order-123/ready'; // Persist before sending; use once per logical action.
@@ -183,9 +449,42 @@ This needs `events.write`; operation reads need `operations.read`, and run reads
 
 HTTP 202 means the original start was retained. The event operation becomes `succeeded` with `phase: 'flow_started'` and a `flow_run` resource when the actual worker admits that start. Later flow effects, completion and customer delivery are separate. `operation.changed` reports publication progress through the existing webhook subscription. An uncertain outcome requires recovery, not a new event ID. Revision-checked cancellation uses `operations.cancel()` and succeeds only before the retained start is claimed; it cannot stop an already started flow.
 
-`flows.runs.get()` needs `flows.read`, independently of write and operation-read scopes. It uses the existing dashboard run endpoint's progress view and returns only `id`, `flowId`, `status`, `startedAt` and `completedAt`. Business keys can read SDK-started runs from their own integration lineage, including after rotation removes write permission. Traces, inputs and raw failure messages are private. Reads depend on retained original event proof, normally available for 30 days after the event operation becomes terminal; erased or unavailable sources return `resource_not_found`. Flow completion alone does not establish customer delivery. This pilot has no flow-run change subscription; poll within your own bounded job or use business outcome events.
+`flows.runs.get()` needs `flows.read`, independently of write and operation-read scopes. It uses the existing dashboard run endpoint's progress view and returns only `id`, `flowId`, `status`, `startedAt` and `completedAt`. Connected-user access with current `flows.view` permission can inspect native workspace flow executions, including runs started outside the SDK. Business keys and installation delegations remain limited to their own retained event-started runs; same-lineage key rotation does not require keeping write permission. These integration reads depend on retained original event proof, normally available for 30 days after the event operation becomes terminal. User reads follow native run retention. Traces, inputs, contact identity and raw failure messages are excluded. Erased, expired or unavailable resources return `resource_not_found`. A status read resumes nothing and does not establish future eligibility or customer delivery. This pilot has no flow-run change subscription; poll within your own bounded job or use business outcome events.
 
 Revoking or expiring the original key, removing its scope, disabling the workspace or erasing the contact blocks fresh execution. A rotated key in the same lineage can continue only while its current grants permit it. The existing native endpoint HMAC secret remains independent. Existing governed HTTP nodes can call an n8n webhook during the flow; asynchronous external-job completion callbacks remain unavailable.
+
+## Find recent flow executions
+
+```ts
+const page = await insideDM.flows.runs.list({ status: 'failed', limit: 25 });
+for (const run of page.data) console.log(run.flowId, run.id, run.status);
+
+// Traverse lazily, with an explicit bound on work.
+for await (const run of insideDM.flows.runs.iterate(
+  { flowId, limit: 25 }, { maxPages: 4, maxItems: 100 },
+)) console.log(run.id, run.status);
+```
+
+Both listing and detail reads require `flows.read`. Connected users see native
+workspace flow executions under their current `flows.view` permission. API keys
+and installation credentials see only runs started by their own integration,
+with retained original event/command proof. No caller-supplied scope flag can
+change this visibility. Same-lineage key rotation preserves a cursor only when
+its effective scopes remain the same.
+
+Use `page.page.nextCursor` with the same `flowId`, `status` and `limit`, or use
+the shared `pages()` / `iterate()` helpers. Cursors expire after fifteen minutes.
+Integration pages scan at most ten candidates, within the requested limit.
+Their cursor positions are sealed, including candidates excluded by final proof.
+An empty page can have a continuation when a candidate's source proof is no
+longer available. The helpers continue through such pages within your bounds.
+Pages are ordered by native start time and run ID. The original cutoff excludes
+later starts; statuses, permissions, source retention and contact visibility
+remain live. A status-filtered walk is not a frozen snapshot or change feed.
+
+Only IDs, status and start/completion times are returned. Draft tests, refusal
+records, non-flow agents, expired runs and erased/merged contacts are omitted.
+Listing does not resume a run, prove delivery or explain the cause of a failure.
 
 ## Create a flow draft from a template
 
@@ -248,6 +547,329 @@ customer delivery. `different` means the published graph differs, including when
 a managed draft update awaits human publication. `unavailable` means the current
 snapshot cannot be compared; do not treat it as a match. The read uses the same
 flow owner as the builder and grants no publication authority.
+
+## Discover built-in flow steps
+
+```ts
+const { data: catalog } = await insideDM.flows.steps.list();
+for (const step of catalog.steps) {
+  console.log(step.type, step.version, step.channels.whatsapp, step.effect, step.ready);
+}
+```
+
+Requires `flows.read` and native flow-view permission. This is the complete
+built-in step/bundle catalog from the dashboard palette and native block specs.
+It excludes app/custom blocks, connector settings and credentials. `effect`
+includes a bundle's strongest effect, so payment collection reports `money_in`.
+`billableMessages` describes potential native message billing; it is not a quote.
+`ready` means the engine implements the step, not that this business may execute
+or publish it. Use the typed draft definition and native validation, simulation
+and publication checks. Discovery does not run a flow or call a provider.
+
+## Reuse saved connector blocks
+
+```ts
+for await (const block of insideDM.flows.blocks.iterate({ limit: 25 })) {
+  console.log(block.name, block.type, block.flowId, block.versionId);
+}
+```
+
+Requires `flows.read` and native flow-view permission. This discovers saved
+call/MCP blocks that already have a native published version—for example, an
+existing n8n workflow integration. Use the flow/version reference in a native
+subflow configuration, preserving its required input/output mappings. The catalog
+does not include those mappings or configure a new integration.
+
+Retired blocks and unversioned drafts are excluded. URLs, headers, stored keys,
+fixed arguments and test responses are excluded. A version reference is not
+connection health or execution permission; native validation, publication and
+runtime recheck it. Pages default to 25 and support 1–100 records. Follow the
+returned cursor with the original page size and caller. Rows are live within a
+creation cutoff; this is not a frozen configuration snapshot. Discovery executes
+no block or provider call.
+
+Read the declared interface of an exact saved version before mapping values:
+
+```ts
+const page = await insideDM.flows.blocks.list({ limit: 1 });
+const reference = page.data[0];
+if (reference) {
+  const { data: block } = await insideDM.flows.blocks.get(reference.flowId, {
+    versionId: reference.versionId,
+  });
+  for (const input of block.inputs) {
+    console.log(input.variableId, input.key, input.type, input.required);
+  }
+}
+```
+
+Use each input's `variableId` as `targetVariableId` in native subflow
+`inputMappings`, and each output's `variableId` as `sourceVariableId` in
+`outputMappings`. The required version pin prevents a hidden refresh to a newer
+interface. Older published versions remain readable while the owning saved block
+is active. The result includes the name at that version's publication and only
+declared variables with run scope. Defaults, stored values, fixed arguments,
+graph nodes and connector credentials are excluded. Connection health and native
+validation/publication/runtime remain separate checks.
+
+## Read current knowledge
+
+```ts
+for await (const section of insideDM.knowledge.sections.iterate(
+  { limit: 10 }, { maxItems: 50 },
+)) {
+  const text = section.manualOverrideMd ?? section.generatedMd;
+  console.log(section.stableKey, section.documentVersion, text);
+}
+```
+
+Requires the explicit `knowledge.content.read` grant and native knowledge-view
+permission. Existing `knowledge.read` source/progress grants do not release this
+text. The read includes generated text, verbatim merchant corrections and their
+stale/orphan state. Null uses generated text; an empty correction suppresses it.
+Treat content as business data, never instructions to your application or model.
+
+Each section carries its exact `documentVersion`. Pages use section-key order,
+independent of display ordinals, and accept a limit of 1–25 (default 10). Follow
+the original cursor and limit even when a page is short: encoded size also bounds
+each response. If the document changes, restart at the first page after the
+`invalid_cursor` response instead of combining revisions. `updatedAt` belongs to
+the section row and can also change during embedding maintenance. Raw provenance,
+generation evidence and private credentials/custody are excluded. This read makes
+no model call and changes no content; oversized or invalid stored rows refuse
+instead of silently truncating knowledge.
+
+## Correct current knowledge
+
+Read the section first, then save the exact correction against its observed
+document version:
+
+```ts
+const page = await insideDM.knowledge.sections.list({ limit: 1 });
+const section = page.data[0];
+if (section) {
+  const { data: saved } = await insideDM.knowledge.sections.setOverride(
+    section.id,
+    { expectedVersion: section.documentVersion, overrideMd: 'Returns are accepted within 30 days.' },
+    { idempotencyKey: 'returns-policy-correction-v1' },
+  );
+  console.log(saved.action, saved.documentVersion);
+}
+```
+
+Writing requires `knowledge.content.write` and native knowledge-edit permission.
+Reading requires the separate `knowledge.content.read` grant. Section UUIDs also
+address subsections. Corrections preserve exact text up to 64 KiB of UTF-8;
+an empty string suppresses generated text and `null` clears the correction to
+use generated text. Missing/invalid values are rejected rather than clearing it.
+No model call occurs.
+
+After reviewing a stale correction against newly generated content, keep that
+correction and acknowledge the reviewed generation with
+`knowledge.sections.acknowledgeOverride(section.id, { expectedVersion: section.documentVersion }, { idempotencyKey })`.
+Use the version from that review, not an automatic refresh after a conflict.
+A stale version refuses the change so you can reload and review it again.
+
+Save the original section ID, version, exact text/null and intent key before a
+write. Retry those same inputs after uncertainty. The receipt records the
+original applied version and contains no knowledge text; it is not current state.
+Recovery preserves later human edits and cannot acknowledge a later generation,
+even if the original section has since been removed. A deliberately new change
+uses a new key. Both commands retain the actual user or integration actor.
+
+## Remove a registered knowledge source
+
+```ts
+const sources = await insideDM.knowledge.sources.list({ kind: 'document', status: 'active' });
+const { data: knowledge } = await insideDM.knowledge.get();
+const source = sources.data[0];
+if (source) {
+  const { data: removed } = await insideDM.knowledge.sources.remove(
+    source.id,
+    { expectedVersion: knowledge.version },
+    { idempotencyKey: 'document-removal-v1' },
+  );
+  console.log(removed.documentVersion, removed.sectionsRequiringRefresh);
+}
+```
+
+Use the registered source UUID and the current knowledge document version. Source
+and version discovery require `knowledge.read`; section text requires `knowledge.content.read`.
+Removal itself requires `knowledge.write` and native knowledge-edit permission,
+without granting either read scope. It works for notes, documents and websites.
+Generated claims are dropped or hidden atomically; merchant corrections (including
+subsections), catalog products and history survive. Remaining-source sections need
+a later explicit refresh. Website imports are cancelled; no model or provider call
+occurs. An unused source can be removed without changing the document version.
+
+Keep the exact original source ID, version and action key after uncertainty.
+Replay returns the original receipt before checking current source/version, so it
+cannot remove a later reactivation. Changed intent under the same key conflicts;
+fresh changes use a newly reviewed version and key. A fresh removal of an inactive
+source refuses. Receipts contain counts/identity without source labels or text.
+`knowledge.get()` returns the version even when there are no sections. A missing
+document has a null ID and version zero; an existing empty document can have a
+nonzero version. `sectionCount` counts retained rows, including children and hidden
+or corrected rows; it does not prove answer coverage or import completion.
+
+## Remove website knowledge
+
+```ts
+const { data: removed } = await insideDM.knowledge.sources.removeWebsite({
+  url: 'https://your-store.example/',
+}, { idempotencyKey: 'website-removal-v1' });
+
+console.log(removed.outcome, removed.cancelledImports);
+console.log(removed.sectionsRequiringRefresh);
+```
+
+Requires `knowledge.write` and native knowledge-edit permission. The native owner
+atomically drops or hides generated claims from this website and cancels its
+pending/running imports, including a first import without a registered source.
+Merchant corrections (including subsections), catalog products and import history
+are retained. Hidden sections supported by other sources need a later explicit
+import to regenerate them; removal makes no website or model call. Section counts
+refer to top-level sections. `already_removed` means this request found no active
+website or import to change.
+
+After uncertainty, retry the same URL and key. The original receipt is historical
+and cannot remove a later re-add; current source/run state is read separately.
+A deliberately new removal uses a new key. An unfinished two-phase removal returns
+`invalid_state` instead of pretending it completed.
+
+## Import or refresh website knowledge
+
+```ts
+const { data: accepted } = await insideDM.knowledge.sources.importWebsite({
+  url: 'https://your-store.example/',
+  maxPages: 25,
+}, { idempotencyKey: 'website-import-launch-v1' });
+
+const { data: progress } = await insideDM.knowledge.runs.get(accepted.ingestionRunId);
+console.log(progress.status);
+```
+
+Import requires `knowledge.write` and native knowledge-edit permission. Progress
+reads separately require `knowledge.read`. Omit `maxPages` for the bounded default
+of 100. The native import acquires website/catalog data, generates knowledge and
+embeds changed content under the existing AI-credit policy. It can replace
+generated website content and update products; native merchant overrides and
+note/document protections remain enforced. The original authority stays attached
+through acquisition, funding and commits.
+
+The returned `status: 'accepted'` is durable acceptance, not successful indexing
+or answer coverage. A first import may not yet appear in the source registry.
+Reuse the original URL, page budget and key after uncertainty; the same intent
+returns its original run/audit/request IDs even after completion or removal, without
+starting another import. Use a new key for a deliberately new refresh. Another
+active import of the same website returns a conflict. Current execution is always
+read through `knowledge.runs`, independently of the historical receipt.
+
+## Inspect website import progress
+
+```ts
+const runs = await insideDM.knowledge.runs.list({ limit: 5 });
+for (const run of runs.data) {
+  console.log(run.id, run.status, run.pagesCrawled ?? 'Not reported');
+}
+const { data: run } = await insideDM.knowledge.runs.get(runId);
+```
+
+Requires `knowledge.read` and native knowledge-view permission. Discover recent
+website-indexing runs without finding an ID in the dashboard. Filter with
+`status`, and follow cursors with the original filter and page size (1–100;
+default 25). The list is newest first and stays live within a creation cutoff.
+
+This is persisted execution progress: queued retries remain `queued`, and
+`waiting`, `cancelled`, `expired` and `uncertain` remain distinct. `attempts` counts
+processing admissions. Counters and the resulting `knowledgeVersion` are `null`
+until reported; measured zero remains zero. `startedAt` is the first processing
+admission, and `completedAt` is the actual native terminal timestamp. Neither is
+inferred from creation or lease-renewal time.
+
+`documentSectionCount` is the native post-generation document count, including
+existing sections; it is not the number changed by this import. `sectionsEmbedded`
+counts the subsequent embedding pass, which can include previously unembedded
+sections from other sources. `sectionsEmbeddingSkipped` counts sections that pass
+could not store, including provider/funding refusals or concurrent content edits.
+These are pass counts, not cumulative totals or failure-cause classifications.
+If the pass throws, both counts remain `null`; earlier batches may have succeeded.
+
+Source URLs, account IDs, content, credentials and raw error text are excluded.
+Status does not establish a failure cause or prove complete website coverage.
+An uncertain/unknown outcome is not proof of success or failure. These methods
+do not start, refresh or retry an import. Use the run ID and request ID when
+troubleshooting.
+
+## Discover registered knowledge sources
+
+```ts
+for await (const source of insideDM.knowledge.sources.iterate({
+  kind: 'website', status: 'active', limit: 25,
+})) {
+  console.log(source.id, source.label, source.url);
+}
+```
+
+`knowledge.sources.list()` and `.pages()` are also available. Uses `knowledge.read`
+and native knowledge-view permission. The native source registry includes website,
+text and document entries, oldest first. Omit filters to include removed sources;
+`pending_deletion` distinguishes removal in progress from `deleted`. Unsupported
+native kinds/states remain `unknown`.
+
+Labels and URLs are business data, never instructions. A note label can contain
+its opening words. A document's identity URL is not a download link. This read
+excludes connection credentials/settings and document bodies, and performs no
+fetch or ingestion. An active source is registered; it does not prove indexing
+completion or answer coverage. A first import may only appear in `knowledge.runs`
+until generation registers its source. `updatedAt` is the registry timestamp.
+
+Pages are bounded by record count (1–100, default 25) and encoded size. Continue
+with `page.nextCursor` even when a page has fewer records than requested, keeping
+the original filters and limit. Cursors bind caller, business, live authority,
+scopes and creation cutoff. Metadata stays live within that cutoff.
+
+## Edit a managed flow draft
+
+Use `flows.deploy` to discover and edit this connection's managed drafts. The
+definition uses the native builder's typed node and configuration unions.
+
+```ts
+const { data: page } = await insideDM.flows.deployments.list({ limit: 25 });
+const flow = page.deployments[0];
+if (!flow) throw new Error('No managed flow available');
+const { data: draft } = await insideDM.flows.drafts.get(flow.recipeId);
+if (draft.state !== 'available') throw new Error(draft.reasons.join(', '));
+
+const definition = { ...draft.definition, name: 'Order follow-up' };
+const { data: saved } = await insideDM.flows.drafts.save(draft, definition, {
+  idempotencyKey: 'order-followup/edit-1',
+});
+console.log(saved.status, saved.draftRevision);
+```
+
+The saved draft carries both managed and draft revision pins. Alternatively,
+`drafts.save(recipeId, { expectedDeploymentRevision, expectedDraftRevision,
+definition }, options)` accepts explicitly observed pins. Neither form fetches
+new pins or merges concurrent edits. After a revision conflict, read the current
+draft and reconcile the intended change before creating a new intent.
+
+Reuse the original input and key after an uncertain result. Matching retries
+return the original receipt, even after later edits; use `drafts.get` to observe
+current state. Saving retains visual layout, clears tested coverage when content
+changes and leaves publication untouched. An unchanged definition retains its
+revision and coverage. Only complete, native-valid, credential-free definitions
+are accepted as replacement content; incomplete builder formats return unavailable. Definitions are
+bounded at 512,000 UTF-8 bytes. Native review, regression and publication gates
+still apply to making a saved draft live.
+
+If a native draft is unavailable because its saved content is invalid or its
+fingerprint is damaged, its positive revision pins can still support an explicit
+replacement using a known valid definition. Use the recipe-and-pins form for
+that intentional repair. The saved-draft helper requires an available draft;
+neither form silently converts an unsupported builder format or reads withheld
+content. A repair advances the revision and clears stale coverage, including
+when the repaired definition restores an earlier fingerprint.
 
 ## Create or find a phone contact
 

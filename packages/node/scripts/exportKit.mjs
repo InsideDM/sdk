@@ -7,7 +7,7 @@ const args = process.argv.slice(2);
 if (args.length !== 2 || args[0] !== '--out') throw new Error('Usage: npm run export:kit -- --out /absolute/new-directory');
 const target = resolve(args[1]);
 if (target === root || target.startsWith(root + '/') || root.startsWith(target + '/') || existsSync(target)) throw new Error('Export requires a new directory outside the SDK package; existing destinations are never overwritten.');
-const entries = ['src', 'tests', 'scripts', 'openapi', 'docs/business-reference.md', 'docs/n8n.md', 'examples/n8nResourceBridge.mjs', 'examples/asyncJobReceiver.mjs', 'examples/n8n', '.gitignore', 'package.json', 'tsconfig.json', 'README.md', 'CHANGELOG.md', 'PUBLICATION.md', 'CONTRIBUTING.md', 'SECURITY.md'];
+const entries = ['src', 'tests', 'scripts', 'openapi', 'docs/business-reference.md', 'docs/n8n.md', 'docs/user-access.md', 'examples/n8nResourceBridge.mjs', 'examples/asyncJobReceiver.mjs', 'examples/n8n', '.gitignore', 'package.json', 'tsconfig.json', 'README.md', 'CHANGELOG.md', 'PUBLICATION.md', 'CONTRIBUTING.md', 'SECURITY.md'];
 for (const optional of ['package-lock.json', 'LICENSE', 'LICENSE.md']) if (existsSync(resolve(root, optional))) entries.push(optional);
 const templates = existsSync(resolve(root, 'repository')) ? resolve(root, 'repository') : resolve(root, '../..');
 const github = existsSync(resolve(root, '.github')) ? resolve(root, '.github') : resolve(templates, '.github');

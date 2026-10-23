@@ -1,18 +1,21 @@
 // Generated from the authoritative InsideDM public contract. Do not edit by hand.
 import { parseBoundedJson } from './boundedJson.js';
 import { parseBlueprintParameters, type BlueprintParameters } from './partnerBlueprints.js';
+import type { FlowDeploymentCatalog } from './flowDeploymentCatalogTypes.js';
+export const FLOW_TEMPLATE_ID_PATTERN = '^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$';
 export const FLOW_TEMPLATE_OPERATIONS = [{
         id: 'getFlowTemplateCatalog', name: 'flows.templates.catalog', audience: 'conversations', method: 'GET',
         path: '/api/v1/dashboard/{businessId}/automation-runtime/catalog', pathTemplate: '/api/v1/dashboard/:businessId/automation-runtime/catalog',
-        principalKinds: ['business_key', 'delegation'], requiredScopes: ['flows.deploy'], humanPermissions: ['flows.edit'], idempotency: 'none', scope: 'workspace',
+        principalKinds: ['business_key', 'delegation', 'user_delegation'], requiredScopes: ['flows.deploy'], humanPermissions: ['flows.edit'], idempotency: 'none', scope: 'workspace',
     }, {
         id: 'importFlowTemplate', name: 'flows.templates.import', audience: 'conversations', method: 'POST',
         path: '/api/v1/dashboard/{businessId}/automation-runtime/template-packs/{packId}/import', pathTemplate: '/api/v1/dashboard/:businessId/automation-runtime/template-packs/:packId/import',
-        principalKinds: ['business_key', 'delegation'], requiredScopes: ['flows.deploy'], humanPermissions: ['flows.edit'], idempotency: 'required', scope: 'workspace',
+        principalKinds: ['business_key', 'delegation', 'user_delegation'], requiredScopes: ['flows.deploy'], humanPermissions: ['flows.edit'], idempotency: 'required', scope: 'workspace', userExecution: 'direct',
+        pathParameterPatterns: { packId: FLOW_TEMPLATE_ID_PATTERN },
     }, {
         id: 'getFlowDeployment', name: 'flows.deployments.get', audience: 'conversations', method: 'GET',
         path: '/api/v1/flows/{businessId}/recipes/{recipeId}/graph', pathTemplate: '/api/v1/flows/:businessId/recipes/:recipeId/graph',
-        principalKinds: ['business_key', 'delegation'], requiredScopes: ['flows.deploy'], humanPermissions: ['flows.edit'], idempotency: 'none', scope: 'workspace',
+        principalKinds: ['business_key', 'delegation', 'user_delegation'], requiredScopes: ['flows.deploy'], humanPermissions: ['flows.edit'], idempotency: 'none', scope: 'workspace',
     }] as const;
 export interface FlowTemplateBinding {
     endpointId: string;
@@ -53,6 +56,7 @@ export interface FlowTemplateSummary {
 export interface FlowTemplateCatalogQuery {
     limit: number;
     cursor?: string;
+    view?: 'flow_deployments';
 }
 export interface FlowTemplateCatalog {
     businessId: string;
@@ -107,7 +111,7 @@ export class FlowTemplateRequestError extends Error {
 }
 const record = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const uuid = (v: unknown): v is string => typeof v === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(v);
-const id = (v: unknown): v is string => typeof v === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(v);
+const id = (v: unknown): v is string => typeof v === 'string' && new RegExp(FLOW_TEMPLATE_ID_PATTERN).test(v);
 const version = (v: unknown): v is string => typeof v === 'string' && /^[1-9]\d{0,9}$/.test(v) && Number(v) <= 2147483647;
 const revision = (v: unknown): v is number => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0 && v <= 2147483647;
 const label = (v: unknown, max: number): v is string => typeof v === 'string' && v.length > 0 && v.length <= max && !/[\x00-\x1f\x7f]/.test(v);
@@ -125,13 +129,17 @@ function exact(v: Record<string, unknown>, required: readonly string[], optional
 }
 export function parseFlowTemplateId(v: unknown): string { return id(v) ? v : fail(); }
 export function parseFlowDeploymentId(v: unknown): string { return uuid(v) ? v : fail(); }
-export function parseFlowDeploymentQuery(route: string): void {
+export function parseFlowDeploymentQuery(route: string): {
+    view: 'deployment' | 'draft';
+} {
     const mark = route.indexOf('?');
     if (mark < 0)
         fail();
     const query = new URLSearchParams(route.slice(mark + 1));
-    if ([...query].length !== 1 || query.get('view') !== 'deployment')
+    const view = query.get('view');
+    if ([...query].length !== 1 || view !== 'deployment' && view !== 'draft')
         fail();
+    return { view };
 }
 export function parseFlowTemplateDeployment(v: unknown): FlowTemplateDeployment {
     if (!record(v))
@@ -215,7 +223,7 @@ export function parseFlowTemplateCatalogQuery(route: string): FlowTemplateCatalo
     if (mark < 0)
         fail();
     const query = new URLSearchParams(route.slice(mark + 1));
-    if (query.get('view') !== 'flow_templates' || [...query.keys()].some(key => !['view', 'limit', 'cursor'].includes(key))
+    if (!['flow_templates', 'flow_deployments'].includes(query.get('view') ?? '') || [...query.keys()].some(key => !['view', 'limit', 'cursor'].includes(key))
         || ['view', 'limit', 'cursor'].some(key => query.getAll(key).length > 1))
         fail();
     const limit = query.get('limit');
@@ -224,7 +232,30 @@ export function parseFlowTemplateCatalogQuery(route: string): FlowTemplateCatalo
     const cursor = query.get('cursor');
     if (cursor !== null && (!cursor.length || cursor.length > 2048 || !/^[A-Za-z0-9_.-]+$/.test(cursor)))
         fail();
-    return { limit: limit === null ? 25 : Number(limit), ...(cursor === null ? {} : { cursor }) };
+    return { limit: limit === null ? 25 : Number(limit), ...(cursor === null ? {} : { cursor }), ...(query.get('view') === 'flow_deployments' ? { view: 'flow_deployments' as const } : {}) };
+}
+export function parseFlowDeploymentCatalog(value: unknown): FlowDeploymentCatalog {
+    if (!record(value))
+        fail();
+    exact(value, ['businessId', 'deployments', 'page']);
+    if (!uuid(value.businessId) || !Array.isArray(value.deployments) || value.deployments.length > 100 || !record(value.page))
+        fail();
+    const seen = new Set<string>();
+    for (const row of value.deployments) {
+        if (!record(row))
+            fail();
+        exact(row, ['recipeId', 'name', 'revision', 'flowStatus']);
+        if (!uuid(row.recipeId) || seen.has(row.recipeId) || !label(row.name, 500) || !revision(row.revision) || row.revision === 0 || !['draft', 'shadow', 'active', 'paused', 'retired'].includes(String(row.flowStatus)))
+            fail();
+        seen.add(row.recipeId);
+    }
+    exact(value.page, ['hasMore', 'nextCursor']);
+    if (typeof value.page.hasMore !== 'boolean' || (value.page.hasMore ? typeof value.page.nextCursor !== 'string' || !value.page.nextCursor.length || value.page.nextCursor.length > 2048 || !/^[A-Za-z0-9_.-]+$/.test(value.page.nextCursor) : value.page.nextCursor !== null))
+        fail();
+    return value as unknown as FlowDeploymentCatalog;
+}
+export function parseFlowCatalogView(value: unknown): FlowTemplateCatalog | FlowDeploymentCatalog {
+    return record(value) && Object.hasOwn(value, 'deployments') ? parseFlowDeploymentCatalog(value) : parseFlowTemplateCatalog(value);
 }
 export function parseFlowTemplateImportReceipt(v: unknown): FlowTemplateImportReceipt {
     if (!record(v))

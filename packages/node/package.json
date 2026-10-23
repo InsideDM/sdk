@@ -28,7 +28,7 @@
     "./package.json": "./package.json"
   },
   "sideEffects": false,
-  "files": ["dist", "openapi/public-v1.yaml", "docs/n8n.md", "docs/business-reference.md", "examples/n8nResourceBridge.mjs", "examples/asyncJobReceiver.mjs", "examples/n8n/*.json", "examples/n8n/README.md", "README.md", "CHANGELOG.md", "LICENSE*"],
+  "files": ["dist", "openapi/public-v1.yaml", "docs/n8n.md", "docs/business-reference.md", "docs/user-access.md", "examples/n8nResourceBridge.mjs", "examples/asyncJobReceiver.mjs", "examples/n8n/*.json", "examples/n8n/README.md", "README.md", "CHANGELOG.md", "LICENSE*"],
   "publishConfig": { "access": "public", "provenance": true },
   "scripts": {
     "build": "node scripts/build.mjs",

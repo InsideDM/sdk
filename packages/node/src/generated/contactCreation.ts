@@ -15,7 +15,8 @@ export interface CreateContactResponse {
 export const CREATE_CONTACT_OPERATION = {
     id: 'createContact', name: 'contacts.create', audience: 'conversations', method: 'POST',
     path: '/api/v1/dashboard/{businessId}/contacts', pathTemplate: '/api/v1/dashboard/:businessId/contacts',
-    principalKinds: ['business_key', 'delegation'], requiredScopes: ['contacts.write'], humanPermissions: ['contacts.edit'],
+    principalKinds: ['business_key', 'delegation', 'user_delegation'], requiredScopes: ['contacts.write'], humanPermissions: ['contacts.edit'],
+    userExecution: 'direct',
     idempotency: 'required', scope: 'workspace',
 } as const;
 export class ContactCreationRequestError extends Error {
